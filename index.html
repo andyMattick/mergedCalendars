@@ -172,53 +172,59 @@ async function extractEventsFromPDF() {
 // ------------------------------------------------------------
 function parseEvents(text) {
   const results = [];
+
+  // Normalize whitespace
   text = text.replace(/\s+/g, " ").trim();
 
+  // Month name → number
   const monthMap = {
     January:"01", February:"02", March:"03", April:"04",
     May:"05", June:"06", July:"07", August:"08",
     September:"09", October:"10", November:"11", December:"12"
   };
 
-  const monthHeaderRegex = /(January|February|March|April|May|June|July|August|September|October|November|December)\s+20\d\d/i;
-  const sections = text.split(/(?=[A-Z][a-z]+ 20\d\d)/);
+  // Detect month headers
+  const monthHeaderRegex = /(January|February|March|April|May|June|July|August|September|October|November|December)\s+20\d\d/gi;
+  const sections = text.split(monthHeaderRegex);
 
-  sections.forEach(section => {
-    const headerMatch = section.match(monthHeaderRegex);
-    if (!headerMatch) return;
-
-    const monthName = headerMatch[1];
-    const year = headerMatch[0].match(/20\d\d/)[0];
+  for (let i = 1; i < sections.length; i += 2) {
+    const monthName = sections[i];
+    const year = sections[i + 1].match(/20\d\d/)[0];
     const month = monthMap[monthName];
 
-    const dayRegex = /\b([1-9]|[12]\d|3[01])\b/g;
-    const dayMatches = [...section.matchAll(dayRegex)].map(m => m[1]);
+    const section = sections[i + 1];
 
-    dayMatches.forEach(day => {
+    // Extract day cells cleanly
+    const dayCellRegex = /\b([1-9]|[12]\d|3[01])\b([^1-9]+)/g;
+    let match;
+
+    while ((match = dayCellRegex.exec(section)) !== null) {
+      const day = match[1];
+      const raw = match[2].trim();
+
       const date = `${year}-${month}-${String(day).padStart(2, "0")}`;
-      const dayPattern = new RegExp(`\\b${day}\\b([^\\d]+)`, "i");
-      const eventMatch = section.match(dayPattern);
-      if (!eventMatch) return;
 
-      const raw = eventMatch[1].trim();
-
+      // Split LS/MS/HS/ALL chunks
       raw.split(/(?=\bLS\b|\bMS\b|\bHS\b|\bALL\b)/).forEach(chunk => {
         chunk = chunk.trim();
         if (!chunk) return;
 
         let division = "ALL";
-        if (/\bLS\b/.test(chunk)) division = "LS";
-        if (/\bMS\b/.test(chunk)) division = "MS";
-        if (/\bHS\b/.test(chunk)) division = "HS";
+        if (chunk.startsWith("LS")) division = "LS";
+        if (chunk.startsWith("MS")) division = "MS";
+        if (chunk.startsWith("HS")) division = "HS";
 
         const title = chunk.replace(/\b(LS|MS|HS|ALL)\b/g, "").trim();
-        if (title.length > 0) results.push({ date, division, title });
+        if (title.length > 0) {
+          results.push({ date, division, title });
+        }
       });
-    });
-  });
+    }
+  }
 
   return results;
 }
+
 
 // ------------------------------------------------------------
 // MERGE + DEDUPE
