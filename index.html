@@ -4,8 +4,12 @@
   <meta charset="UTF-8" />
   <title>Unified School Calendar</title>
 
-  <!-- PDF.js for client-side PDF reading (works on GitHub Pages) -->
+  <!-- PDF.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+  </script>
 
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
@@ -14,7 +18,7 @@
     .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 10px; }
     .day { border: 1px solid #ccc; padding: 6px; min-height: 120px; background: #fafafa; }
     .day-number { font-weight: bold; margin-bottom: 4px; }
-    .event { margin-top: 4px; padding: 2px 4px; border-radius: 4px; font-size: 12px; position: relative; }
+    .event { margin-top: 4px; padding: 2px 4px; border-radius: 4px; font-size: 12px; }
     .LS { background: #cce5ff; }
     .MS { background: #d4edda; }
     .HS { background: #f8d7da; }
@@ -84,21 +88,14 @@ let events = [];
 // ------------------------------------------------------------
 // NOTES STORAGE
 // ------------------------------------------------------------
-function saveNote(date, text) {
-  localStorage.setItem("note_" + date, text);
-}
-function loadNote(date) {
-  return localStorage.getItem("note_" + date) || "";
-}
+function saveNote(date, text) { localStorage.setItem("note_" + date, text); }
+function loadNote(date) { return localStorage.getItem("note_" + date) || ""; }
 
 // ------------------------------------------------------------
 // FILTERING
 // ------------------------------------------------------------
 let currentFilter = "ALL";
-function setFilter(f) {
-  currentFilter = f;
-  renderCalendar(currentMonth);
-}
+function setFilter(f) { currentFilter = f; renderCalendar(currentMonth); }
 
 // ------------------------------------------------------------
 // MONTH NAVIGATION
@@ -165,27 +162,22 @@ async function extractEventsFromPDF() {
     console.error(err);
     alert("Error reading PDF.");
   }
-  console.log(text);
-
 }
 
 // ------------------------------------------------------------
-// PARSER (tailored to your planners)
+// CORRECT PARSER FOR YOUR PLANNERS
 // ------------------------------------------------------------
 function parseEvents(text) {
   const results = [];
 
-  // Normalize whitespace
   text = text.replace(/\s+/g, " ").trim();
 
-  // Month name → number
   const monthMap = {
     January:"01", February:"02", March:"03", April:"04",
     May:"05", June:"06", July:"07", August:"08",
     September:"09", October:"10", November:"11", December:"12"
   };
 
-  // Find month headers
   const monthHeaderRegex = /(January|February|March|April|May|June|July|August|September|October|November|December)\s+20\d\d/gi;
   const parts = text.split(monthHeaderRegex);
 
@@ -196,27 +188,19 @@ function parseEvents(text) {
 
     const section = parts[i + 1];
 
-    // Find all day numbers
     const dayRegex = /\b([1-9]|[12]\d|3[01])\b/g;
-    const days = [...section.matchAll(dayRegex)].map(m => m.index);
+    const dayMatches = [...section.matchAll(dayRegex)];
 
-    for (let d = 0; d < days.length; d++) {
-      const start = days[d];
-      const end = days[d + 1] || section.length;
+    for (let d = 0; d < dayMatches.length; d++) {
+      const day = dayMatches[d][1];
+      const start = dayMatches[d].index;
+      const end = dayMatches[d + 1] ? dayMatches[d + 1].index : section.length;
 
       const chunk = section.slice(start, end).trim();
-
-      // Extract the day number
-      const dayMatch = chunk.match(/^([1-9]|[12]\d|3[01])\b/);
-      if (!dayMatch) continue;
-
-      const day = dayMatch[1];
       const date = `${year}-${month}-${String(day).padStart(2, "0")}`;
 
-      // Remove the day number
-      const body = chunk.replace(dayMatch[0], "").trim();
+      const body = chunk.replace(day, "").trim();
 
-      // Split LS/MS/HS/ALL chunks
       body.split(/(?=\bLS\b|\bMS\b|\bHS\b|\bALL\b)/).forEach(item => {
         item = item.trim();
         if (!item) return;
@@ -227,16 +211,13 @@ function parseEvents(text) {
         if (item.startsWith("HS")) division = "HS";
 
         const title = item.replace(/\b(LS|MS|HS|ALL)\b/g, "").trim();
-        if (title.length > 0) {
-          results.push({ date, division, title });
-        }
+        if (title.length > 0) results.push({ date, division, title });
       });
     }
   }
 
   return results;
 }
-
 
 // ------------------------------------------------------------
 // MERGE + DEDUPE
