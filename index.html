@@ -3,17 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <title>Unified School Calendar</title>
+
+  <!-- PDF.js for client-side PDF reading (works on GitHub Pages) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
   <style>
-    body { font-family: Arial; margin: 20px; }
-    .filters button { margin-right: 10px; padding: 8px 12px; }
-    .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-    .day { border: 1px solid #ccc; padding: 6px; min-height: 120px; position: relative; }
-    .day-number { font-weight: bold; }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { margin-bottom: 10px; }
+    .filters button { margin-right: 10px; padding: 8px 12px; cursor: pointer; }
+    .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 10px; }
+    .day { border: 1px solid #ccc; padding: 6px; min-height: 120px; position: relative; background: #fafafa; }
+    .day-number { font-weight: bold; margin-bottom: 4px; }
     .event { margin-top: 4px; padding: 2px 4px; border-radius: 4px; font-size: 12px; }
     .LS { background: #cce5ff; }
     .MS { background: #d4edda; }
     .HS { background: #f8d7da; }
-    textarea { width: 100%; height: 40px; margin-top: 6px; font-size: 12px; }
+    .ALL { background: #fff3cd; }
+    textarea { width: 100%; height: 40px; margin-top: 6px; font-size: 12px; box-sizing: border-box; }
+    .controls { margin-top: 15px; margin-bottom: 10px; }
   </style>
 </head>
 
@@ -28,24 +35,29 @@
   <button onclick="setFilter('HS')">High School</button>
 </div>
 
+<div class="controls">
+  <h3>Add Events From Faculty Planner PDF</h3>
+  <input type="file" id="pdfInput" accept=".pdf">
+  <button onclick="extractEventsFromPDF()">Add Events</button>
+</div>
+
 <h2 id="monthTitle"></h2>
 <div id="calendar" class="calendar"></div>
 
-<button onclick="downloadCalendar()">Download Unified Calendar JSON</button>
+<div class="controls">
+  <button onclick="prevMonth()">Previous Month</button>
+  <button onclick="nextMonth()">Next Month</button>
+  <button onclick="downloadCalendar()">Download Unified Calendar JSON</button>
+</div>
 
 <script>
 // ------------------------------------------------------------
-// 1. SAMPLE EVENT DATA (replace with your extracted PDF data)
+// 1. EVENT STORAGE
 // ------------------------------------------------------------
-const events = [
-  { date: "2026-08-02", division: "HS", title: "HS Peer Leadership Retreat" },
-  { date: "2026-08-03", division: "MS", title: "MS CogAT Testing (New 6th Grade)" },
-  { date: "2026-08-03", division: "LS", title: "New Faculty Orientation" },
-  // Add all LS/MS/HS events here...
-];
+let events = []; // start empty; you can pre-seed if desired
 
 // ------------------------------------------------------------
-// 2. NOTES STORAGE
+// 2. NOTES STORAGE (per date)
 // ------------------------------------------------------------
 function saveNote(date, text) {
   localStorage.setItem("note_" + date, text);
@@ -65,10 +77,138 @@ function setFilter(f) {
 }
 
 // ------------------------------------------------------------
-// 4. CALENDAR RENDERING
+// 4. MONTH NAVIGATION
 // ------------------------------------------------------------
-const currentMonth = new Date(2026, 7); // August 2026
+let currentMonth = new Date(2026, 7); // August 2026 (0-based month index)
 
+function prevMonth() {
+  currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
+  renderCalendar(currentMonth);
+}
+
+function nextMonth() {
+  currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+  renderCalendar(currentMonth);
+}
+
+// ------------------------------------------------------------
+// 5. PDF EVENT EXTRACTION
+// ------------------------------------------------------------
+async function extractEventsFromPDF() {
+  const file = document.getElementById("pdfInput").files[0];
+  if (!file) {
+    alert("Please select a PDF first.");
+    return;
+  }
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+    let text = "";
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map(item => item.str).join(" ") + "\n";
+    }
+
+    const extracted = parseEvents(text);
+    mergeEvents(extracted);
+    renderCalendar(currentMonth);
+
+    alert(`Processed ${extracted.length} events from PDF (duplicates skipped on merge).`);
+  } catch (err) {
+    console.error(err);
+    alert("There was an error reading the PDF.");
+  }
+}
+
+// ------------------------------------------------------------
+// 6. PARSER TAILORED TO YOUR PLANNER FORMATS
+// ------------------------------------------------------------
+function parseEvents(text) {
+  const results = [];
+
+  // Normalize whitespace
+  text = text.replace(/\s+/g, " ").trim();
+
+  // Month name → number
+  const monthMap = {
+    January: "01", February: "02", March: "03", April: "04",
+    May: "05", June: "06", July: "07", August: "08",
+    September: "09", October: "10", November: "11", December: "12",
+    Jan: "01", Feb: "02", Mar: "03", Apr: "04",
+    May: "05", Jun: "06", Jul: "07", Aug: "08",
+    Sep: "09", Oct: "10", Nov: "11", Dec: "12"
+  };
+
+  // Split text into sections by month headers (e.g., "AUGUST 2026")
+  const monthHeaderRegex = /(January|February|March|April|May|June|July|August|September|October|November|December)\s+20\d\d/i;
+  const sections = text.split(/(?=[A-Z][a-z]+ 20\d\d)/);
+
+  sections.forEach(section => {
+    const headerMatch = section.match(monthHeaderRegex);
+    if (!headerMatch) return;
+
+    const monthName = headerMatch[1];
+    const yearMatch = headerMatch[0].match(/20\d\d/);
+    const year = yearMatch ? yearMatch[0] : "2026";
+    const month = monthMap[monthName] || "01";
+
+    // Find day numbers in this section (grid-style)
+    const dayRegex = /\b([1-9]|[12]\d|3[01])\b/g;
+    const dayMatches = [...section.matchAll(dayRegex)].map(m => m[1]);
+
+    dayMatches.forEach(day => {
+      const date = `${year}-${month}-${String(day).padStart(2, "0")}`;
+
+      // Find text near the day number
+      const dayPattern = new RegExp(`\\b${day}\\b([^\\d]+)`, "i");
+      const eventMatch = section.match(dayPattern);
+      if (!eventMatch) return;
+
+      const raw = eventMatch[1].trim();
+
+      // Split multi-event chunks (LS/MS/HS/ALL)
+      raw.split(/(?=\bLS\b|\bMS\b|\bHS\b|\bALL\b)/).forEach(chunk => {
+        chunk = chunk.trim();
+        if (!chunk) return;
+
+        let division = "ALL";
+        if (/\bLS\b/.test(chunk)) division = "LS";
+        if (/\bMS\b/.test(chunk)) division = "MS";
+        if (/\bHS\b/.test(chunk)) division = "HS";
+        if (/\bALL\b/.test(chunk)) division = "ALL";
+
+        const title = chunk.replace(/\b(LS|MS|HS|ALL)\b/g, "").trim();
+        if (title.length > 0) {
+          results.push({ date, division, title });
+        }
+      });
+    });
+  });
+
+  return results;
+}
+
+// ------------------------------------------------------------
+// 7. MERGE + DEDUPE
+// ------------------------------------------------------------
+function mergeEvents(newEvents) {
+  const seen = new Set(events.map(e => `${e.date}|${e.division}|${e.title}`));
+
+  newEvents.forEach(e => {
+    const key = `${e.date}|${e.division}|${e.title}`;
+    if (!seen.has(key)) {
+      events.push(e);
+      seen.add(key);
+    }
+  });
+}
+
+// ------------------------------------------------------------
+// 8. CALENDAR RENDERING
+// ------------------------------------------------------------
 function renderCalendar(month) {
   const year = month.getFullYear();
   const monthIndex = month.getMonth();
@@ -82,9 +222,10 @@ function renderCalendar(month) {
   const calendar = document.getElementById("calendar");
   calendar.innerHTML = "";
 
-  // Empty cells before the first day
+  // Empty cells before first day
   for (let i = 0; i < startDay; i++) {
-    calendar.appendChild(document.createElement("div"));
+    const empty = document.createElement("div");
+    calendar.appendChild(empty);
   }
 
   // Actual days
@@ -99,7 +240,6 @@ function renderCalendar(month) {
     num.innerText = day;
     cell.appendChild(num);
 
-    // Events
     events
       .filter(e => e.date === dateStr)
       .filter(e => currentFilter === "ALL" || e.division === currentFilter)
@@ -110,7 +250,6 @@ function renderCalendar(month) {
         cell.appendChild(div);
       });
 
-    // Notes
     const note = document.createElement("textarea");
     note.value = loadNote(dateStr);
     note.oninput = () => saveNote(dateStr, note.value);
@@ -120,10 +259,11 @@ function renderCalendar(month) {
   }
 }
 
+// Initial render
 renderCalendar(currentMonth);
 
 // ------------------------------------------------------------
-// 5. DOWNLOAD UNIFIED CALENDAR
+// 9. DOWNLOAD UNIFIED CALENDAR
 // ------------------------------------------------------------
 function downloadCalendar() {
   const blob = new Blob([JSON.stringify(events, null, 2)], { type: "application/json" });
