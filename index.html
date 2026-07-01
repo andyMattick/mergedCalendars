@@ -183,38 +183,48 @@ function parseEvents(text) {
     September:"09", October:"10", November:"11", December:"12"
   };
 
-  // Detect month headers
+  // Find month headers
   const monthHeaderRegex = /(January|February|March|April|May|June|July|August|September|October|November|December)\s+20\d\d/gi;
-  const sections = text.split(monthHeaderRegex);
+  const parts = text.split(monthHeaderRegex);
 
-  for (let i = 1; i < sections.length; i += 2) {
-    const monthName = sections[i];
-    const year = sections[i + 1].match(/20\d\d/)[0];
+  for (let i = 1; i < parts.length; i += 2) {
+    const monthName = parts[i];
+    const year = parts[i + 1].match(/20\d\d/)[0];
     const month = monthMap[monthName];
 
-    const section = sections[i + 1];
+    const section = parts[i + 1];
 
-    // Extract day cells cleanly
-    const dayCellRegex = /\b([1-9]|[12]\d|3[01])\b([^1-9]+)/g;
-    let match;
+    // Find all day numbers
+    const dayRegex = /\b([1-9]|[12]\d|3[01])\b/g;
+    const days = [...section.matchAll(dayRegex)].map(m => m.index);
 
-    while ((match = dayCellRegex.exec(section)) !== null) {
-      const day = match[1];
-      const raw = match[2].trim();
+    for (let d = 0; d < days.length; d++) {
+      const start = days[d];
+      const end = days[d + 1] || section.length;
 
+      const chunk = section.slice(start, end).trim();
+
+      // Extract the day number
+      const dayMatch = chunk.match(/^([1-9]|[12]\d|3[01])\b/);
+      if (!dayMatch) continue;
+
+      const day = dayMatch[1];
       const date = `${year}-${month}-${String(day).padStart(2, "0")}`;
 
+      // Remove the day number
+      const body = chunk.replace(dayMatch[0], "").trim();
+
       // Split LS/MS/HS/ALL chunks
-      raw.split(/(?=\bLS\b|\bMS\b|\bHS\b|\bALL\b)/).forEach(chunk => {
-        chunk = chunk.trim();
-        if (!chunk) return;
+      body.split(/(?=\bLS\b|\bMS\b|\bHS\b|\bALL\b)/).forEach(item => {
+        item = item.trim();
+        if (!item) return;
 
         let division = "ALL";
-        if (chunk.startsWith("LS")) division = "LS";
-        if (chunk.startsWith("MS")) division = "MS";
-        if (chunk.startsWith("HS")) division = "HS";
+        if (item.startsWith("LS")) division = "LS";
+        if (item.startsWith("MS")) division = "MS";
+        if (item.startsWith("HS")) division = "HS";
 
-        const title = chunk.replace(/\b(LS|MS|HS|ALL)\b/g, "").trim();
+        const title = item.replace(/\b(LS|MS|HS|ALL)\b/g, "").trim();
         if (title.length > 0) {
           results.push({ date, division, title });
         }
