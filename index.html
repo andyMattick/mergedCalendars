@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <title>HS Faculty Planner</title>
   <style>
+
+
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       margin: 0;
@@ -155,6 +157,23 @@
     .small {
       font-size: 0.75rem;
       color: #6b7280;
+    }
+            .calendar-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      text-align: center;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      font-size: 0.75rem;
+      color: #4b5563;
+    }
+    .calendar-weekdays div {
+      padding: 0.25rem 0;
+    }
+    .day-cell.empty {
+      background: transparent;
+      border: none;
+      cursor: default;
     }
   </style>
 </head>
@@ -452,47 +471,97 @@ function formatDateLabel(dateStr) {
     }
 
     // --- UI: calendar ---
-    function renderCalendar() {
-      const grid = document.getElementById("calendarGrid");
-      grid.innerHTML = "";
+function renderCalendar() {
+  const grid = document.getElementById("calendarGrid");
+  grid.innerHTML = "";
 
-      HS_ROTATION_2026.forEach(day => {
+  // Group rotation days by month
+  const byMonth = {};
+  HS_ROTATION_2026.forEach(day => {
+    const [year, month] = day.date.split("-").map(Number);
+    const key = `${year}-${month}`;
+    if (!byMonth[key]) byMonth[key] = [];
+    byMonth[key].push(day);
+  });
 
-        const cell = document.createElement("div");
-        cell.className = "day-cell";
-        if (hasNotesForDate(day.date)) {
-          cell.classList.add("has-notes");
-        }
+  Object.keys(byMonth).forEach(monthKey => {
+    const [year, month] = monthKey.split("-").map(Number);
+    const days = byMonth[monthKey];
 
-        const header = document.createElement("div");
-        header.className = "day-cell-header";
-        const dateSpan = document.createElement("span");
-        dateSpan.textContent = formatDateLabel(day.date);
-        const letterSpan = document.createElement("span");
-        letterSpan.textContent = day.letter;
-        header.appendChild(dateSpan);
-        header.appendChild(letterSpan);
-        cell.appendChild(header);
+    // Month header
+    const header = document.createElement("h3");
+    header.textContent = new Date(year, month - 1).toLocaleDateString(undefined, {
+      month: "long",
+      year: "numeric"
+    });
+    grid.appendChild(header);
 
-        const classesUl = document.createElement("ul");
-        classesUl.className = "classes-list";
+    // Weekday header row
+    const weekdays = document.createElement("div");
+    weekdays.className = "calendar-weekdays";
+    ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].forEach(w => {
+      const wd = document.createElement("div");
+      wd.textContent = w;
+      weekdays.appendChild(wd);
+    });
+    grid.appendChild(weekdays);
 
-        const periods = ROTATION_RULES[normalizeLetter(day.letter)] || [];
+    // Calendar grid container
+    const monthGrid = document.createElement("div");
+    monthGrid.className = "calendar-grid";
 
-        periods.forEach(periodNum => {
+    // Determine weekday of the 1st
+    const firstDay = new Date(year, month - 1, 1).getDay();
+
+    // Add empty cells before the first day
+    for (let i = 0; i < firstDay; i++) {
+      const empty = document.createElement("div");
+      empty.className = "day-cell empty";
+      monthGrid.appendChild(empty);
+    }
+
+    // Add actual rotation days
+    days.forEach(day => {
+      const cell = document.createElement("div");
+      cell.className = "day-cell";
+
+      if (hasNotesForDate(day.date)) {
+        cell.classList.add("has-notes");
+      }
+
+      const header = document.createElement("div");
+      header.className = "day-cell-header";
+      header.textContent = formatDateLabel(day.date);
+      cell.appendChild(header);
+
+      const letter = normalizeLetter(day.letter);
+
+      if (!letter) {
+        cell.appendChild(document.createTextNode("No HS classes"));
+      } else if (!ROTATION_RULES[letter]) {
+        cell.appendChild(document.createTextNode(day.letter)); // Exam, *, etc.
+      } else {
+        const ul = document.createElement("ul");
+        ul.className = "classes-list";
+
+        ROTATION_RULES[letter].forEach(periodNum => {
           const li = document.createElement("li");
           const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
           li.textContent = `${periodNum}: ${courseName}`;
-          classesUl.appendChild(li);
+          ul.appendChild(li);
         });
 
-        cell.appendChild(classesUl);
+        cell.appendChild(ul);
+      }
 
-        cell.addEventListener("click", () => openDayModal(day));
+      cell.addEventListener("click", () => openDayModal(day));
+      monthGrid.appendChild(cell);
+    });
 
-        grid.appendChild(cell);
-      });
-    }
+    grid.appendChild(monthGrid);
+  });
+}
+
 
     // --- UI: modal for notes ---
     function openDayModal(day) {
