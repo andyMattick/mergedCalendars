@@ -20,7 +20,11 @@
       --accent: #60a5fa;
     }
 
-
+    #darkModeToggle {
+      background: #374151;      /* lighter gray */
+      border: 1px solid #9ca3af; /* visible border */
+      color: #fff;
+}
 
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -420,7 +424,7 @@ const HS_ROTATION_2026 = [
   { date: "2026-12-07", letter: "B" },
   { date: "2026-12-08", letter: "C" },
   { date: "2026-12-09", letter: "D" },
-  { date: "2026-12-10", letter: "Reading Day" },
+  { date: "2026-12-10", letter: "Reading Day"},
   { date: "2026-12-11", letter: "Reading Day & Statistics/Computer Science Exams" },
 
   { date: "2026-12-14", letter: "Science Exam" },
@@ -662,57 +666,59 @@ for (let i = 0; i < leadingBlanks; i++) {
   calendarRoot.appendChild(monthGrid);
 }
     // --- UI: modal for notes ---
-    function openDayModal(day) {
-      currentModalDay = day;
-      const backdrop = document.getElementById("modalBackdrop");
-      const dateLabel = document.getElementById("modalDateLabel");
-      const letterLabel = document.getElementById("modalLetterLabel");
-      const body = document.getElementById("modalBody");
+function openDayModal(day) {
+  currentModalDay = day;
 
-      dateLabel.textContent = formatDateLabel(day.date);
-      letterLabel.textContent = `HS letter: ${day.letter}`;
-      body.innerHTML = "";
+  const backdrop = document.getElementById("modalBackdrop");
+  const dateLabel = document.getElementById("modalDateLabel");
+  const letterLabel = document.getElementById("modalLetterLabel");
+  const body = document.getElementById("modalBody");
 
-      const periods = ROTATION_RULES[normalizeLetter(day.letter)] || [];
-      
-      periods.forEach(periodNum => {
-        const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
-        const block = document.createElement("div");
-        block.className = "note-block";
+  dateLabel.textContent = formatDateLabel(day.date);
+  letterLabel.textContent = `HS letter: ${day.letter}`;
 
-        const label = document.createElement("label");
-        label.textContent = `Period ${periodNum} – ${courseName}`;
-        block.appendChild(label);
+  body.innerHTML = "";
 
-        const textarea = document.createElement("textarea");
-        textarea.value = existingNotes[periodNum] || "";
-        textarea.dataset.period = periodNum;
-        block.appendChild(textarea);
+  const existingNotes = loadNotesForDate(day.date);   // <-- FIXED: moved up
 
-        body.appendChild(block);
-      });
+  const periods = ROTATION_RULES[normalizeLetter(day.letter)] || [];
 
-      // Test day checkbox
-      const testBlock = document.createElement("div");
-      testBlock.className = "note-block";
+  periods.forEach(periodNum => {
+    const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
+    const block = document.createElement("div");
+    block.className = "note-block";
 
-      const testLabel = document.createElement("label");
-      testLabel.textContent = "Test Day";
-      testBlock.appendChild(testLabel);
+    const label = document.createElement("label");
+    label.textContent = `Period ${periodNum} – ${courseName}`;
+    block.appendChild(label);
 
-      const testCheckbox = document.createElement("input");
-      testCheckbox.type = "checkbox";
-      testCheckbox.id = "isTestDay";
+    const textarea = document.createElement("textarea");
+    textarea.value = existingNotes[periodNum] || "";
+    textarea.dataset.period = periodNum;
+    block.appendChild(textarea);
 
-      const existingNotes = loadNotesForDate(day.date);
-      testCheckbox.checked = existingNotes.isTestDay || false;
+    body.appendChild(block);
+  });
 
-      testBlock.appendChild(testCheckbox);
-      body.appendChild(testBlock);
+  // Test day checkbox
+  const testBlock = document.createElement("div");
+  testBlock.className = "note-block";
 
+  const testLabel = document.createElement("label");
+  testLabel.textContent = "Test Day";
+  testBlock.appendChild(testLabel);
 
-      backdrop.style.display = "flex";
-    }
+  const testCheckbox = document.createElement("input");
+  testCheckbox.type = "checkbox";
+  testCheckbox.id = "isTestDay";
+  testCheckbox.checked = existingNotes.isTestDay || false;
+
+  testBlock.appendChild(testCheckbox);
+  body.appendChild(testBlock);
+
+  backdrop.style.display = "flex";
+}
+
 
     function closeDayModal() {
       const backdrop = document.getElementById("modalBackdrop");
