@@ -538,7 +538,7 @@ function renderCalendar() {
   // Weekday header row (Mon–Fri)
   const weekdayHeaderRow = document.createElement("div");
   weekdayHeaderRow.className = "calendar-weekdays";
-  ["Mon","Tue","Wed","Thu","Fri"].forEach(w => {
+  ["M","T","Wed","Thu","Fri"].forEach(w => {
     const wd = document.createElement("div");
     wd.textContent = w;
     weekdayHeaderRow.appendChild(wd);
