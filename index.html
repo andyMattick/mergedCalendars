@@ -525,38 +525,61 @@ function renderCalendar() {
     year: "numeric"
   });
 
-  // Build a lookup for school days
+  // Build lookup for school days
   const dayMap = {};
   days.forEach(d => dayMap[d.date] = d);
 
   // Build full month range
   const first = new Date(year, month - 1, 1);
-  const last = new Date(year, month, 0); // last day of month
+  const last = new Date(year, month, 0);
   const totalDays = last.getDate();
 
   const monthContainer = document.createElement("div");
   monthContainer.className = "month-container";
 
+  // 5‑day school‑week grid
   const monthGrid = document.createElement("div");
   monthGrid.className = "calendar-grid";
+  monthGrid.style.gridTemplateColumns = "repeat(5, 1fr)";
 
-  // Leading blanks
+  // Insert weekday headers
+  const weekdayHeaderRow = document.createElement("div");
+  weekdayHeaderRow.className = "calendar-weekdays";
+  ["Mon","Tue","Wed","Thu","Fri"].forEach(w => {
+    const wd = document.createElement("div");
+    wd.textContent = w;
+    weekdayHeaderRow.appendChild(wd);
+  });
+  monthContainer.appendChild(weekdayHeaderRow);
+
+  // Determine weekday of the 1st (0=Sun..6=Sat)
   const firstWeekday = first.getDay();
-  for (let i = 0; i < firstWeekday; i++) {
+  const weekdayIndex = [1,2,3,4,5]; // Mon–Fri
+
+  // Leading blanks (only Mon–Fri)
+  const firstIndex = weekdayIndex.indexOf(firstWeekday);
+  const leadingBlanks = firstIndex === -1 ? 0 : firstIndex;
+
+  for (let i = 0; i < leadingBlanks; i++) {
     const empty = document.createElement("div");
     empty.className = "day-cell empty";
     monthGrid.appendChild(empty);
   }
 
-  // Generate every day of the month
+  // Generate each day of the month
   for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
     const dateObj = new Date(year, month - 1, dayNum);
-    const iso = dateObj.toISOString().split("T")[0];
+    const jsWeekday = dateObj.getDay(); // 0=Sun..6=Sat
 
+    // Skip weekends entirely
+    if (jsWeekday === 0 || jsWeekday === 6) continue;
+
+    const iso = dateObj.toISOString().split("T")[0];
     const cell = document.createElement("div");
     cell.className = "day-cell";
 
     const weekdayName = dateObj.toLocaleDateString(undefined, { weekday: "short" });
+
     const header = document.createElement("div");
     header.className = "day-cell-header";
 
@@ -608,18 +631,27 @@ function renderCalendar() {
       cell.addEventListener("click", () => openDayModal(day));
 
     } else {
-      // Non-school day
-      header.textContent = `${weekdayName} ${dateObj.getDate()}`;
+      // Non‑school weekday
+      header.textContent = `${weekdayName} ${dayNum}`;
       cell.appendChild(header);
       cell.classList.add("empty");
     }
 
     monthGrid.appendChild(cell);
+
+    // Row break after Friday
+    if (jsWeekday === 5) {
+      const spacer = document.createElement("div");
+      spacer.style.gridColumn = "1 / -1";
+      spacer.style.height = "0.5rem";
+      monthGrid.appendChild(spacer);
+    }
   }
 
   monthContainer.appendChild(monthGrid);
   grid.appendChild(monthContainer);
 }
+
 
     // --- UI: modal for notes ---
     function openDayModal(day) {
