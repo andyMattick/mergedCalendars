@@ -80,6 +80,14 @@
   align-items: stretch;
 }
 
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+
     .day-cell {
   width: 100%;
   min-height: 160px;
@@ -260,7 +268,7 @@
     </div>
 
     <!-- Weekday headers will be inserted by JS -->
-    <div class="calendar-grid" id="calendarGrid"></div>
+    <div class="calendar-grid"></div>
   </section>
 </main>
 
@@ -510,9 +518,9 @@ function formatDateLabel(dateStr) {
 
     // --- UI: calendar ---
 function renderCalendar() {
-  const grid = document.getElementById("calendarGrid");
+  const calendarRoot = document.getElementById("calendarGrid");
   const monthTitle = document.getElementById("monthTitle");
-  grid.innerHTML = "";
+  calendarRoot.innerHTML = "";
 
   const { year, month, days } = MONTHS[currentMonthIndex];
 
@@ -522,19 +530,30 @@ function renderCalendar() {
   });
 
   const dayMap = {};
-  days.forEach((d) => {
-    dayMap[d.date] = d;
-  });
+  days.forEach(d => { dayMap[d.date] = d; });
 
   const last = new Date(year, month, 0);
   const totalDays = last.getDate();
+
+  // Weekday header row (Mon–Fri)
+  const weekdayHeaderRow = document.createElement("div");
+  weekdayHeaderRow.className = "calendar-weekdays";
+  ["Mon","Tue","Wed","Thu","Fri"].forEach(w => {
+    const wd = document.createElement("div");
+    wd.textContent = w;
+    weekdayHeaderRow.appendChild(wd);
+  });
+  calendarRoot.appendChild(weekdayHeaderRow);
+
+  // Actual grid
+  const monthGrid = document.createElement("div");
+  monthGrid.className = "calendar-grid";
 
   const weekdays = [];
   for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
     const dateObj = new Date(year, month - 1, dayNum);
     const jsWeekday = dateObj.getDay();
-
-    if (jsWeekday === 0 || jsWeekday === 6) continue;
+    if (jsWeekday === 0 || jsWeekday === 6) continue; // skip weekends
 
     const iso = `${year}-${String(month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
     weekdays.push({
@@ -543,22 +562,7 @@ function renderCalendar() {
     });
   }
 
-  const monthContainer = document.createElement("div");
-  monthContainer.className = "month-container";
-
-  const monthGrid = document.createElement("div");
-  monthGrid.className = "calendar-grid";
-
-  const weekdayHeaderRow = document.createElement("div");
-  weekdayHeaderRow.className = "calendar-weekdays";
-  ["Mon", "Tue", "Wed", "Thu", "Fri"].forEach((w) => {
-    const wd = document.createElement("div");
-    wd.textContent = w;
-    weekdayHeaderRow.appendChild(wd);
-  });
-  monthContainer.appendChild(weekdayHeaderRow);
-
-  weekdays.forEach((weekdayCell) => {
+  weekdays.forEach(weekdayCell => {
     const [cellYear, cellMonth, cellDay] = weekdayCell.date.split("-").map(Number);
     const dateObj = new Date(cellYear, cellMonth - 1, cellDay);
     const weekdayName = dateObj.toLocaleDateString(undefined, { weekday: "short" });
@@ -571,6 +575,7 @@ function renderCalendar() {
 
     if (weekdayCell.schoolDay) {
       const day = weekdayCell.schoolDay;
+
       const today = new Date();
       if (
         today.getFullYear() === cellYear &&
@@ -597,7 +602,7 @@ function renderCalendar() {
       } else {
         const ul = document.createElement("ul");
         ul.className = "classes-list";
-        ROTATION_RULES[letter].forEach((periodNum) => {
+        ROTATION_RULES[letter].forEach(periodNum => {
           const li = document.createElement("li");
           const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
           li.textContent = `${periodNum}: ${courseName}`;
@@ -617,11 +622,8 @@ function renderCalendar() {
     monthGrid.appendChild(cell);
   });
 
-  monthContainer.appendChild(monthGrid);
-  grid.appendChild(monthContainer);
+  calendarRoot.appendChild(monthGrid);
 }
-
-
     // --- UI: modal for notes ---
     function openDayModal(day) {
       currentModalDay = day;
