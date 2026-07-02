@@ -525,81 +525,102 @@ function renderCalendar() {
     year: "numeric"
   });
 
-  // --- Month container ---
+  // Build a lookup for school days
+  const dayMap = {};
+  days.forEach(d => dayMap[d.date] = d);
+
+  // Build full month range
+  const first = new Date(year, month - 1, 1);
+  const last = new Date(year, month, 0); // last day of month
+  const totalDays = last.getDate();
+
   const monthContainer = document.createElement("div");
   monthContainer.className = "month-container";
 
-  // --- Calendar grid (7 columns for Sun–Sat) ---
   const monthGrid = document.createElement("div");
   monthGrid.className = "calendar-grid";
 
-  // Determine weekday of the 1st
-  const firstDay = new Date(year, month - 1, 1).getDay();
-
-  // Empty cells before first day
-  for (let i = 0; i < firstDay; i++) {
+  // Leading blanks
+  const firstWeekday = first.getDay();
+  for (let i = 0; i < firstWeekday; i++) {
     const empty = document.createElement("div");
     empty.className = "day-cell empty";
     monthGrid.appendChild(empty);
   }
 
-  // --- Add each day ---
-  days.forEach(day => {
+  // Generate every day of the month
+  for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
+    const dateObj = new Date(year, month - 1, dayNum);
+    const iso = dateObj.toISOString().split("T")[0];
+
     const cell = document.createElement("div");
     cell.className = "day-cell";
 
-    const [y, m, d] = day.date.split("-").map(Number);
-    const dateObj = new Date(y, m - 1, d);
     const weekdayName = dateObj.toLocaleDateString(undefined, { weekday: "short" });
-
-    // Highlight today
-    const today = new Date();
-    if (
-      today.getFullYear() === y &&
-      today.getMonth() + 1 === m &&
-      today.getDate() === d
-    ) {
-      cell.classList.add("today");
-    }
-
-    // --- Header: weekday + date + rotation letter ---
     const header = document.createElement("div");
     header.className = "day-cell-header";
-    const rotationLetter = day.letter ? normalizeLetter(day.letter) : "";
-    const rotationSuffix =
-      rotationLetter && ROTATION_RULES[rotationLetter] ? ` — ${rotationLetter}` : "";
-    header.textContent = `${weekdayName} ${formatDateLabel(day.date)}${rotationSuffix}`;
-    cell.appendChild(header);
 
-    // --- Rotation / special day logic ---
-    const letter = normalizeLetter(day.letter);
-    if (!letter) {
-      cell.appendChild(document.createTextNode(day.letter || "No HS classes"));
-    } else if (!ROTATION_RULES[letter]) {
-      cell.appendChild(document.createTextNode(day.letter));
+    // If this is a school day
+    if (dayMap[iso]) {
+      const day = dayMap[iso];
+
+      // Highlight today
+      const today = new Date();
+      if (
+        today.getFullYear() === year &&
+        today.getMonth() + 1 === month &&
+        today.getDate() === dayNum
+      ) {
+        cell.classList.add("today");
+      }
+
+      // Rotation letter
+      const rotationLetter = day.letter ? normalizeLetter(day.letter) : "";
+      const rotationSuffix =
+        rotationLetter && ROTATION_RULES[rotationLetter] ? ` — ${rotationLetter}` : "";
+
+      header.textContent = `${weekdayName} ${formatDateLabel(day.date)}${rotationSuffix}`;
+      cell.appendChild(header);
+
+      // Notes indicator
+      if (hasNotesForDate(day.date)) {
+        cell.classList.add("has-notes");
+      }
+
+      // Special day or rotation
+      const letter = normalizeLetter(day.letter);
+      if (!letter || !ROTATION_RULES[letter]) {
+        cell.appendChild(document.createTextNode(day.letter || "No HS classes"));
+      } else {
+        const ul = document.createElement("ul");
+        ul.className = "classes-list";
+        ROTATION_RULES[letter].forEach(periodNum => {
+          const li = document.createElement("li");
+          const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
+          li.textContent = `${periodNum}: ${courseName}`;
+          li.classList.add(`period-${periodNum}`);
+          ul.appendChild(li);
+        });
+        cell.appendChild(ul);
+      }
+
+      // Click handler
+      cell.addEventListener("click", () => openDayModal(day));
+
     } else {
-      const ul = document.createElement("ul");
-      ul.className = "classes-list";
-      ROTATION_RULES[letter].forEach(periodNum => {
-        const li = document.createElement("li");
-        const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
-        li.textContent = `${periodNum}: ${courseName}`;
-        li.classList.add(`period-${periodNum}`);
-        ul.appendChild(li);
-      });
-      cell.appendChild(ul);
+      // Non-school day
+      header.textContent = `${weekdayName} ${dateObj.getDate()}`;
+      cell.appendChild(header);
+      cell.classList.add("empty");
     }
 
-    // --- Click handler ---
-    cell.addEventListener("click", () => openDayModal(day));
-
     monthGrid.appendChild(cell);
-  });
+  }
 
-  // --- Add grid to container and container to main calendar ---
   monthContainer.appendChild(monthGrid);
   grid.appendChild(monthContainer);
 }
+
     // --- UI: modal for notes ---
     function openDayModal(day) {
       currentModalDay = day;
