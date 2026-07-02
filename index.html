@@ -17,7 +17,7 @@
       --fg: #e5e7eb;
       --card-bg: #2a2d31;
       --card-border: #3a3d42;
-      --accent: #60a5fa;
+      --accent: #3b82f6; /* brighter blue for dark mode */
     }
     body.dark .day-cell,
     body.dark .modal {
@@ -215,10 +215,13 @@
       color: #6b7280;
     }
     .day-cell.empty {
-      background: transparent;
-      border: none;
+      background: var(--card-bg);
+      color: var(--fg);
+      border: 1px solid var(--card-border);
+      opacity: 0.6; /* subtle fade so you can tell it's empty */
       cursor: default;
     }
+
     .day-cell.today {
   background: #fff7d6;
   border-color: #facc15;
@@ -242,8 +245,31 @@
 .month-container {
   display: grid;
   grid-template-rows: auto 1fr;
-  margin-bottom: 2rem;
+  margin-bottom:
+   2rem;
 }
+
+body.dark #config {
+  background: var(--card-bg);
+  color: var(--fg);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.6);
+}
+
+body.dark #config input[type="text"] {
+  background: #3a3d42;
+  color: #e5e7eb;
+  border-color: #555;
+}
+
+body.dark .calendar-weekdays {
+  color: var(--fg);
+}
+
+body.dark section {
+  box-shadow: 0 1px 3px rgba(0,0,0,0.6);
+}
+
+
 
   </style>
 </head>
