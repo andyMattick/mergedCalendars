@@ -686,37 +686,39 @@ function renderCalendar() {
       renderCalendar();
     }
 
-    // --- Init ---
-    function init() {
-      loadScheduleFromStorage();
-      hydrateScheduleForm();
+// --- Init ---
+function init() {
+  loadScheduleFromStorage();
+  hydrateScheduleForm();
+  renderCalendar();
+
+  document.getElementById("scheduleForm")
+    .addEventListener("submit", handleScheduleSubmit);
+
+  document.getElementById("closeModalBtn")
+    .addEventListener("click", closeDayModal);
+
+  document.getElementById("saveNotesBtn")
+    .addEventListener("click", handleSaveNotes);
+
+  document.getElementById("clearNotesBtn")
+    .addEventListener("click", handleClearNotes);
+
+  document.getElementById("prevMonthBtn")
+    .addEventListener("click", () => {
+      currentMonthIndex = Math.max(0, currentMonthIndex - 1);
       renderCalendar();
+    });
 
-      document.getElementById("scheduleForm")
-        .addEventListener("submit", handleScheduleSubmit);
+  document.getElementById("nextMonthBtn")
+    .addEventListener("click", () => {
+      currentMonthIndex = Math.min(MONTHS.length - 1, currentMonthIndex + 1);
+      renderCalendar();
+    });
+}
 
-      document.getElementById("closeModalBtn")
-        .addEventListener("click", closeDayModal);
-
-      document.getElementById("saveNotesBtn")
-        .addEventListener("click", handleSaveNotes);
-
-      document.getElementById("clearNotesBtn")
-        .addEventListener("click", handleClearNotes);
-    }
-
-    document.addEventListener("DOMContentLoaded", init);
-
-    document.getElementById("prevMonthBtn").addEventListener("click", () => {
-  currentMonthIndex = Math.max(0, currentMonthIndex - 1);
-  renderCalendar();
-});
-
-document.getElementById("nextMonthBtn").addEventListener("click", () => {
-  currentMonthIndex = Math.min(MONTHS.length - 1, currentMonthIndex + 1);
-  renderCalendar();
-});
-
+// Run init ONLY once, AFTER DOM is ready
+document.addEventListener("DOMContentLoaded", init);
   </script>
 
 
