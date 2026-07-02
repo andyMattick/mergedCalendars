@@ -73,7 +73,7 @@
     }
     .calendar-grid {
       display: grid;
-      grid-template-columns: repeat(7, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       grid-auto-rows: minmax(120px, auto);
       gap: 0.5rem;
       justify-items: stretch;
@@ -162,7 +162,7 @@
     }
             .calendar-weekdays {
       display: grid;
-      grid-template-columns: repeat(7, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       text-align: center;
       font-weight: 600;
       margin-bottom: 0.25rem;
@@ -575,58 +575,81 @@ function renderCalendar() {
   }
 
   // Add actual rotation days (school days only)
-  days.forEach(day => {
-    const cell = document.createElement("div");
-    cell.className = "day-cell";
+days.forEach(day => {
+  const cell = document.createElement("div");
+  cell.className = "day-cell";
 
-    // Highlight today
-    const today = new Date();
-    const [y, m, d] = day.date.split("-").map(Number);
-    if (today.getFullYear() === y && today.getMonth() + 1 === m && today.getDate() === d) {
-      cell.classList.add("today");
-    }
+  // --- Date parsing ---
+  const [y, m, d] = day.date.split("-").map(Number);
+  const dateObj = new Date(y, m - 1, d);
+  const weekday = dateObj.getDay(); // 0=Sun ... 6=Sat
 
-    // Test day detection from notes
-    const notes = loadNotesForDate(day.date);
-    const hasTest = Object.values(notes).some(n => /test|quiz|exam/i.test(n));
-    if (hasTest) cell.classList.add("test-day");
+  // --- Highlight today ---
+  const today = new Date();
+  if (
+    today.getFullYear() === y &&
+    today.getMonth() + 1 === m &&
+    today.getDate() === d
+  ) {
+    cell.classList.add("today");
+  }
 
-    if (hasNotesForDate(day.date)) {
-      cell.classList.add("has-notes");
-    }
+  // --- Test day detection ---
+  const notes = loadNotesForDate(day.date);
+  const hasTest = Object.values(notes).some(n => /test|quiz|exam/i.test(n));
+  if (hasTest) cell.classList.add("test-day");
 
-    // Header: date
-    const header = document.createElement("div");
-    header.className = "day-cell-header";
-    header.textContent = formatDateLabel(day.date);
-    cell.appendChild(header);
+  // --- Notes indicator ---
+  if (hasNotesForDate(day.date)) {
+    cell.classList.add("has-notes");
+  }
 
-    const letter = normalizeLetter(day.letter);
+  // --- Header: date + weekday ---
+  const header = document.createElement("div");
+  header.className = "day-cell-header";
+  const weekdayName = dateObj.toLocaleDateString(undefined, { weekday: "short" });
+  header.textContent = `${weekdayName} ${formatDateLabel(day.date)}`;
+  cell.appendChild(header);
 
-    if (!letter) {
-      // e.g. "Labor Day - No school"
-      cell.appendChild(document.createTextNode(day.letter || "No HS classes"));
-    } else if (!ROTATION_RULES[letter]) {
-      // Exam labels or special days
-      cell.appendChild(document.createTextNode(day.letter));
-    } else {
-      const ul = document.createElement("ul");
-      ul.className = "classes-list";
+  // --- Rotation / special day logic ---
+  const letter = normalizeLetter(day.letter);
 
-      ROTATION_RULES[letter].forEach(periodNum => {
-        const li = document.createElement("li");
-        const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
-        li.textContent = `${periodNum}: ${courseName}`;
-        li.classList.add(`period-${periodNum}`); // color‑coding by period
-        ul.appendChild(li);
-      });
+  if (!letter) {
+    // e.g. "Labor Day - No school"
+    cell.appendChild(document.createTextNode(day.letter || "No HS classes"));
+  } else if (!ROTATION_RULES[letter]) {
+    // Exam labels or special days
+    cell.appendChild(document.createTextNode(day.letter));
+  } else {
+    const ul = document.createElement("ul");
+    ul.className = "classes-list";
 
-      cell.appendChild(ul);
-    }
+    ROTATION_RULES[letter].forEach(periodNum => {
+      const li = document.createElement("li");
+      const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
+      li.textContent = `${periodNum}: ${courseName}`;
+      li.classList.add(`period-${periodNum}`); // color‑coding by period
+      ul.appendChild(li);
+    });
 
-    cell.addEventListener("click", () => openDayModal(day));
-    monthGrid.appendChild(cell);
-  });
+    cell.appendChild(ul);
+  }
+
+  // --- Modal click handler ---
+  cell.addEventListener("click", () => openDayModal(day));
+
+  // --- Append to grid ---
+  monthGrid.appendChild(cell);
+
+  // --- Optional: break row after Friday if using Mon–Fri layout ---
+  if (weekday === 5) {
+    const spacer = document.createElement("div");
+    spacer.style.gridColumn = "1 / -1";
+    spacer.style.height = "0.5rem";
+    monthGrid.appendChild(spacer);
+  }
+});
+
 
   grid.appendChild(monthGrid);
 }
