@@ -435,11 +435,17 @@ function normalizeLetter(letter) {
       return !!localStorage.getItem(getNotesKey(date));
     }
 
-    function formatDateLabel(dateStr) {
-      const d = new Date(dateStr);
-      if (isNaN(d)) return dateStr;
-      return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-    }
+function formatDateLabel(dateStr) {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const d = new Date(year, month - 1, day); // local date, no timezone shift
+  if (isNaN(d)) return dateStr;
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+}
+
 
     // --- UI: schedule form ---
     function hydrateScheduleForm() {
