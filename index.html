@@ -175,6 +175,26 @@
       border: none;
       cursor: default;
     }
+    .day-cell.today {
+  background: #fff7d6;
+  border-color: #facc15;
+  box-shadow: 0 0 0 2px #facc1533;
+}
+
+.period-1 { color: #1d4ed8; }
+.period-2 { color: #059669; }
+.period-3 { color: #b91c1c; }
+.period-4 { color: #7c3aed; }
+.period-5 { color: #d97706; }
+.period-6 { color: #0ea5e9; }
+.period-7 { color: #6b7280; }
+
+.day-cell.test-day {
+  background: #fee2e2;
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px #ef444433;
+}
+
   </style>
 </head>
 <body>
@@ -184,66 +204,68 @@
   </header>
 
   <main>
-    <section id="config">
-      <h2>Teacher schedule (HS periods 1–7)</h2>
-      <form id="scheduleForm">
-        <div>
-          <label for="p1">Period 1</label>
-          <input id="p1" name="p1" type="text" placeholder="AP Stats" />
-        </div>
-        <div>
-          <label for="p2">Period 2</label>
-          <input id="p2" name="p2" type="text" placeholder="Stats" />
-        </div>
-        <div>
-          <label for="p3">Period 3</label>
-          <input id="p3" name="p3" type="text" placeholder="Bible" />
-        </div>
-        <div>
-          <label for="p4">Period 4</label>
-          <input id="p4" name="p4" type="text" placeholder="History" />
-        </div>
-        <div>
-          <label for="p5">Period 5</label>
-          <input id="p5" name="p5" type="text" placeholder="PE" />
-        </div>
-        <div>
-          <label for="p6">Period 6</label>
-          <input id="p6" name="p6" type="text" placeholder="Calculus" />
-        </div>
-        <div>
-          <label for="p7">Period 7</label>
-          <input id="p7" name="p7" type="text" placeholder="Off" />
-        </div>
-        <button type="submit">Save schedule</button>
-      </form>
-
-      <hr style="margin:1rem 0;" />
-
-      <h2>Rotation rules (fixed HS A–G)</h2>
-      <div class="small">
-        A: 1,2,3,4,5<br/>
-        B: 6,7,1,2,3<br/>
-        C: 4,5,6,7,1<br/>
-        D: 2,3,4,5,6<br/>
-        E: 7,1,2,3,4<br/>
-        F: 5,6,7,1,2<br/>
-        G: 3,4,5,6,7
+  <section id="config">
+    <h2>Teacher schedule (HS periods 1–7)</h2>
+    <form id="scheduleForm">
+      <div>
+        <label for="p1">Period 1</label>
+        <input id="p1" name="p1" type="text" placeholder="AP Stats" />
       </div>
-      <p class="small" style="margin-top:0.5rem;">
-        These are hard‑coded in JS but you can adjust them if your school changes rotation.
-      </p>
-    </section>
+      <div>
+        <label for="p2">Period 2</label>
+        <input id="p2" name="p2" type="text" placeholder="Stats" />
+      </div>
+      <div>
+        <label for="p3">Period 3</label>
+        <input id="p3" name="p3" type="text" placeholder="Bible" />
+      </div>
+      <div>
+        <label for="p4">Period 4</label>
+        <input id="p4" name="p4" type="text" placeholder="History" />
+      </div>
+      <div>
+        <label for="p5">Period 5</label>
+        <input id="p5" name="p5" type="text" placeholder="PE" />
+      </div>
+      <div>
+        <label for="p6">Period 6</label>
+        <input id="p6" name="p6" type="text" placeholder="Calculus" />
+      </div>
+      <div>
+        <label for="p7">Period 7</label>
+        <input id="p7" name="p7" type="text" placeholder="Off" />
+      </div>
+      <button type="submit">Save schedule</button>
+    </form>
 
-    <section id="calendar">
-      <h2>Calendar (sample month)</h2>
-      <p class="small">
-        In production, you’ll replace the sample data with a JSON of dates + HS letter
-        extracted from your PDF (e.g., <code>{ "date": "2026-08-13", "letter": "A" }</code>).
-      </p>
-      <div class="calendar-grid" id="calendarGrid"></div>
-    </section>
-  </main>
+    <hr style="margin:1rem 0;" />
+
+    <h2>Rotation rules (fixed HS A–G)</h2>
+    <div class="small">
+      A: 1,2,3,4,5<br/>
+      B: 6,7,1,2,3<br/>
+      C: 4,5,6,7,1<br/>
+      D: 2,3,4,5,6<br/>
+      E: 7,1,2,3,4<br/>
+      F: 5,6,7,1,2<br/>
+      G: 3,4,5,6,7
+    </div>
+    <p class="small" style="margin-top:0.5rem;">
+      These are hard‑coded in JS but you can adjust them if your school changes rotation.
+    </p>
+  </section>
+
+  <section id="calendar">
+    <div id="monthNav" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+      <button id="prevMonthBtn" class="secondary">◀ Prev</button>
+      <h2 id="monthTitle"></h2>
+      <button id="nextMonthBtn" class="secondary">Next ▶</button>
+    </div>
+
+    <!-- Weekday headers will be inserted by JS -->
+    <div class="calendar-grid" id="calendarGrid"></div>
+  </section>
+</main>
 
     <script>
     // --- Rotation rules (HS A–G) ---
@@ -389,6 +411,25 @@ function normalizeLetter(letter) {
   return letter;
 }
 
+let currentMonthIndex = 0;
+
+function groupByMonth() {
+  const buckets = {};
+  HS_ROTATION_2026.forEach(day => {
+    const [year, month] = day.date.split("-").map(Number);
+    const key = `${year}-${month}`;
+    if (!buckets[key]) buckets[key] = [];
+    buckets[key].push(day);
+  });
+  return Object.entries(buckets).map(([key, days]) => {
+    const [year, month] = key.split("-").map(Number);
+    return { year, month, days };
+  });
+}
+
+const MONTHS = groupByMonth();
+
+
 
     // --- LocalStorage keys ---
     const LS_SCHEDULE_KEY = "hsSchedule";
@@ -473,94 +514,95 @@ function formatDateLabel(dateStr) {
     // --- UI: calendar ---
 function renderCalendar() {
   const grid = document.getElementById("calendarGrid");
+  const monthTitle = document.getElementById("monthTitle");
   grid.innerHTML = "";
 
-  // Group rotation days by month
-  const byMonth = {};
-  HS_ROTATION_2026.forEach(day => {
-    const [year, month] = day.date.split("-").map(Number);
-    const key = `${year}-${month}`;
-    if (!byMonth[key]) byMonth[key] = [];
-    byMonth[key].push(day);
+  const { year, month, days } = MONTHS[currentMonthIndex];
+
+  monthTitle.textContent = new Date(year, month - 1).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric"
   });
 
-  Object.keys(byMonth).forEach(monthKey => {
-    const [year, month] = monthKey.split("-").map(Number);
-    const days = byMonth[monthKey];
+  // Weekday header
+  const weekdays = document.createElement("div");
+  weekdays.className = "calendar-weekdays";
+  ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach(w => {
+    const wd = document.createElement("div");
+    wd.textContent = w;
+    weekdays.appendChild(wd);
+  });
+  grid.appendChild(weekdays);
 
-    // Month header
-    const header = document.createElement("h3");
-    header.textContent = new Date(year, month - 1).toLocaleDateString(undefined, {
-      month: "long",
-      year: "numeric"
-    });
-    grid.appendChild(header);
+  // Calendar grid
+  const monthGrid = document.createElement("div");
+  monthGrid.className = "calendar-grid";
 
-    // Weekday header row
-    const weekdays = document.createElement("div");
-    weekdays.className = "calendar-weekdays";
-    ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].forEach(w => {
-      const wd = document.createElement("div");
-      wd.textContent = w;
-      weekdays.appendChild(wd);
-    });
-    grid.appendChild(weekdays);
+  const firstDay = new Date(year, month - 1, 1).getDay();
 
-    // Calendar grid container
-    const monthGrid = document.createElement("div");
-    monthGrid.className = "calendar-grid";
+  // Empty cells before first day
+  for (let i = 0; i < firstDay; i++) {
+    const empty = document.createElement("div");
+    empty.className = "day-cell empty";
+    monthGrid.appendChild(empty);
+  }
 
-    // Determine weekday of the 1st
-    const firstDay = new Date(year, month - 1, 1).getDay();
+  days.forEach(day => {
+    const cell = document.createElement("div");
+    cell.className = "day-cell";
 
-    // Add empty cells before the first day
-    for (let i = 0; i < firstDay; i++) {
-      const empty = document.createElement("div");
-      empty.className = "day-cell empty";
-      monthGrid.appendChild(empty);
+    // Highlight today
+    const today = new Date();
+    const [y, m, d] = day.date.split("-").map(Number);
+    if (today.getFullYear() === y && today.getMonth() + 1 === m && today.getDate() === d) {
+      cell.classList.add("today");
     }
 
-    // Add actual rotation days
-    days.forEach(day => {
-      const cell = document.createElement("div");
-      cell.className = "day-cell";
+    // Test day detection
+    const notes = loadNotesForDate(day.date);
+    const hasTest = Object.values(notes).some(n =>
+      /test|quiz|exam/i.test(n)
+    );
+    if (hasTest) cell.classList.add("test-day");
 
-      if (hasNotesForDate(day.date)) {
-        cell.classList.add("has-notes");
-      }
+    if (hasNotesForDate(day.date)) {
+      cell.classList.add("has-notes");
+    }
 
-      const header = document.createElement("div");
-      header.className = "day-cell-header";
-      header.textContent = formatDateLabel(day.date);
-      cell.appendChild(header);
+    // Header
+    const header = document.createElement("div");
+    header.className = "day-cell-header";
+    header.textContent = formatDateLabel(day.date);
+    cell.appendChild(header);
 
-      const letter = normalizeLetter(day.letter);
+    const letter = normalizeLetter(day.letter);
 
-      if (!letter) {
-        cell.appendChild(document.createTextNode("No HS classes"));
-      } else if (!ROTATION_RULES[letter]) {
-        cell.appendChild(document.createTextNode(day.letter)); // Exam, *, etc.
-      } else {
-        const ul = document.createElement("ul");
-        ul.className = "classes-list";
+    if (!letter) {
+      cell.appendChild(document.createTextNode(day.letter || "No HS classes"));
+    } else if (!ROTATION_RULES[letter]) {
+      cell.appendChild(document.createTextNode(day.letter)); // exam labels
+    } else {
+      const ul = document.createElement("ul");
+      ul.className = "classes-list";
 
-        ROTATION_RULES[letter].forEach(periodNum => {
-          const li = document.createElement("li");
-          const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
-          li.textContent = `${periodNum}: ${courseName}`;
-          ul.appendChild(li);
-        });
+      ROTATION_RULES[letter].forEach(periodNum => {
+        const li = document.createElement("li");
+        const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
+        li.textContent = `${periodNum}: ${courseName}`;
+        li.classList.add(`period-${periodNum}`);
+        ul.appendChild(li);
+      });
 
-        cell.appendChild(ul);
-      }
+      cell.appendChild(ul);
+    }
 
-      cell.addEventListener("click", () => openDayModal(day));
-      monthGrid.appendChild(cell);
-    });
-
-    grid.appendChild(monthGrid);
+    cell.addEventListener("click", () => openDayModal(day));
+    monthGrid.appendChild(cell);
   });
+
+  grid.appendChild(monthGrid);
 }
+
 
 
     // --- UI: modal for notes ---
@@ -645,6 +687,17 @@ function renderCalendar() {
     }
 
     document.addEventListener("DOMContentLoaded", init);
+
+    document.getElementById("prevMonthBtn").addEventListener("click", () => {
+  currentMonthIndex = Math.max(0, currentMonthIndex - 1);
+  renderCalendar();
+});
+
+document.getElementById("nextMonthBtn").addEventListener("click", () => {
+  currentMonthIndex = Math.min(MONTHS.length - 1, currentMonthIndex + 1);
+  renderCalendar();
+});
+
   </script>
 
 
