@@ -4,14 +4,30 @@
   <meta charset="UTF-8" />
   <title>HS Faculty Planner</title>
   <style>
+        :root {
+      --bg: #f5f5f7;
+      --fg: #222;
+      --card-bg: #fff;
+      --card-border: #e5e7eb;
+      --accent: #2563eb;
+    }
+
+    body.dark {
+      --bg: #1a1c1f;
+      --fg: #e5e7eb;
+      --card-bg: #2a2d31;
+      --card-border: #3a3d42;
+      --accent: #60a5fa;
+    }
+
 
 
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       margin: 0;
       padding: 0;
-      background: #f5f5f7;
-      color: #222;
+      background: var(--bg);
+      color: var(--fg);
     }
     header {
       padding: 1rem 2rem;
@@ -59,7 +75,7 @@
       padding: 0.4rem 0.8rem;
       border-radius: 4px;
       border: none;
-      background: #2563eb;
+      background: var(--accent);
       color: #fff;
       font-size: 0.9rem;
       cursor: pointer;
@@ -91,8 +107,8 @@
     .day-cell {
   width: 100%;
   min-height: 160px;
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
   border-radius: 6px;
   padding: 0.6rem;
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
@@ -117,8 +133,8 @@
     }
 
     .has-notes {
-      border-color: #2563eb;
-      box-shadow: 0 0 0 1px #2563eb33;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent)33;
     }
     /* Modal */
     .modal-backdrop {
@@ -208,6 +224,7 @@
 </head>
 <body>
   <header>
+    <button id="darkModeToggle" class="secondary">Dark Mode</button>
     <h1>HS Rotation Planner</h1>
     <div class="small">Static HTML + JS · LocalStorage · GitHub Pages–ready</div>
   </header>
@@ -403,8 +420,8 @@ const HS_ROTATION_2026 = [
   { date: "2026-12-07", letter: "B" },
   { date: "2026-12-08", letter: "C" },
   { date: "2026-12-09", letter: "D" },
-  { date: "2026-12-10", letter: "*" },
-  { date: "2026-12-11", letter: "*" },
+  { date: "2026-12-10", letter: "Reading Day" },
+  { date: "2026-12-11", letter: "Reading Day & Statistics/Computer Science Exams" },
 
   { date: "2026-12-14", letter: "Science Exam" },
   { date: "2026-12-15", letter: "English Exam" },
@@ -610,7 +627,10 @@ for (let i = 0; i < leadingBlanks; i++) {
       cell.appendChild(header);
 
       if (hasNotesForDate(day.date)) {
-        cell.classList.add("has-notes");
+        const notes = loadNotesForDate(day.date);
+        if (notes.isTestDay) {
+          cell.classList.add("test-day");
+        }
       }
 
       const letter = normalizeLetter(day.letter);
@@ -654,8 +674,7 @@ for (let i = 0; i < leadingBlanks; i++) {
       body.innerHTML = "";
 
       const periods = ROTATION_RULES[normalizeLetter(day.letter)] || [];
-      const existingNotes = loadNotesForDate(day.date);
-
+      
       periods.forEach(periodNum => {
         const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
         const block = document.createElement("div");
@@ -672,6 +691,25 @@ for (let i = 0; i < leadingBlanks; i++) {
 
         body.appendChild(block);
       });
+
+      // Test day checkbox
+      const testBlock = document.createElement("div");
+      testBlock.className = "note-block";
+
+      const testLabel = document.createElement("label");
+      testLabel.textContent = "Test Day";
+      testBlock.appendChild(testLabel);
+
+      const testCheckbox = document.createElement("input");
+      testCheckbox.type = "checkbox";
+      testCheckbox.id = "isTestDay";
+
+      const existingNotes = loadNotesForDate(day.date);
+      testCheckbox.checked = existingNotes.isTestDay || false;
+
+      testBlock.appendChild(testCheckbox);
+      body.appendChild(testBlock);
+
 
       backdrop.style.display = "flex";
     }
@@ -691,6 +729,9 @@ for (let i = 0; i < leadingBlanks; i++) {
         const period = ta.dataset.period;
         notesObj[period] = ta.value.trim();
       });
+
+      notesObj.isTestDay = document.getElementById("isTestDay").checked;
+
       saveNotesForDate(currentModalDay.date, notesObj);
       closeDayModal();
       renderCalendar(); // refresh note indicators
@@ -708,6 +749,16 @@ function init() {
   loadScheduleFromStorage();
   hydrateScheduleForm();
   renderCalendar();
+
+  document.getElementById("darkModeToggle")
+  .addEventListener("click", () => {
+    document.body.classList.toggle("dark");
+    localStorage.setItem("hsDarkMode", document.body.classList.contains("dark"));
+  });
+
+  if (localStorage.getItem("hsDarkMode") === "true") {
+  document.body.classList.add("dark");
+}
 
   document.getElementById("scheduleForm")
     .addEventListener("submit", handleScheduleSubmit);
