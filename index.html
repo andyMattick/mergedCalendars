@@ -226,25 +226,7 @@
     </section>
   </main>
 
-  <!-- Modal for per-day, per-class notes -->
-  <div class="modal-backdrop" id="modalBackdrop">
-    <div class="modal">
-      <div class="modal-header">
-        <div>
-          <div id="modalDateLabel"></div>
-          <div class="small" id="modalLetterLabel"></div>
-        </div>
-        <button class="secondary" id="closeModalBtn">Close</button>
-      </div>
-      <div class="modal-body" id="modalBody"></div>
-      <div class="modal-footer">
-        <button class="secondary" id="clearNotesBtn">Clear notes</button>
-        <button id="saveNotesBtn">Save notes</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
+    <script>
     // --- Rotation rules (HS A–G) ---
     const ROTATION_RULES = {
       A: [1,2,3,4,5],
@@ -261,7 +243,7 @@
     // Each entry: { date: "YYYY-MM-DD", label: "A".."G" }
 
 const HS_ROTATION_2026 = [
-  { date: "2026-08-12", letter: null },
+  
   { date: "2026-08-13", letter: "*" },
   { date: "2026-08-14", letter: "A*" },
 
@@ -284,7 +266,7 @@ const HS_ROTATION_2026 = [
   { date: "2026-09-03", letter: "A" },
   { date: "2026-09-04", letter: "B" },
 
-  { date: "2026-09-07", letter: null },
+  { date: "2026-09-07", letter: "Labor Day - No school" },
   { date: "2026-09-08", letter: "C" },
   { date: "2026-09-09", letter: "D" },
   { date: "2026-09-10", letter: "E" },
@@ -313,12 +295,12 @@ const HS_ROTATION_2026 = [
   { date: "2026-10-05", letter: "A" },
   { date: "2026-10-06", letter: "B" },
 
-  { date: "2026-10-07", letter: null },     // PSAT day
+  { date: "2026-10-07", letter: "PSAT - no classes" },     // PSAT day
   { date: "2026-10-08", letter: "C" },
   { date: "2026-10-09", letter: "D" },
 
-  { date: "2026-10-12", letter: null },     // No school
-  { date: "2026-10-13", letter: null },     // No school
+  { date: "2026-10-12", letter: "Fall break - No school" },     // No school
+  { date: "2026-10-13", letter: "Fall break - No school" },     // No school
 
   { date: "2026-10-14", letter: "E" },
   { date: "2026-10-15", letter: "F" },
@@ -329,7 +311,7 @@ const HS_ROTATION_2026 = [
   { date: "2026-10-21", letter: "C" },
   { date: "2026-10-22", letter: "D" },
 
-  { date: "2026-10-23", letter: null },     // Homecoming
+  { date: "2026-10-23", letter: "Homecoming - no classes" },     // Homecoming
 
   { date: "2026-10-26", letter: "E" },
   { date: "2026-10-27", letter: "F" },
@@ -355,11 +337,11 @@ const HS_ROTATION_2026 = [
   { date: "2026-11-19", letter: "B" },
   { date: "2026-11-20", letter: "C" },
 
-  { date: "2026-11-23", letter: null },
-  { date: "2026-11-24", letter: null },
-  { date: "2026-11-25", letter: null },
-  { date: "2026-11-26", letter: null },
-  { date: "2026-11-27", letter: null },
+  { date: "2026-11-23", letter: "Thanksgiving - No school" },
+  { date: "2026-11-24", letter: "Thanksgiving - No school" },
+  { date: "2026-11-25", letter: "Thanksgiving - No school" },
+  { date: "2026-11-26", letter: "Thanksgiving - No school" },
+  { date: "2026-11-27", letter: "Thanksgiving - No school" },
 
   { date: "2026-11-30", letter: "D" },
   { date: "2026-12-01", letter: "E" },
@@ -595,5 +577,25 @@ function formatDateLabel(dateStr) {
 
     document.addEventListener("DOMContentLoaded", init);
   </script>
+
+
+  <!-- Modal for per-day, per-class notes -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <div id="modalDateLabel"></div>
+          <div class="small" id="modalLetterLabel"></div>
+        </div>
+        <button class="secondary" id="closeModalBtn">Close</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-footer">
+        <button class="secondary" id="clearNotesBtn">Clear notes</button>
+        <button id="saveNotesBtn">Save notes</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
