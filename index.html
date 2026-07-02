@@ -537,35 +537,44 @@ function renderCalendar() {
     year: "numeric"
   });
 
-  // Create month container
-  const monthContainer = document.createElement("div");
-  monthContainer.className = "month-container";
-
-  // Weekday header row
+  // Weekday header (Mon–Fri only)
   const weekdays = document.createElement("div");
   weekdays.className = "calendar-weekdays";
-  ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].forEach(w => {
+  ["Mon","Tue","Wed","Thu","Fri"].forEach(w => {
     const wd = document.createElement("div");
     wd.textContent = w;
     weekdays.appendChild(wd);
   });
-  monthContainer.appendChild(weekdays);
+  grid.appendChild(weekdays);
 
-  // Calendar grid container
+  // Calendar grid (5 columns)
   const monthGrid = document.createElement("div");
   monthGrid.className = "calendar-grid";
 
-  // Determine weekday of the 1st
-  const firstDay = new Date(year, month - 1, 1).getDay();
+  // If no days for this month, just show empty grid
+  if (!days || days.length === 0) {
+    grid.appendChild(monthGrid);
+    return;
+  }
 
-  // Add empty cells before the first day
-  for (let i = 0; i < firstDay; i++) {
+  // Anchor to the FIRST rotation day in this month
+  const [firstY, firstM, firstD] = days[0].date.split("-").map(Number);
+  const firstDate = new Date(firstY, firstM - 1, firstD);
+  const firstWeekday = firstDate.getDay(); // 0=Sun ... 6=Sat
+
+  // Map JS weekday to Mon–Fri index (0..4)
+  const weekdayOrder = [1, 2, 3, 4, 5]; // Mon..Fri
+  const firstIndex = weekdayOrder.indexOf(firstWeekday); // -1 if weekend
+
+  // Empty cells before first school day
+  const leadingBlanks = firstIndex === -1 ? 0 : firstIndex;
+  for (let i = 0; i < leadingBlanks; i++) {
     const empty = document.createElement("div");
     empty.className = "day-cell empty";
     monthGrid.appendChild(empty);
   }
 
-  // Add actual rotation days
+  // Add actual rotation days (school days only)
   days.forEach(day => {
     const cell = document.createElement("div");
     cell.className = "day-cell";
@@ -577,7 +586,7 @@ function renderCalendar() {
       cell.classList.add("today");
     }
 
-    // Test day detection
+    // Test day detection from notes
     const notes = loadNotesForDate(day.date);
     const hasTest = Object.values(notes).some(n => /test|quiz|exam/i.test(n));
     if (hasTest) cell.classList.add("test-day");
@@ -586,7 +595,7 @@ function renderCalendar() {
       cell.classList.add("has-notes");
     }
 
-    // Header
+    // Header: date
     const header = document.createElement("div");
     header.className = "day-cell-header";
     header.textContent = formatDateLabel(day.date);
@@ -595,9 +604,11 @@ function renderCalendar() {
     const letter = normalizeLetter(day.letter);
 
     if (!letter) {
+      // e.g. "Labor Day - No school"
       cell.appendChild(document.createTextNode(day.letter || "No HS classes"));
     } else if (!ROTATION_RULES[letter]) {
-      cell.appendChild(document.createTextNode(day.letter)); // exam labels or special days
+      // Exam labels or special days
+      cell.appendChild(document.createTextNode(day.letter));
     } else {
       const ul = document.createElement("ul");
       ul.className = "classes-list";
@@ -606,7 +617,7 @@ function renderCalendar() {
         const li = document.createElement("li");
         const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
         li.textContent = `${periodNum}: ${courseName}`;
-        li.classList.add(`period-${periodNum}`);
+        li.classList.add(`period-${periodNum}`); // color‑coding by period
         ul.appendChild(li);
       });
 
@@ -617,24 +628,8 @@ function renderCalendar() {
     monthGrid.appendChild(cell);
   });
 
-  // Fill last row to complete week alignment
-  const totalCells = firstDay + days.length;
-  const remainder = totalCells % 7;
-  if (remainder !== 0) {
-    for (let i = 0; i < 7 - remainder; i++) {
-      const empty = document.createElement("div");
-      empty.className = "day-cell empty";
-      monthGrid.appendChild(empty);
-    }
-  }
-
-  monthContainer.appendChild(monthGrid);
-  grid.appendChild(monthContainer);
+  grid.appendChild(monthGrid);
 }
-
-
-
-
     // --- UI: modal for notes ---
     function openDayModal(day) {
       currentModalDay = day;
