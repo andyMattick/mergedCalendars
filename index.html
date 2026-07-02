@@ -1,322 +1,476 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Unified School Calendar</title>
-
-  <!-- PDF.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-  <script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
-  </script>
-
+  <title>HS Faculty Planner</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    h1 { margin-bottom: 10px; }
-    .filters button, .controls button { margin-right: 10px; padding: 8px 12px; cursor: pointer; }
-    .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 10px; }
-    .day { border: 1px solid #ccc; padding: 6px; min-height: 120px; background: #fafafa; }
-    .day-number { font-weight: bold; margin-bottom: 4px; }
-    .event { margin-top: 4px; padding: 2px 4px; border-radius: 4px; font-size: 12px; }
-    .LS { background: #cce5ff; }
-    .MS { background: #d4edda; }
-    .HS { background: #f8d7da; }
-    .ALL { background: #fff3cd; }
-    textarea { width: 100%; height: 40px; margin-top: 6px; font-size: 12px; box-sizing: border-box; }
-    .controls { margin-top: 15px; margin-bottom: 10px; }
-    .delete-btn { float:right; background:none; border:none; color:#900; font-size:12px; cursor:pointer; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f5f5f7;
+      color: #222;
+    }
+    header {
+      padding: 1rem 2rem;
+      background: #1f2933;
+      color: #fff;
+    }
+    main {
+      display: flex;
+      gap: 1.5rem;
+      padding: 1.5rem 2rem;
+    }
+    section {
+      background: #fff;
+      border-radius: 8px;
+      padding: 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    #config {
+      width: 320px;
+      flex-shrink: 0;
+    }
+    #calendar {
+      flex: 1;
+      min-height: 400px;
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 1.1rem;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    input[type="text"], select {
+      width: 100%;
+      padding: 0.35rem 0.5rem;
+      margin-bottom: 0.5rem;
+      border-radius: 4px;
+      border: 1px solid #cbd2d9;
+      font-size: 0.9rem;
+    }
+    button {
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: #6b7280;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 0.5rem;
+    }
+    .day-cell {
+      background: #f9fafb;
+      border-radius: 6px;
+      padding: 0.4rem;
+      border: 1px solid #e5e7eb;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .day-cell-header {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 600;
+    }
+    .classes-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .classes-list li {
+      margin: 0;
+      padding: 0;
+    }
+    .has-notes {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 1px #2563eb33;
+    }
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.35);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 20;
+    }
+    .modal {
+      background: #fff;
+      border-radius: 8px;
+      padding: 1rem;
+      width: 420px;
+      max-width: 90vw;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .modal-body {
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+    .note-block {
+      margin-bottom: 0.75rem;
+    }
+    .note-block label {
+      margin-bottom: 0.15rem;
+    }
+    textarea {
+      width: 100%;
+      min-height: 60px;
+      padding: 0.4rem 0.5rem;
+      border-radius: 4px;
+      border: 1px solid #cbd2d9;
+      font-size: 0.85rem;
+      resize: vertical;
+    }
+    .modal-footer {
+      margin-top: 0.75rem;
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+    }
+    .small {
+      font-size: 0.75rem;
+      color: #6b7280;
+    }
   </style>
 </head>
-
 <body>
+  <header>
+    <h1>HS Rotation Planner</h1>
+    <div class="small">Static HTML + JS · LocalStorage · GitHub Pages–ready</div>
+  </header>
 
-<h1>Unified School Calendar</h1>
+  <main>
+    <section id="config">
+      <h2>Teacher schedule (HS periods 1–7)</h2>
+      <form id="scheduleForm">
+        <div>
+          <label for="p1">Period 1</label>
+          <input id="p1" name="p1" type="text" placeholder="AP Stats" />
+        </div>
+        <div>
+          <label for="p2">Period 2</label>
+          <input id="p2" name="p2" type="text" placeholder="Stats" />
+        </div>
+        <div>
+          <label for="p3">Period 3</label>
+          <input id="p3" name="p3" type="text" placeholder="Bible" />
+        </div>
+        <div>
+          <label for="p4">Period 4</label>
+          <input id="p4" name="p4" type="text" placeholder="History" />
+        </div>
+        <div>
+          <label for="p5">Period 5</label>
+          <input id="p5" name="p5" type="text" placeholder="PE" />
+        </div>
+        <div>
+          <label for="p6">Period 6</label>
+          <input id="p6" name="p6" type="text" placeholder="Calculus" />
+        </div>
+        <div>
+          <label for="p7">Period 7</label>
+          <input id="p7" name="p7" type="text" placeholder="Off" />
+        </div>
+        <button type="submit">Save schedule</button>
+      </form>
 
-<!-- Division Filters -->
-<div class="filters">
-  <button onclick="setFilter('ALL')">All</button>
-  <button onclick="setFilter('LS')">Lower School</button>
-  <button onclick="setFilter('MS')">Middle School</button>
-  <button onclick="setFilter('HS')">High School</button>
-</div>
+      <hr style="margin:1rem 0;" />
 
-<!-- PDF Upload -->
-<div class="controls">
-  <h3>Add Events From Faculty Planner PDF</h3>
-  <input type="file" id="pdfInput" accept=".pdf">
-  <button onclick="extractEventsFromPDF()">Add Events</button>
-  <button onclick="resetCalendar()">Upload New Calendar</button>
-</div>
+      <h2>Rotation rules (fixed HS A–G)</h2>
+      <div class="small">
+        A: 1,2,3,4,5<br/>
+        B: 6,7,1,2,3<br/>
+        C: 4,5,6,7,1<br/>
+        D: 2,3,4,5,6<br/>
+        E: 7,1,2,3,4<br/>
+        F: 5,6,7,1,2<br/>
+        G: 3,4,5,6,7
+      </div>
+      <p class="small" style="margin-top:0.5rem;">
+        These are hard‑coded in JS but you can adjust them if your school changes rotation.
+      </p>
+    </section>
 
-<!-- Month Selector -->
-<div class="controls">
-  <label><strong>Select Month:</strong></label>
-  <select id="monthSelect" onchange="jumpToMonth()">
-    <option value="2026-01">January 2026</option>
-    <option value="2026-02">February 2026</option>
-    <option value="2026-03">March 2026</option>
-    <option value="2026-04">April 2026</option>
-    <option value="2026-05">May 2026</option>
-    <option value="2026-06">June 2026</option>
-    <option value="2026-07">July 2026</option>
-    <option value="2026-08">August 2026</option>
-    <option value="2026-09">September 2026</option>
-    <option value="2026-10">October 2026</option>
-    <option value="2026-11">November 2026</option>
-    <option value="2026-12">December 2026</option>
-  </select>
-</div>
+    <section id="calendar">
+      <h2>Calendar (sample month)</h2>
+      <p class="small">
+        In production, you’ll replace the sample data with a JSON of dates + HS letter
+        extracted from your PDF (e.g., <code>{ "date": "2026-08-13", "letter": "A" }</code>).
+      </p>
+      <div class="calendar-grid" id="calendarGrid"></div>
+    </section>
+  </main>
 
-<h2 id="monthTitle"></h2>
-<div id="calendar" class="calendar"></div>
+  <!-- Modal for per-day, per-class notes -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <div id="modalDateLabel"></div>
+          <div class="small" id="modalLetterLabel"></div>
+        </div>
+        <button class="secondary" id="closeModalBtn">Close</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-footer">
+        <button class="secondary" id="clearNotesBtn">Clear notes</button>
+        <button id="saveNotesBtn">Save notes</button>
+      </div>
+    </div>
+  </div>
 
-<!-- Export Buttons -->
-<div class="controls">
-  <button onclick="prevMonth()">Previous Month</button>
-  <button onclick="nextMonth()">Next Month</button>
-  <button onclick="downloadCalendar()">Download JSON</button>
-  <button onclick="downloadCSV()">Download CSV</button>
-</div>
+  <script>
+    // --- Rotation rules (HS A–G) ---
+    const ROTATION_RULES = {
+      A: [1,2,3,4,5],
+      B: [6,7,1,2,3],
+      C: [4,5,6,7,1],
+      D: [2,3,4,5,6],
+      E: [7,1,2,3,4],
+      F: [5,6,7,1,2],
+      G: [3,4,5,6,7]
+    };
 
-<script>
-// ------------------------------------------------------------
-// EVENT STORAGE
-// ------------------------------------------------------------
-let events = [];
+    // --- Sample calendar data ---
+    // In real use, generate this from the HS monthly rotation table in your PDF.
+    // Each entry: { date: "YYYY-MM-DD", label: "A".."G" }
+    const SAMPLE_DAYS = [
+      { date: "2026-08-13", letter: "A" },
+      { date: "2026-08-14", letter: "B" },
+      { date: "2026-08-17", letter: "C" },
+      { date: "2026-08-18", letter: "D" },
+      { date: "2026-08-19", letter: "E" },
+      { date: "2026-08-20", letter: "F" },
+      { date: "2026-08-21", letter: "G" },
+      { date: "2026-08-24", letter: "G" },
+      { date: "2026-08-25", letter: "A" },
+      { date: "2026-08-26", letter: "B" },
+      { date: "2026-08-27", letter: "C" },
+      { date: "2026-08-28", letter: "D" }
+    ];
 
-// ------------------------------------------------------------
-// NOTES STORAGE
-// ------------------------------------------------------------
-function saveNote(date, text) { localStorage.setItem("note_" + date, text); }
-function loadNote(date) { return localStorage.getItem("note_" + date) || ""; }
+    // --- LocalStorage keys ---
+    const LS_SCHEDULE_KEY = "hsSchedule";
+    const LS_NOTES_KEY_PREFIX = "hsNotes"; // hsNotes-YYYY-MM-DD
 
-// ------------------------------------------------------------
-// FILTERING
-// ------------------------------------------------------------
-let currentFilter = "ALL";
-function setFilter(f) { currentFilter = f; renderCalendar(currentMonth); }
+    // --- State ---
+    let teacherSchedule = {}; // { "1": "AP Stats", ... }
+    let currentModalDay = null; // { date, letter }
 
-// ------------------------------------------------------------
-// MONTH NAVIGATION
-// ------------------------------------------------------------
-let currentMonth = new Date(2026, 7);
-
-function prevMonth() {
-  currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
-  renderCalendar(currentMonth);
-}
-function nextMonth() {
-  currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
-  renderCalendar(currentMonth);
-}
-function jumpToMonth() {
-  const value = document.getElementById("monthSelect").value;
-  const [year, month] = value.split("-");
-  currentMonth = new Date(Number(year), Number(month) - 1, 1);
-  renderCalendar(currentMonth);
-}
-
-// ------------------------------------------------------------
-// RESET CALENDAR
-// ------------------------------------------------------------
-function resetCalendar() {
-  events = [];
-  localStorage.clear();
-  renderCalendar(currentMonth);
-  alert("Calendar cleared. You may now upload a new PDF.");
-}
-
-// ------------------------------------------------------------
-// DELETE EVENT
-// ------------------------------------------------------------
-function deleteEvent(date, division, title) {
-  events = events.filter(e => !(e.date === date && e.division === division && e.title === title));
-  renderCalendar(currentMonth);
-}
-
-// ------------------------------------------------------------
-// PDF EVENT EXTRACTION
-// ------------------------------------------------------------
-async function extractEventsFromPDF() {
-  const file = document.getElementById("pdfInput").files[0];
-  if (!file) return alert("Please select a PDF first.");
-
-  try {
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-    let text = "";
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      text += content.items.map(item => item.str).join(" ") + "\n";
+    // --- Helpers ---
+    function loadScheduleFromStorage() {
+      const raw = localStorage.getItem(LS_SCHEDULE_KEY);
+      if (!raw) return;
+      try {
+        teacherSchedule = JSON.parse(raw);
+      } catch (e) {
+        console.warn("Failed to parse stored schedule", e);
+      }
     }
 
-    const extracted = parseEvents(text);
-    mergeEvents(extracted);
-    renderCalendar(currentMonth);
+    function saveScheduleToStorage() {
+      localStorage.setItem(LS_SCHEDULE_KEY, JSON.stringify(teacherSchedule));
+    }
 
-    alert(`Processed ${extracted.length} events from PDF.`);
-  } catch (err) {
-    console.error(err);
-    alert("Error reading PDF.");
-  }
-}
+    function getNotesKey(date) {
+      return `${LS_NOTES_KEY_PREFIX}-${date}`;
+    }
 
-// ------------------------------------------------------------
-// CORRECT PARSER FOR YOUR PLANNERS
-// ------------------------------------------------------------
-function parseEvents(text) {
-  const results = [];
+    function loadNotesForDate(date) {
+      const raw = localStorage.getItem(getNotesKey(date));
+      if (!raw) return {};
+      try {
+        return JSON.parse(raw); // { periodNumber: "note text" }
+      } catch (e) {
+        console.warn("Failed to parse notes for", date, e);
+        return {};
+      }
+    }
 
-  text = text.replace(/\s+/g, " ").trim();
+    function saveNotesForDate(date, notesObj) {
+      localStorage.setItem(getNotesKey(date), JSON.stringify(notesObj));
+    }
 
-  const monthMap = {
-    January:"01", February:"02", March:"03", April:"04",
-    May:"05", June:"06", July:"07", August:"08",
-    September:"09", October:"10", November:"11", December:"12"
-  };
+    function hasNotesForDate(date) {
+      return !!localStorage.getItem(getNotesKey(date));
+    }
 
-  const monthHeaderRegex = /(January|February|March|April|May|June|July|August|September|October|November|December)\s+20\d\d/gi;
-  const parts = text.split(monthHeaderRegex);
+    function formatDateLabel(dateStr) {
+      const d = new Date(dateStr);
+      if (isNaN(d)) return dateStr;
+      return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    }
 
-  for (let i = 1; i < parts.length; i += 2) {
-    const monthName = parts[i];
-    const year = parts[i + 1].match(/20\d\d/)[0];
-    const month = monthMap[monthName];
+    // --- UI: schedule form ---
+    function hydrateScheduleForm() {
+      for (let p = 1; p <= 7; p++) {
+        const input = document.getElementById(`p${p}`);
+        if (!input) continue;
+        input.value = teacherSchedule[p] || "";
+      }
+    }
 
-    const section = parts[i + 1];
+    function handleScheduleSubmit(event) {
+      event.preventDefault();
+      const form = event.target;
+      const newSchedule = {};
+      for (let p = 1; p <= 7; p++) {
+        const input = form[`p${p}`];
+        newSchedule[p] = input.value.trim() || `Period ${p}`;
+      }
+      teacherSchedule = newSchedule;
+      saveScheduleToStorage();
+      renderCalendar();
+    }
 
-    const dayRegex = /\b([1-9]|[12]\d|3[01])\b/g;
-    const dayMatches = [...section.matchAll(dayRegex)];
+    // --- UI: calendar ---
+    function renderCalendar() {
+      const grid = document.getElementById("calendarGrid");
+      grid.innerHTML = "";
 
-    for (let d = 0; d < dayMatches.length; d++) {
-      const day = dayMatches[d][1];
-      const start = dayMatches[d].index;
-      const end = dayMatches[d + 1] ? dayMatches[d + 1].index : section.length;
+      SAMPLE_DAYS.forEach(day => {
+        const cell = document.createElement("div");
+        cell.className = "day-cell";
+        if (hasNotesForDate(day.date)) {
+          cell.classList.add("has-notes");
+        }
 
-      const chunk = section.slice(start, end).trim();
-      const date = `${year}-${month}-${String(day).padStart(2, "0")}`;
+        const header = document.createElement("div");
+        header.className = "day-cell-header";
+        const dateSpan = document.createElement("span");
+        dateSpan.textContent = formatDateLabel(day.date);
+        const letterSpan = document.createElement("span");
+        letterSpan.textContent = day.letter;
+        header.appendChild(dateSpan);
+        header.appendChild(letterSpan);
+        cell.appendChild(header);
 
-      const body = chunk.replace(day, "").trim();
+        const classesUl = document.createElement("ul");
+        classesUl.className = "classes-list";
 
-      body.split(/(?=\bLS\b|\bMS\b|\bHS\b|\bALL\b)/).forEach(item => {
-        item = item.trim();
-        if (!item) return;
+        const periods = ROTATION_RULES[day.letter] || [];
+        periods.forEach(periodNum => {
+          const li = document.createElement("li");
+          const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
+          li.textContent = `${periodNum}: ${courseName}`;
+          classesUl.appendChild(li);
+        });
 
-        let division = "ALL";
-        if (item.startsWith("LS")) division = "LS";
-        if (item.startsWith("MS")) division = "MS";
-        if (item.startsWith("HS")) division = "HS";
+        cell.appendChild(classesUl);
 
-        const title = item.replace(/\b(LS|MS|HS|ALL)\b/g, "").trim();
-        if (title.length > 0) results.push({ date, division, title });
+        cell.addEventListener("click", () => openDayModal(day));
+
+        grid.appendChild(cell);
       });
     }
-  }
 
-  return results;
-}
+    // --- UI: modal for notes ---
+    function openDayModal(day) {
+      currentModalDay = day;
+      const backdrop = document.getElementById("modalBackdrop");
+      const dateLabel = document.getElementById("modalDateLabel");
+      const letterLabel = document.getElementById("modalLetterLabel");
+      const body = document.getElementById("modalBody");
 
-// ------------------------------------------------------------
-// MERGE + DEDUPE
-// ------------------------------------------------------------
-function mergeEvents(newEvents) {
-  const seen = new Set(events.map(e => `${e.date}|${e.division}|${e.title}`));
-  newEvents.forEach(e => {
-    const key = `${e.date}|${e.division}|${e.title}`;
-    if (!seen.has(key)) {
-      events.push(e);
-      seen.add(key);
-    }
-  });
-}
+      dateLabel.textContent = formatDateLabel(day.date);
+      letterLabel.textContent = `HS letter: ${day.letter}`;
+      body.innerHTML = "";
 
-// ------------------------------------------------------------
-// CALENDAR RENDERING
-// ------------------------------------------------------------
-function renderCalendar(month) {
-  const year = month.getFullYear();
-  const monthIndex = month.getMonth();
-  document.getElementById("monthTitle").innerText =
-    month.toLocaleString("default", { month: "long" }) + " " + year;
+      const periods = ROTATION_RULES[day.letter] || [];
+      const existingNotes = loadNotesForDate(day.date);
 
-  const firstDay = new Date(year, monthIndex, 1);
-  const startDay = firstDay.getDay();
-  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+      periods.forEach(periodNum => {
+        const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
+        const block = document.createElement("div");
+        block.className = "note-block";
 
-  const calendar = document.getElementById("calendar");
-  calendar.innerHTML = "";
+        const label = document.createElement("label");
+        label.textContent = `Period ${periodNum} – ${courseName}`;
+        block.appendChild(label);
 
-  for (let i = 0; i < startDay; i++) calendar.appendChild(document.createElement("div"));
+        const textarea = document.createElement("textarea");
+        textarea.value = existingNotes[periodNum] || "";
+        textarea.dataset.period = periodNum;
+        block.appendChild(textarea);
 
-  for (let day = 1; day <= daysInMonth; day++) {
-    const cell = document.createElement("div");
-    cell.className = "day";
-
-    const dateStr = `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-
-    const num = document.createElement("div");
-    num.className = "day-number";
-    num.innerText = day;
-    cell.appendChild(num);
-
-    events
-      .filter(e => e.date === dateStr)
-      .filter(e => currentFilter === "ALL" || e.division === currentFilter)
-      .forEach(e => {
-        const div = document.createElement("div");
-        div.className = "event " + e.division;
-        div.innerHTML = `
-          ${e.division}: ${e.title}
-          <button class="delete-btn" onclick="deleteEvent('${e.date}','${e.division}','${e.title}')">✖</button>
-        `;
-        cell.appendChild(div);
+        body.appendChild(block);
       });
 
-    const note = document.createElement("textarea");
-    note.value = loadNote(dateStr);
-    note.oninput = () => saveNote(dateStr, note.value);
-    cell.appendChild(note);
+      backdrop.style.display = "flex";
+    }
 
-    calendar.appendChild(cell);
-  }
-}
+    function closeDayModal() {
+      const backdrop = document.getElementById("modalBackdrop");
+      backdrop.style.display = "none";
+      currentModalDay = null;
+    }
 
-renderCalendar(currentMonth);
+    function handleSaveNotes() {
+      if (!currentModalDay) return;
+      const body = document.getElementById("modalBody");
+      const textareas = body.querySelectorAll("textarea");
+      const notesObj = {};
+      textareas.forEach(ta => {
+        const period = ta.dataset.period;
+        notesObj[period] = ta.value.trim();
+      });
+      saveNotesForDate(currentModalDay.date, notesObj);
+      closeDayModal();
+      renderCalendar(); // refresh note indicators
+    }
 
-// ------------------------------------------------------------
-// DOWNLOAD JSON
-// ------------------------------------------------------------
-function downloadCalendar() {
-  const blob = new Blob([JSON.stringify(events, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "unified-calendar.json";
-  a.click();
-  URL.revokeObjectURL(url);
-}
+    function handleClearNotes() {
+      if (!currentModalDay) return;
+      localStorage.removeItem(getNotesKey(currentModalDay.date));
+      closeDayModal();
+      renderCalendar();
+    }
 
-// ------------------------------------------------------------
-// DOWNLOAD CSV
-// ------------------------------------------------------------
-function downloadCSV() {
-  let csv = "date,division,title\n";
-  events.forEach(e => {
-    csv += `${e.date},${e.division},"${e.title.replace(/"/g, '""')}"\n`;
-  });
+    // --- Init ---
+    function init() {
+      loadScheduleFromStorage();
+      hydrateScheduleForm();
+      renderCalendar();
 
-  const blob = new Blob([csv], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "unified-calendar.csv";
-  a.click();
-  URL.revokeObjectURL(url);
-}
-</script>
+      document.getElementById("scheduleForm")
+        .addEventListener("submit", handleScheduleSubmit);
 
+      document.getElementById("closeModalBtn")
+        .addEventListener("click", closeDayModal);
+
+      document.getElementById("saveNotesBtn")
+        .addEventListener("click", handleSaveNotes);
+
+      document.getElementById("clearNotesBtn")
+        .addEventListener("click", handleClearNotes);
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+  </script>
 </body>
 </html>
