@@ -536,7 +536,7 @@ function renderCalendar() {
   const totalDays = last.getDate();
 
   // Weekday header row (Mon–Fri)
-/*  const weekdayHeaderRow = document.createElement("div");
+  const weekdayHeaderRow = document.createElement("div");
   weekdayHeaderRow.className = "calendar-weekdays";
   ["Mon","Tue","Wed","Thu","Fri"].forEach(w => {
     const wd = document.createElement("div");
@@ -544,7 +544,7 @@ function renderCalendar() {
     weekdayHeaderRow.appendChild(wd);
   });
   calendarRoot.appendChild(weekdayHeaderRow);
-*/
+
   // Actual grid
   const monthGrid = document.createElement("div");
   monthGrid.className = "calendar-grid";
