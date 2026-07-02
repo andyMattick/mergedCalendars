@@ -381,6 +381,13 @@ const HS_ROTATION_2026 = [
 
 ];
 
+function normalizeLetter(letter) {
+  if (!letter) return null;
+  // A* → A, B* → B, etc.
+  if (letter.endsWith("*")) return letter[0];
+  return letter;
+}
+
 
     // --- LocalStorage keys ---
     const LS_SCHEDULE_KEY = "hsSchedule";
@@ -482,7 +489,8 @@ const HS_ROTATION_2026 = [
         const classesUl = document.createElement("ul");
         classesUl.className = "classes-list";
 
-        const periods = ROTATION_RULES[day.letter] || [];
+        const periods = ROTATION_RULES[normalizeLetter(day.letter)] || [];
+
         periods.forEach(periodNum => {
           const li = document.createElement("li");
           const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
@@ -510,7 +518,7 @@ const HS_ROTATION_2026 = [
       letterLabel.textContent = `HS letter: ${day.letter}`;
       body.innerHTML = "";
 
-      const periods = ROTATION_RULES[day.letter] || [];
+      const periods = ROTATION_RULES[normalizeLetter(day.letter)] || [];
       const existingNotes = loadNotesForDate(day.date);
 
       periods.forEach(periodNum => {
