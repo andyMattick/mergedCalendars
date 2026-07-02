@@ -526,11 +526,11 @@ function renderCalendar() {
     year: "numeric"
   });
 
-  // --- Month container (keeps headers + grid aligned) ---
+  // --- Month container ---
   const monthContainer = document.createElement("div");
   monthContainer.className = "month-container";
 
-  // --- Calendar grid (5 columns) ---
+  // --- Calendar grid (Mon–Fri layout) ---
   const monthGrid = document.createElement("div");
   monthGrid.className = "calendar-grid";
 
@@ -544,12 +544,11 @@ function renderCalendar() {
   const [firstY, firstM, firstD] = days[0].date.split("-").map(Number);
   const firstDate = new Date(firstY, firstM - 1, firstD);
   const firstWeekday = firstDate.getDay(); // 0=Sun ... 6=Sat
-
   const weekdayOrder = [1, 2, 3, 4, 5]; // Mon..Fri
-  const firstIndex = weekdayOrder.indexOf(firstWeekday); // -1 if weekend
-
-  // --- Leading blanks before first school day ---
+  const firstIndex = weekdayOrder.indexOf(firstWeekday);
   const leadingBlanks = firstIndex === -1 ? 0 : firstIndex;
+
+  // --- Empty cells before first school day ---
   for (let i = 0; i < leadingBlanks; i++) {
     const empty = document.createElement("div");
     empty.className = "day-cell empty";
@@ -564,7 +563,7 @@ function renderCalendar() {
     // Parse date
     const [y, m, d] = day.date.split("-").map(Number);
     const dateObj = new Date(y, m - 1, d);
-    const weekday = dateObj.getDay(); // 0=Sun ... 6=Sat
+    const weekday = dateObj.getDay();
 
     // Highlight today
     const today = new Date();
@@ -581,21 +580,22 @@ function renderCalendar() {
     const hasTest = Object.values(notes).some(n => /test|quiz|exam/i.test(n));
     if (hasTest) cell.classList.add("test-day");
 
-    // Notes indicator
     if (hasNotesForDate(day.date)) {
       cell.classList.add("has-notes");
     }
 
-    // Header: weekday + date
+    // --- Header: weekday + date + rotation letter ---
     const header = document.createElement("div");
     header.className = "day-cell-header";
     const weekdayName = dateObj.toLocaleDateString(undefined, { weekday: "short" });
-    header.textContent = `${weekdayName} ${formatDateLabel(day.date)}`;
+    const rotationLetter = day.letter ? normalizeLetter(day.letter) : "";
+    const rotationSuffix =
+      rotationLetter && ROTATION_RULES[rotationLetter] ? ` — ${rotationLetter}` : "";
+    header.textContent = `${weekdayName} ${formatDateLabel(day.date)}${rotationSuffix}`;
     cell.appendChild(header);
 
-    // Rotation / special day logic
+    // --- Rotation / special day logic ---
     const letter = normalizeLetter(day.letter);
-
     if (!letter) {
       cell.appendChild(document.createTextNode(day.letter || "No HS classes"));
     } else if (!ROTATION_RULES[letter]) {
@@ -603,7 +603,6 @@ function renderCalendar() {
     } else {
       const ul = document.createElement("ul");
       ul.className = "classes-list";
-
       ROTATION_RULES[letter].forEach(periodNum => {
         const li = document.createElement("li");
         const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
@@ -611,16 +610,13 @@ function renderCalendar() {
         li.classList.add(`period-${periodNum}`);
         ul.appendChild(li);
       });
-
       cell.appendChild(ul);
     }
 
-    // Modal click
     cell.addEventListener("click", () => openDayModal(day));
-
     monthGrid.appendChild(cell);
 
-    // --- If Friday, force a new row ---
+    // --- Row break after Friday ---
     if (weekday === 5) {
       const rowBreak = document.createElement("div");
       rowBreak.style.gridColumn = "1 / -1";
@@ -629,12 +625,11 @@ function renderCalendar() {
     }
   });
 
-  // --- Add month grid to container ---
+  // --- Add grid to container and container to main calendar ---
   monthContainer.appendChild(monthGrid);
-
-  // --- Add month container to main grid ---
   grid.appendChild(monthContainer);
 }
+
 
     // --- UI: modal for notes ---
     function openDayModal(day) {
