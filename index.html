@@ -74,20 +74,16 @@
     .calendar-grid {
       display: grid;
       grid-template-columns: repeat(5, 1fr);
-      grid-auto-rows: minmax(120px, auto);
       gap: 0.5rem;
       justify-items: stretch;
     }
 
     .day-cell {
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      align-items: flex-start;
-      padding: 0.5rem;
-      border-radius: 6px;
+      min-height: 140px;
       background: #fff;
       border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      padding: 0.5rem;
       box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
     .day-cell-header {
@@ -160,14 +156,16 @@
       font-size: 0.75rem;
       color: #6b7280;
     }
-            .calendar-weekdays {
+    .calendar-weekdays {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(5, 1fr);
       text-align: center;
       font-weight: 600;
-      margin-bottom: 0.25rem;
-      font-size: 0.75rem;
-      color: #4b5563;
+      font-size: 0.8rem;
+      color: #374151;
+      background: #f3f4f6;
+      border-radius: 6px 6px 0 0;
+      padding: 0.25rem 0;
     }
     .calendar-weekdays div {
       padding: 0.25rem 0;
@@ -537,7 +535,11 @@ function renderCalendar() {
     year: "numeric"
   });
 
-  // Weekday header (Mon–Fri only)
+  // --- Month container (keeps headers + grid aligned) ---
+  const monthContainer = document.createElement("div");
+  monthContainer.className = "month-container";
+
+  // --- Weekday header (Mon–Fri) ---
   const weekdays = document.createElement("div");
   weekdays.className = "calendar-weekdays";
   ["Mon","Tue","Wed","Thu","Fri"].forEach(w => {
@@ -545,28 +547,27 @@ function renderCalendar() {
     wd.textContent = w;
     weekdays.appendChild(wd);
   });
-  grid.appendChild(weekdays);
+  monthContainer.appendChild(weekdays);
 
-  // Calendar grid (5 columns)
+  // --- Calendar grid (5 columns) ---
   const monthGrid = document.createElement("div");
   monthGrid.className = "calendar-grid";
 
-  // If no days for this month, just show empty grid
   if (!days || days.length === 0) {
-    grid.appendChild(monthGrid);
+    monthContainer.appendChild(monthGrid);
+    grid.appendChild(monthContainer);
     return;
   }
 
-  // Anchor to the FIRST rotation day in this month
+  // --- Determine weekday of first school day ---
   const [firstY, firstM, firstD] = days[0].date.split("-").map(Number);
   const firstDate = new Date(firstY, firstM - 1, firstD);
   const firstWeekday = firstDate.getDay(); // 0=Sun ... 6=Sat
 
-  // Map JS weekday to Mon–Fri index (0..4)
   const weekdayOrder = [1, 2, 3, 4, 5]; // Mon..Fri
   const firstIndex = weekdayOrder.indexOf(firstWeekday); // -1 if weekend
 
-  // Empty cells before first school day
+  // --- Leading blanks before first school day ---
   const leadingBlanks = firstIndex === -1 ? 0 : firstIndex;
   for (let i = 0; i < leadingBlanks; i++) {
     const empty = document.createElement("div");
@@ -574,85 +575,86 @@ function renderCalendar() {
     monthGrid.appendChild(empty);
   }
 
-  // Add actual rotation days (school days only)
-days.forEach(day => {
-  const cell = document.createElement("div");
-  cell.className = "day-cell";
+  // --- Add each school day ---
+  days.forEach(day => {
+    const cell = document.createElement("div");
+    cell.className = "day-cell";
 
-  // --- Date parsing ---
-  const [y, m, d] = day.date.split("-").map(Number);
-  const dateObj = new Date(y, m - 1, d);
-  const weekday = dateObj.getDay(); // 0=Sun ... 6=Sat
+    // Parse date
+    const [y, m, d] = day.date.split("-").map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    const weekday = dateObj.getDay(); // 0=Sun ... 6=Sat
 
-  // --- Highlight today ---
-  const today = new Date();
-  if (
-    today.getFullYear() === y &&
-    today.getMonth() + 1 === m &&
-    today.getDate() === d
-  ) {
-    cell.classList.add("today");
-  }
+    // Highlight today
+    const today = new Date();
+    if (
+      today.getFullYear() === y &&
+      today.getMonth() + 1 === m &&
+      today.getDate() === d
+    ) {
+      cell.classList.add("today");
+    }
 
-  // --- Test day detection ---
-  const notes = loadNotesForDate(day.date);
-  const hasTest = Object.values(notes).some(n => /test|quiz|exam/i.test(n));
-  if (hasTest) cell.classList.add("test-day");
+    // Test day detection
+    const notes = loadNotesForDate(day.date);
+    const hasTest = Object.values(notes).some(n => /test|quiz|exam/i.test(n));
+    if (hasTest) cell.classList.add("test-day");
 
-  // --- Notes indicator ---
-  if (hasNotesForDate(day.date)) {
-    cell.classList.add("has-notes");
-  }
+    // Notes indicator
+    if (hasNotesForDate(day.date)) {
+      cell.classList.add("has-notes");
+    }
 
-  // --- Header: date + weekday ---
-  const header = document.createElement("div");
-  header.className = "day-cell-header";
-  const weekdayName = dateObj.toLocaleDateString(undefined, { weekday: "short" });
-  header.textContent = `${weekdayName} ${formatDateLabel(day.date)}`;
-  cell.appendChild(header);
+    // Header: weekday + date
+    const header = document.createElement("div");
+    header.className = "day-cell-header";
+    const weekdayName = dateObj.toLocaleDateString(undefined, { weekday: "short" });
+    header.textContent = `${weekdayName} ${formatDateLabel(day.date)}`;
+    cell.appendChild(header);
 
-  // --- Rotation / special day logic ---
-  const letter = normalizeLetter(day.letter);
+    // Rotation / special day logic
+    const letter = normalizeLetter(day.letter);
 
-  if (!letter) {
-    // e.g. "Labor Day - No school"
-    cell.appendChild(document.createTextNode(day.letter || "No HS classes"));
-  } else if (!ROTATION_RULES[letter]) {
-    // Exam labels or special days
-    cell.appendChild(document.createTextNode(day.letter));
-  } else {
-    const ul = document.createElement("ul");
-    ul.className = "classes-list";
+    if (!letter) {
+      cell.appendChild(document.createTextNode(day.letter || "No HS classes"));
+    } else if (!ROTATION_RULES[letter]) {
+      cell.appendChild(document.createTextNode(day.letter));
+    } else {
+      const ul = document.createElement("ul");
+      ul.className = "classes-list";
 
-    ROTATION_RULES[letter].forEach(periodNum => {
-      const li = document.createElement("li");
-      const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
-      li.textContent = `${periodNum}: ${courseName}`;
-      li.classList.add(`period-${periodNum}`); // color‑coding by period
-      ul.appendChild(li);
-    });
+      ROTATION_RULES[letter].forEach(periodNum => {
+        const li = document.createElement("li");
+        const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
+        li.textContent = `${periodNum}: ${courseName}`;
+        li.classList.add(`period-${periodNum}`);
+        ul.appendChild(li);
+      });
 
-    cell.appendChild(ul);
-  }
+      cell.appendChild(ul);
+    }
 
-  // --- Modal click handler ---
-  cell.addEventListener("click", () => openDayModal(day));
+    // Modal click
+    cell.addEventListener("click", () => openDayModal(day));
 
-  // --- Append to grid ---
-  monthGrid.appendChild(cell);
+    monthGrid.appendChild(cell);
 
-  // --- Optional: break row after Friday if using Mon–Fri layout ---
-  if (weekday === 5) {
-    const spacer = document.createElement("div");
-    spacer.style.gridColumn = "1 / -1";
-    spacer.style.height = "0.5rem";
-    monthGrid.appendChild(spacer);
-  }
-});
+    // --- If Friday, force a new row ---
+    if (weekday === 5) {
+      const rowBreak = document.createElement("div");
+      rowBreak.style.gridColumn = "1 / -1";
+      rowBreak.style.height = "0.5rem";
+      monthGrid.appendChild(rowBreak);
+    }
+  });
 
+  // --- Add month grid to container ---
+  monthContainer.appendChild(monthGrid);
 
-  grid.appendChild(monthGrid);
+  // --- Add month container to main grid ---
+  grid.appendChild(monthContainer);
 }
+
     // --- UI: modal for notes ---
     function openDayModal(day) {
       currentModalDay = day;
