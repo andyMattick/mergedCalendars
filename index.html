@@ -24,6 +24,30 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.6);
     }
 
+    .day-cell:hover {
+  position: relative;
+}
+
+    .day-cell .tooltip {
+      display: none;
+      position: absolute;
+      bottom: 4px;
+      left: 4px;
+      background: var(--card-bg);
+      color: var(--fg);
+      border: 1px solid var(--card-border);
+      padding: 0.3rem 0.5rem;
+      font-size: 0.75rem;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+      z-index: 50;
+    }
+
+    .day-cell:hover .tooltip {
+      display: block;
+    }
+
+
     body.dark input[type="text"],
     body.dark textarea {
       background: #3a3d42;
@@ -269,6 +293,14 @@ body.dark section {
   box-shadow: 0 1px 3px rgba(0,0,0,0.6);
 }
 
+.rotation-A { color: #1d4ed8; font-weight: 600; }
+.rotation-B { color: #059669; font-weight: 600; }
+.rotation-C { color: #7c3aed; font-weight: 600; }
+.rotation-D { color: #d97706; font-weight: 600; }
+.rotation-E { color: #0ea5e9; font-weight: 600; }
+.rotation-F { color: #b91c1c; font-weight: 600; }
+.rotation-G { color: #6b7280; font-weight: 600; }
+
 
 
   </style>
@@ -276,6 +308,8 @@ body.dark section {
 <body>
   <header>
     <button id="darkModeToggle" class="secondary">Dark Mode</button>
+    <button id="jumpTodayBtn" class="secondary">Today</button>
+
     <h1>HS Rotation Planner</h1>
     <div class="small">Static HTML + JS · LocalStorage · GitHub Pages–ready</div>
   </header>
@@ -512,6 +546,9 @@ const MONTHS = groupByMonth();
     // --- LocalStorage keys ---
     const LS_SCHEDULE_KEY = "hsSchedule";
     const LS_NOTES_KEY_PREFIX = "hsNotes"; // hsNotes-YYYY-MM-DD
+    const LS_CLASS_COUNT_KEY = "hsClassCounts";
+      let classCounts = {}; // { "1": 15, "2": 12, ... }
+
 
     // --- State ---
     let teacherSchedule = {}; // { "1": "AP Stats", ... }
@@ -674,7 +711,8 @@ for (let i = 0; i < leadingBlanks; i++) {
       const rotationSuffix =
         rotationLetter && ROTATION_RULES[rotationLetter] ? ` — ${rotationLetter}` : "";
 
-      header.textContent = `${weekdayName} ${formatDateLabel(day.date)}${rotationSuffix}`;
+      header.innerHTML = `${weekdayName} ${formatDateLabel(day.date)} <span class="rotation-${rotationLetter}">${rotationLetter}</span>`;
+
       cell.appendChild(header);
 
       if (hasNotesForDate(day.date)) {
@@ -691,9 +729,12 @@ for (let i = 0; i < leadingBlanks; i++) {
         const ul = document.createElement("ul");
         ul.className = "classes-list";
         ROTATION_RULES[letter].forEach(periodNum => {
+          classCounts[periodNum] = (classCounts[periodNum] || 0) + 1;
           const li = document.createElement("li");
           const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
-          li.textContent = `${periodNum}: ${courseName}`;
+          const dayCount = classCounts[periodNum] || 0;
+          li.textContent = `${periodNum}: ${courseName} (Day ${dayCount})`;
+
           li.classList.add(`period-${periodNum}`);
           ul.appendChild(li);
         });
@@ -709,6 +750,17 @@ for (let i = 0; i < leadingBlanks; i++) {
 
     monthGrid.appendChild(cell);
   });
+    const notes = loadNotesForDate(day.date);
+  if (notes && Object.keys(notes).length > 0) {
+    const preview = document.createElement("div");
+    preview.className = "tooltip";
+
+    const firstNote = Object.values(notes).find(v => typeof v === "string" && v.trim() !== "");
+    preview.textContent = firstNote ? firstNote.slice(0, 60) + "…" : "Notes added";
+
+    cell.appendChild(preview);
+  }
+
 
   calendarRoot.appendChild(monthGrid);
 }
@@ -764,6 +816,8 @@ function openDayModal(day) {
   body.appendChild(testBlock);
 
   backdrop.style.display = "flex";
+  localStorage.setItem(LS_CLASS_COUNT_KEY, JSON.stringify(classCounts));
+
 }
 
 
@@ -803,6 +857,10 @@ function init() {
   hydrateScheduleForm();
   renderCalendar();
 
+  const rawCounts = localStorage.getItem(LS_CLASS_COUNT_KEY);
+  classCounts = rawCounts ? JSON.parse(rawCounts) : {};
+
+
   document.getElementById("darkModeToggle")
   .addEventListener("click", () => {
     document.body.classList.toggle("dark");
@@ -836,6 +894,19 @@ function init() {
       currentMonthIndex = Math.min(MONTHS.length - 1, currentMonthIndex + 1);
       renderCalendar();
     });
+
+  document.getElementById("jumpTodayBtn").addEventListener("click", () => {
+  const today = new Date();
+  const iso = today.toISOString().split("T")[0];
+
+  const cells = document.querySelectorAll(".day-cell");
+  cells.forEach(cell => {
+    if (cell.textContent.includes(today.getDate())) {
+      cell.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  });
+});
+
 }
 
 // Run init ONLY once, AFTER DOM is ready
