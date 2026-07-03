@@ -547,8 +547,7 @@ const MONTHS = groupByMonth();
     const LS_SCHEDULE_KEY = "hsSchedule";
     const LS_NOTES_KEY_PREFIX = "hsNotes"; // hsNotes-YYYY-MM-DD
     const LS_CLASS_COUNT_KEY = "hsClassCounts";
-      let classCounts = {}; // { "1": 15, "2": 12, ... }
-
+    let classCounts = {}; // { "1": 15, "2": 12, ... }
 
     // --- State ---
     let teacherSchedule = {}; // { "1": "AP Stats", ... }
@@ -603,6 +602,27 @@ function formatDateLabel(dateStr) {
   });
 }
 
+function countScheduledClassesBefore(dateLimit) {
+  const counts = {};
+
+  HS_ROTATION_2026.forEach(day => {
+    if (day.date >= dateLimit) {
+      return;
+    }
+
+    const letter = normalizeLetter(day.letter);
+    if (!letter || !ROTATION_RULES[letter]) {
+      return;
+    }
+
+    ROTATION_RULES[letter].forEach(periodNum => {
+      counts[periodNum] = (counts[periodNum] || 0) + 1;
+    });
+  });
+
+  return counts;
+}
+
 
     // --- UI: schedule form ---
     function hydrateScheduleForm() {
@@ -633,6 +653,11 @@ function renderCalendar() {
   calendarRoot.innerHTML = "";
 
   const { year, month, days } = MONTHS[currentMonthIndex];
+  const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
+  const today = new Date();
+  const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  classCounts = countScheduledClassesBefore(monthStart);
 
   monthTitle.textContent = new Date(year, month - 1).toLocaleDateString(undefined, {
     month: "long",
@@ -688,24 +713,22 @@ for (let i = 0; i < leadingBlanks; i++) {
     const [cellYear, cellMonth, cellDay] = weekdayCell.date.split("-").map(Number);
     const dateObj = new Date(cellYear, cellMonth - 1, cellDay);
     const weekdayName = dateObj.toLocaleDateString(undefined, { weekday: "short" });
+    const notes = loadNotesForDate(weekdayCell.date);
+    const hasNotes = Object.keys(notes).length > 0;
 
     const cell = document.createElement("div");
     cell.className = "day-cell";
+    cell.dataset.date = weekdayCell.date;
+
+    if (weekdayCell.date === todayISO) {
+      cell.classList.add("today");
+    }
 
     const header = document.createElement("div");
     header.className = "day-cell-header";
 
     if (weekdayCell.schoolDay) {
       const day = weekdayCell.schoolDay;
-
-      const today = new Date();
-      if (
-        today.getFullYear() === cellYear &&
-        today.getMonth() + 1 === cellMonth &&
-        today.getDate() === cellDay
-      ) {
-        cell.classList.add("today");
-      }
 
       const rotationLetter = day.letter ? normalizeLetter(day.letter) : "";
       const rotationSuffix =
@@ -715,11 +738,8 @@ for (let i = 0; i < leadingBlanks; i++) {
 
       cell.appendChild(header);
 
-      if (hasNotesForDate(day.date)) {
-        const notes = loadNotesForDate(day.date);
-        if (notes.isTestDay) {
-          cell.classList.add("test-day");
-        }
+      if (notes.isTestDay) {
+        cell.classList.add("test-day");
       }
 
       const letter = normalizeLetter(day.letter);
@@ -746,23 +766,39 @@ for (let i = 0; i < leadingBlanks; i++) {
       header.textContent = `${weekdayName} ${formatDateLabel(weekdayCell.date)}`;
       cell.appendChild(header);
       cell.classList.add("empty");
+
+      if (notes.isTestDay) {
+        cell.classList.add("test-day");
+      }
+
+      cell.addEventListener("click", () => openDayModal({
+        date: weekdayCell.date,
+        letter: "No HS classes"
+      }));
+    }
+
+    if (hasNotes) {
+      cell.classList.add("has-notes");
+
+      const preview = document.createElement("div");
+      preview.className = "tooltip";
+
+      const firstNote = Object.values(notes)
+        .find(value => typeof value === "string" && value.trim() !== "");
+
+      preview.textContent = firstNote
+        ? firstNote.slice(0, 60) + "…"
+        : "Notes added";
+
+      cell.appendChild(preview);
     }
 
     monthGrid.appendChild(cell);
   });
-    const notes = loadNotesForDate(day.date);
-  if (notes && Object.keys(notes).length > 0) {
-    const preview = document.createElement("div");
-    preview.className = "tooltip";
-
-    const firstNote = Object.values(notes).find(v => typeof v === "string" && v.trim() !== "");
-    preview.textContent = firstNote ? firstNote.slice(0, 60) + "…" : "Notes added";
-
-    cell.appendChild(preview);
-  }
 
 
   calendarRoot.appendChild(monthGrid);
+  localStorage.setItem(LS_CLASS_COUNT_KEY, JSON.stringify(classCounts));
 }
     // --- UI: modal for notes ---
 function openDayModal(day) {
@@ -774,13 +810,31 @@ function openDayModal(day) {
   const body = document.getElementById("modalBody");
 
   dateLabel.textContent = formatDateLabel(day.date);
-  letterLabel.textContent = `HS letter: ${day.letter}`;
+  letterLabel.textContent = ROTATION_RULES[normalizeLetter(day.letter)]
+    ? `HS letter: ${normalizeLetter(day.letter)}`
+    : (day.letter || "No HS classes");
 
   body.innerHTML = "";
 
   const existingNotes = loadNotesForDate(day.date);   // <-- FIXED: moved up
 
   const periods = ROTATION_RULES[normalizeLetter(day.letter)] || [];
+
+  if (periods.length === 0) {
+    const block = document.createElement("div");
+    block.className = "note-block";
+
+    const label = document.createElement("label");
+    label.textContent = "General Notes";
+    block.appendChild(label);
+
+    const textarea = document.createElement("textarea");
+    textarea.value = existingNotes.general || "";
+    textarea.dataset.period = "general";
+    block.appendChild(textarea);
+
+    body.appendChild(block);
+  }
 
   periods.forEach(periodNum => {
     const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
@@ -816,7 +870,6 @@ function openDayModal(day) {
   body.appendChild(testBlock);
 
   backdrop.style.display = "flex";
-  localStorage.setItem(LS_CLASS_COUNT_KEY, JSON.stringify(classCounts));
 
 }
 
@@ -834,7 +887,11 @@ function openDayModal(day) {
       const notesObj = {};
       textareas.forEach(ta => {
         const period = ta.dataset.period;
-        notesObj[period] = ta.value.trim();
+        if (period === "general") {
+          notesObj.general = ta.value.trim();
+        } else {
+          notesObj[period] = ta.value.trim();
+        }
       });
 
       notesObj.isTestDay = document.getElementById("isTestDay").checked;
@@ -856,9 +913,6 @@ function init() {
   loadScheduleFromStorage();
   hydrateScheduleForm();
   renderCalendar();
-
-  const rawCounts = localStorage.getItem(LS_CLASS_COUNT_KEY);
-  classCounts = rawCounts ? JSON.parse(rawCounts) : {};
 
 
   document.getElementById("darkModeToggle")
@@ -897,11 +951,11 @@ function init() {
 
   document.getElementById("jumpTodayBtn").addEventListener("click", () => {
   const today = new Date();
-  const iso = today.toISOString().split("T")[0];
+  const todayISO = today.toISOString().split("T")[0];
 
   const cells = document.querySelectorAll(".day-cell");
   cells.forEach(cell => {
-    if (cell.textContent.includes(today.getDate())) {
+    if (cell.dataset.date === todayISO) {
       cell.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   });
