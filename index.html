@@ -328,7 +328,17 @@ body.dark section {
   }
 
   #printArea .calendar-grid {
+    display: block;
+    gap: 0;
+  }
+
+  #printArea .print-week-row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 0.45rem;
+    margin-bottom: 0.45rem;
+    break-inside: avoid-page;
+    page-break-inside: avoid;
   }
 
   #printArea .day-cell {
@@ -818,6 +828,25 @@ function buildPrintableCalendar(includeNotes = true) {
 
   const calendarClone = document.getElementById("calendarGrid").cloneNode(true);
   calendarClone.querySelectorAll(".tooltip").forEach(t => t.remove());
+
+  const monthGrid = calendarClone.querySelector(".calendar-grid");
+  if (monthGrid) {
+    const cells = Array.from(monthGrid.children).filter(node =>
+      node.classList && node.classList.contains("day-cell")
+    );
+
+    const rebuiltGrid = document.createElement("div");
+    rebuiltGrid.className = "calendar-grid";
+
+    for (let i = 0; i < cells.length; i += 5) {
+      const weekRow = document.createElement("div");
+      weekRow.className = "print-week-row";
+      cells.slice(i, i + 5).forEach(cell => weekRow.appendChild(cell));
+      rebuiltGrid.appendChild(weekRow);
+    }
+
+    monthGrid.replaceWith(rebuiltGrid);
+  }
 
   const cells = calendarClone.querySelectorAll(".day-cell[data-date]");
   if (includeNotes) {
