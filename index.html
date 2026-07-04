@@ -301,6 +301,20 @@ body.dark section {
 .rotation-F { color: #b91c1c; font-weight: 600; }
 .rotation-G { color: #6b7280; font-weight: 600; }
 
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printArea, #printArea * {
+    visibility: visible;
+  }
+  #printArea {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}
 
 
   </style>
@@ -309,6 +323,14 @@ body.dark section {
   <header>
     <button id="darkModeToggle" class="secondary">Dark Mode</button>
     <button id="jumpTodayBtn" class="secondary">Today</button>
+    <button id="exportPdfBtn" class="secondary">Export PDF</button>
+    <button id="backupBtn" class="secondary">Backup Data</button>
+    <button id="restoreBtn" class="secondary">Restore Data</button>
+    <input id="restoreInput" type="file" accept="application/json" style="display:none;" />
+    <button id="printNotesBtn" class="secondary">Print Notes</button>
+
+
+
 
     <h1>HS Rotation Planner</h1>
     <div class="small">Static HTML + JS · LocalStorage · GitHub Pages–ready</div>
@@ -365,7 +387,6 @@ body.dark section {
       These are hard‑coded in JS but you can adjust them if your school changes rotation.
     </p>
   </section>
-
   <section id="calendar">
     <div id="monthNav" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
       <button id="prevMonthBtn" class="secondary">◀ Prev</button>
@@ -375,6 +396,8 @@ body.dark section {
 
     <!-- Weekday headers will be inserted by JS -->
     <div id="calendarGrid"></div>
+    <div id="printArea" style="display:none;"></div>
+
 
   </section>
 </main>
@@ -648,6 +671,11 @@ function countScheduledClassesBefore(dateLimit) {
 
     // --- UI: calendar ---
 function renderCalendar() {
+function buildPrintableCalendar() {
+  const printRoot = document.getElementById("printArea");
+  printRoot.innerHTML = document.getElementById("calendarGrid").outerHTML;
+}
+
   const calendarRoot = document.getElementById("calendarGrid");
   const monthTitle = document.getElementById("monthTitle");
   calendarRoot.innerHTML = "";
@@ -913,6 +941,97 @@ function init() {
   loadScheduleFromStorage();
   hydrateScheduleForm();
   renderCalendar();
+
+  document.getElementById("printNotesBtn").addEventListener("click", () => {
+  const printRoot = document.getElementById("printArea");
+  printRoot.innerHTML = "";
+
+  const allNotes = Object.keys(localStorage)
+    .filter(k => k.startsWith(LS_NOTES_KEY_PREFIX))
+    .map(k => ({
+      date: k.replace(`${LS_NOTES_KEY_PREFIX}-`, ""),
+      notes: JSON.parse(localStorage.getItem(k))
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  allNotes.forEach(entry => {
+    const div = document.createElement("div");
+    div.style.marginBottom = "1rem";
+
+    div.innerHTML = `<h3>${formatDateLabel(entry.date)}</h3>`;
+
+    Object.entries(entry.notes).forEach(([period, text]) => {
+      if (period === "isTestDay") return;
+      if (!text.trim()) return;
+
+      div.innerHTML += `<p><strong>${period}</strong>: ${text}</p>`;
+    });
+
+    if (entry.notes.isTestDay) {
+      div.innerHTML += `<p style="color:red;"><strong>Test Day</strong></p>`;
+    }
+
+    printRoot.appendChild(div);
+  });
+
+  window.print();
+});
+
+
+  document.getElementById("exportPdfBtn").addEventListener("click", () => {
+  buildPrintableCalendar();
+  window.print();
+});
+
+document.getElementById("backupBtn").addEventListener("click", () => {
+  const data = {
+    schedule: teacherSchedule,
+    notes: Object.keys(localStorage)
+      .filter(k => k.startsWith(LS_NOTES_KEY_PREFIX))
+      .reduce((acc, k) => ({ ...acc, [k]: JSON.parse(localStorage.getItem(k)) }), {}),
+    classCounts,
+    darkMode: document.body.classList.contains("dark")
+  };
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "hs-planner-backup.json";
+  a.click();
+
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById("restoreBtn").addEventListener("click", () => {
+  document.getElementById("restoreInput").click();
+});
+
+document.getElementById("restoreInput").addEventListener("change", async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const text = await file.text();
+  const data = JSON.parse(text);
+
+  teacherSchedule = data.schedule;
+  classCounts = data.classCounts;
+
+  Object.keys(localStorage)
+    .filter(k => k.startsWith(LS_NOTES_KEY_PREFIX))
+    .forEach(k => localStorage.removeItem(k));
+
+  Object.entries(data.notes).forEach(([k, v]) => {
+    localStorage.setItem(k, JSON.stringify(v));
+  });
+
+  if (data.darkMode) document.body.classList.add("dark");
+  else document.body.classList.remove("dark");
+
+  saveScheduleToStorage();
+  renderCalendar();
+});
 
 
   document.getElementById("darkModeToggle")
