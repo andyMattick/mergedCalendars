@@ -317,6 +317,27 @@ body.dark section {
   }
 }
 
+.print-header {
+  margin: 0 0 0.75rem 0;
+}
+
+.print-notes {
+  margin-top: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed #cbd2d9;
+}
+
+.print-note-line {
+  font-size: 0.82rem;
+  line-height: 1.25;
+  margin-bottom: 0.2rem;
+}
+
+.print-day-summary {
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+}
+
 
   </style>
 </head>
@@ -668,9 +689,74 @@ function countScheduledClassesBefore(dateLimit) {
       renderCalendar();
     }
 
+function getPrintableNoteEntries(date) {
+  const notes = loadNotesForDate(date);
+  const noteEntries = Object.entries(notes)
+    .filter(([key, value]) => key !== "isTestDay" && typeof value === "string" && value.trim() !== "")
+    .map(([key, value]) => ({ key, value: value.trim() }));
+
+  return {
+    noteEntries,
+    isTestDay: !!notes.isTestDay
+  };
+}
+
+function formatNoteLabel(key) {
+  if (key === "general") return "General";
+  const periodNum = Number(key);
+  if (!Number.isFinite(periodNum)) return key;
+  const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
+  return `Period ${periodNum} (${courseName})`;
+}
+
+function appendNotesToPrintableCell(cell, date) {
+  const { noteEntries, isTestDay } = getPrintableNoteEntries(date);
+  if (!noteEntries.length && !isTestDay) return;
+
+  const notesWrapper = document.createElement("div");
+  notesWrapper.className = "print-notes";
+
+  noteEntries.forEach(entry => {
+    const noteLine = document.createElement("div");
+    noteLine.className = "print-note-line";
+
+    const label = document.createElement("strong");
+    label.textContent = `${formatNoteLabel(entry.key)}: `;
+    noteLine.appendChild(label);
+    noteLine.appendChild(document.createTextNode(entry.value));
+
+    notesWrapper.appendChild(noteLine);
+  });
+
+  if (isTestDay) {
+    const testDayLine = document.createElement("div");
+    testDayLine.className = "print-note-line";
+    testDayLine.textContent = "Test Day";
+    notesWrapper.appendChild(testDayLine);
+  }
+
+  cell.appendChild(notesWrapper);
+}
+
 function buildPrintableCalendar() {
   const printRoot = document.getElementById("printArea");
-  printRoot.innerHTML = document.getElementById("calendarGrid").outerHTML;
+  printRoot.innerHTML = "";
+
+  const monthTitle = document.getElementById("monthTitle").textContent || "Monthly Planner";
+  const title = document.createElement("h2");
+  title.className = "print-header";
+  title.textContent = monthTitle;
+  printRoot.appendChild(title);
+
+  const calendarClone = document.getElementById("calendarGrid").cloneNode(true);
+  calendarClone.querySelectorAll(".tooltip").forEach(t => t.remove());
+
+  const cells = calendarClone.querySelectorAll(".day-cell[data-date]");
+  cells.forEach(cell => {
+    appendNotesToPrintableCell(cell, cell.dataset.date);
+  });
+
+  printRoot.appendChild(calendarClone);
 }
     // --- UI: calendar ---
 function renderCalendar() {
@@ -946,6 +1032,11 @@ function init() {
   const printRoot = document.getElementById("printArea");
   printRoot.innerHTML = "";
 
+  const heading = document.createElement("h2");
+  heading.className = "print-header";
+  heading.textContent = "Daily Notes";
+  printRoot.appendChild(heading);
+
   const allNotes = Object.keys(localStorage)
     .filter(k => k.startsWith(LS_NOTES_KEY_PREFIX))
     .map(k => ({
@@ -954,21 +1045,53 @@ function init() {
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
+  const dayLookup = Object.fromEntries(HS_ROTATION_2026.map(day => [day.date, day]));
+
   allNotes.forEach(entry => {
     const div = document.createElement("div");
     div.style.marginBottom = "1rem";
 
-    div.innerHTML = `<h3>${formatDateLabel(entry.date)}</h3>`;
+    const title = document.createElement("h3");
+    title.textContent = formatDateLabel(entry.date);
+    div.appendChild(title);
+
+    const schoolDay = dayLookup[entry.date];
+    if (schoolDay) {
+      const summary = document.createElement("div");
+      summary.className = "print-day-summary";
+
+      const normalized = normalizeLetter(schoolDay.letter);
+      if (normalized && ROTATION_RULES[normalized]) {
+        const periods = ROTATION_RULES[normalized]
+          .map(periodNum => `${periodNum}: ${teacherSchedule[periodNum] || `Period ${periodNum}`}`)
+          .join(" | ");
+        summary.textContent = `Rotation ${normalized} | ${periods}`;
+      } else {
+        summary.textContent = schoolDay.letter || "No HS classes";
+      }
+
+      div.appendChild(summary);
+    }
 
     Object.entries(entry.notes).forEach(([period, text]) => {
       if (period === "isTestDay") return;
-      if (!text.trim()) return;
+      if (typeof text !== "string" || !text.trim()) return;
 
-      div.innerHTML += `<p><strong>${period}</strong>: ${text}</p>`;
+      const line = document.createElement("p");
+      const label = document.createElement("strong");
+      label.textContent = `${formatNoteLabel(period)}: `;
+      line.appendChild(label);
+      line.appendChild(document.createTextNode(text.trim()));
+      div.appendChild(line);
     });
 
     if (entry.notes.isTestDay) {
-      div.innerHTML += `<p style="color:red;"><strong>Test Day</strong></p>`;
+      const testDay = document.createElement("p");
+      testDay.style.color = "red";
+      const label = document.createElement("strong");
+      label.textContent = "Test Day";
+      testDay.appendChild(label);
+      div.appendChild(testDay);
     }
 
     printRoot.appendChild(div);
