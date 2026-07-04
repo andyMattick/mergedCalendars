@@ -302,19 +302,72 @@ body.dark section {
 .rotation-G { color: #6b7280; font-weight: 600; }
 
 @media print {
+  @page {
+    size: landscape;
+    margin: 10mm;
+  }
+
   body * {
     visibility: hidden;
   }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
   #printArea, #printArea * {
     visibility: visible;
   }
   #printArea {
     display: block !important;
-    position: absolute;
+    position: static;
     left: 0;
     top: 0;
     width: 100%;
   }
+
+  #printArea .calendar-grid {
+    gap: 0.45rem;
+  }
+
+  #printArea .day-cell {
+    min-height: 0;
+    padding: 0.35rem;
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+
+  #printArea .day-cell-header,
+  #printArea .classes-list li,
+  #printArea .print-note-line {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+
+  #printArea .classes-list li {
+    font-size: 0.78rem;
+    line-height: 1.2;
+  }
+
+  #printArea .print-note-entry,
+  #printArea .print-notes {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+}
+
+body.print-compact #printArea .day-cell {
+  padding: 0.25rem;
+}
+
+body.print-compact #printArea .day-cell-header {
+  font-size: 0.78rem;
+}
+
+body.print-compact #printArea .classes-list li,
+body.print-compact #printArea .print-note-line {
+  font-size: 0.7rem;
 }
 
 .print-header {
@@ -346,6 +399,16 @@ body.dark section {
     <button id="darkModeToggle" class="secondary">Dark Mode</button>
     <button id="jumpTodayBtn" class="secondary">Today</button>
     <button id="exportPdfBtn" class="secondary">Export PDF</button>
+    <label class="small" style="margin-left:0.5rem; display:inline-flex; gap:0.35rem; align-items:center;">
+      <input id="includeNotesInExport" type="checkbox" checked /> Include notes
+    </label>
+    <label class="small" style="margin-left:0.5rem; display:inline-flex; gap:0.35rem; align-items:center;">
+      Print layout
+      <select id="printLayoutMode" style="width:auto; margin-bottom:0;">
+        <option value="standard">Standard</option>
+        <option value="compact">Compact</option>
+      </select>
+    </label>
     <button id="backupBtn" class="secondary">Backup Data</button>
     <button id="restoreBtn" class="secondary">Restore Data</button>
     <input id="restoreInput" type="file" accept="application/json" style="display:none;" />
@@ -738,7 +801,12 @@ function appendNotesToPrintableCell(cell, date) {
   cell.appendChild(notesWrapper);
 }
 
-function buildPrintableCalendar() {
+function applyPrintLayoutPreference() {
+  const layoutMode = document.getElementById("printLayoutMode")?.value || "standard";
+  document.body.classList.toggle("print-compact", layoutMode === "compact");
+}
+
+function buildPrintableCalendar(includeNotes = true) {
   const printRoot = document.getElementById("printArea");
   printRoot.innerHTML = "";
 
@@ -752,9 +820,11 @@ function buildPrintableCalendar() {
   calendarClone.querySelectorAll(".tooltip").forEach(t => t.remove());
 
   const cells = calendarClone.querySelectorAll(".day-cell[data-date]");
-  cells.forEach(cell => {
-    appendNotesToPrintableCell(cell, cell.dataset.date);
-  });
+  if (includeNotes) {
+    cells.forEach(cell => {
+      appendNotesToPrintableCell(cell, cell.dataset.date);
+    });
+  }
 
   printRoot.appendChild(calendarClone);
 }
@@ -1049,6 +1119,7 @@ function init() {
 
   allNotes.forEach(entry => {
     const div = document.createElement("div");
+    div.className = "print-note-entry";
     div.style.marginBottom = "1rem";
 
     const title = document.createElement("h3");
@@ -1097,12 +1168,20 @@ function init() {
     printRoot.appendChild(div);
   });
 
+  applyPrintLayoutPreference();
   window.print();
 });
 
 
+  window.addEventListener("afterprint", () => {
+    document.body.classList.remove("print-compact");
+  });
+
+
   document.getElementById("exportPdfBtn").addEventListener("click", () => {
-  buildPrintableCalendar();
+  const includeNotes = document.getElementById("includeNotesInExport")?.checked ?? true;
+  applyPrintLayoutPreference();
+  buildPrintableCalendar(includeNotes);
   window.print();
 });
 
