@@ -59,6 +59,15 @@
       color: #e5e7eb;
 }
 
+    body.dark .day-cell-header {
+      color: #e5e7eb; /* light gray for good contrast */
+      font-weight: 600;
+    }
+
+    body.dark .day-cell.empty .day-cell-header {
+      color: #9ca3af; /* slightly dimmer for empty days */
+    }
+
 
     #darkModeToggle {
       background: #374151;      /* lighter gray */
@@ -77,6 +86,35 @@
       padding: 1rem 2rem;
       background: #1f2933;
       color: #fff;
+    }
+    .header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.8rem;
+      flex-wrap: wrap;
+    }
+    .header-left,
+    .header-right {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .header-center {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      min-width: 200px;
+      flex: 1;
+    }
+    .header-center h1 {
+      margin: 0;
+      font-size: 1.4rem;
+    }
+    .header-center .small {
+      color: #d1d5db;
     }
     main {
       display: flex;
@@ -108,13 +146,17 @@
       font-size: 0.85rem;
       font-weight: 600;
     }
-    input[type="text"], select {
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    select {
       width: 100%;
       padding: 0.35rem 0.5rem;
       margin-bottom: 0.5rem;
       border-radius: 4px;
       border: 1px solid #cbd2d9;
       font-size: 0.9rem;
+      box-sizing: border-box;
     }
     button {
       padding: 0.4rem 0.8rem;
@@ -250,6 +292,15 @@
       cursor: default;
     }
 
+        body.dark .day-cell-header {
+      color: #e5e7eb; /* light gray for good contrast */
+      font-weight: 600;
+    }
+
+    body.dark .day-cell.empty .day-cell-header {
+      color: #9ca3af; /* slightly dimmer for empty days */
+    }
+
     .day-cell.today {
   background: #fff7d6;
   border-color: #facc15;
@@ -264,10 +315,445 @@
 .period-6 { color: #0ea5e9; font-weight: 600; }
 .period-7 { color: #6b7280; font-weight: 600; }
 
-.day-cell.test-day {
+/* Base cycle colors apply first. */
+.day-cell.cycle-A { background: #e0f2fe; border-color: #38bdf8; }
+.day-cell.cycle-B { background: #fff7d6; border-color: #f59e0b; }
+.day-cell.cycle-C { background: #f3e8ff; border-color: #a855f7; }
+.day-cell.cycle-D { background: #ffe4e6; border-color: #fb7185; }
+.day-cell.cycle-E { background: #fef3c7; border-color: #f59e0b; }
+.day-cell.cycle-F { background: #e0e7ff; border-color: #6366f1; }
+.day-cell.cycle-G { background: #f1f5f9; border-color: #64748b; }
+
+.day-cell.today.cycle-A { background: #bae6fd; }
+.day-cell.today.cycle-B { background: #fde68a; }
+.day-cell.today.cycle-C { background: #e9d5ff; }
+.day-cell.today.cycle-D { background: #fecdd3; }
+.day-cell.today.cycle-E { background: #fde68a; }
+.day-cell.today.cycle-F { background: #c7d2fe; }
+.day-cell.today.cycle-G { background: #e2e8f0; }
+
+/* Dark mode: use deeper cycle tints so color-coded days are readable. */
+body.dark .day-cell.cycle-A { background: #13354a; border-color: #38bdf8; }
+body.dark .day-cell.cycle-B { background: #4a3412; border-color: #f59e0b; }
+body.dark .day-cell.cycle-C { background: #3b2354; border-color: #a855f7; }
+body.dark .day-cell.cycle-D { background: #4b1f2b; border-color: #fb7185; }
+body.dark .day-cell.cycle-E { background: #4a2e12; border-color: #f59e0b; }
+body.dark .day-cell.cycle-F { background: #222f61; border-color: #6366f1; }
+body.dark .day-cell.cycle-G { background: #2f3846; border-color: #94a3b8; }
+
+body.dark .day-cell.today.cycle-A { background: #1a4965; }
+body.dark .day-cell.today.cycle-B { background: #66461a; }
+body.dark .day-cell.today.cycle-C { background: #4d2e70; }
+body.dark .day-cell.today.cycle-D { background: #632938; }
+body.dark .day-cell.today.cycle-E { background: #66461a; }
+body.dark .day-cell.today.cycle-F { background: #2b3c79; }
+body.dark .day-cell.today.cycle-G { background: #3a4657; }
+
+.status-badge {
+  display: inline-block;
+  margin-left: 0;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.status-badge.test-day {
   background: #fee2e2;
-  border-color: #ef4444;
-  box-shadow: 0 0 0 2px #ef444433;
+  color: #991b1b;
+  border: 1px solid #ef4444;
+}
+
+.status-badge.no-test-day {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #16a34a;
+}
+
+.day-tag-badge {
+  display: inline-block;
+  margin-left: 0;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0c4a6e;
+  border: 1px solid #38bdf8;
+  font-size: 0.68rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.family-night-badge {
+  display: inline-block;
+  margin-left: 0;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+  font-size: 0.68rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+.day-date-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+}
+
+.day-badge-row {
+  margin-top: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: center;
+}
+
+.rotation-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.rotation-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.08rem 0.35rem;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.rotation-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.15);
+}
+
+.rotation-dot-A { background: #e0f2fe; }
+.rotation-dot-B { background: #fff7d6; }
+.rotation-dot-C { background: #f3e8ff; }
+.rotation-dot-D { background: #ffe4e6; }
+.rotation-dot-E { background: #fef3c7; }
+.rotation-dot-F { background: #e0e7ff; }
+.rotation-dot-G { background: #f1f5f9; }
+
+.unit-card,
+.special-day-card {
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 0.8rem;
+}
+
+.unit-row.unit-card {
+  background: rgba(255,255,255,0.45);
+  display: block;
+}
+
+.unit-row.unit-card .unit-grid {
+  margin-bottom: 0.55rem;
+}
+
+.unit-row.unit-card .unit-actions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.unit-heading,
+.special-day-heading {
+  font-size: 0.88rem;
+  font-weight: 700;
+  margin-bottom: 0.55rem;
+}
+
+.unit-grid,
+.special-day-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.unit-grid.full,
+.special-day-grid.full {
+  grid-template-columns: 1fr;
+}
+
+.unit-grid input,
+.special-day-grid input,
+.special-day-grid select,
+.print-filter-grid select {
+  margin-bottom: 0;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.check-row input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.unit-actions,
+.special-day-actions,
+.print-filter-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.65rem;
+}
+
+.special-day-preview {
+  font-size: 0.75rem;
+}
+
+.special-day-row {
+  display: grid;
+  grid-template-columns: 130px 1fr auto auto;
+  gap: 0.5rem;
+  align-items: center;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 0.55rem 0.6rem;
+  margin-bottom: 0.45rem;
+}
+
+.special-day-label-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.special-day-row-date {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.special-day-row-date.clickable {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.special-day-row-label {
+  font-size: 0.82rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.special-day-swatch {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.2);
+}
+
+.special-day-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.12);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.inline-note {
+  display: block;
+  margin-top: 0.2rem;
+}
+
+.assessment-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.2rem;
+  height: auto;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  margin-left: 0.35rem;
+  border: 1px solid rgba(0,0,0,0.12);
+  vertical-align: middle;
+}
+
+.assessment-badge.quiz {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.assessment-badge.test {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.warning-text {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+.print-filter-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.6rem;
+}
+
+.print-filter-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.6rem;
+}
+
+.modal-special-day {
+  border-top: 1px solid var(--card-border);
+  padding-top: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.unit-days-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.unit-days-table th,
+.unit-days-table td {
+  border-bottom: 1px solid var(--card-border);
+  padding: 0.55rem 0.45rem;
+  font-size: 0.82rem;
+  text-align: left;
+}
+
+.unit-days-table tbody tr:nth-child(even) {
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.unit-days-table th {
+  font-weight: 700;
+}
+
+.unit-days-table input[type="text"] {
+  margin-bottom: 0;
+}
+
+.help-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+}
+
+.help-tab-btn {
+  background: #e5e7eb;
+  color: #111827;
+  border: 1px solid #d1d5db;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+}
+
+.help-tab-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.help-section {
+  display: none;
+}
+
+.help-section.active {
+  display: block;
+}
+
+.help-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.8rem;
+  gap: 0.6rem;
+}
+
+.welcome-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.welcome-checkbox input {
+  width: auto;
+  margin: 0;
+}
+
+.config-section {
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  margin-bottom: 0.7rem;
+  overflow: hidden;
+}
+
+.config-section-toggle {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--card-border);
+  background: rgba(148, 163, 184, 0.14);
+  color: var(--fg);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.92rem;
+  font-weight: 700;
+  padding: 0.55rem 0.7rem;
+}
+
+.config-section-toggle .config-chevron {
+  display: inline-block;
+  transform: rotate(0deg);
+  transition: transform 0.16s ease;
+  width: 0.8rem;
+}
+
+.config-section.collapsed .config-section-toggle .config-chevron {
+  transform: rotate(-90deg);
+}
+
+.config-section-body {
+  padding: 0.7rem;
+}
+
+.config-section.collapsed .config-section-body {
+  display: none;
+}
+
+.period-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  padding: 0.02rem 0.3rem;
+  border-radius: 999px;
+  background: rgba(37,99,235,0.1);
+  color: #1d4ed8;
+  font-size: 0.68rem;
+  font-weight: 700;
+  margin-left: 0.35rem;
 }
 .month-container {
   display: grid;
@@ -304,84 +790,179 @@ body.dark section {
 .rotation-F { color: #b91c1c; font-weight: 600; }
 .rotation-G { color: #6b7280; font-weight: 600; }
 
+.agenda-meta {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.agenda-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-bottom: 0.65rem;
+}
+
+.agenda-period-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.agenda-period-card {
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.agenda-period-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.agenda-note {
+  margin-top: 0.3rem;
+  font-size: 0.83rem;
+}
+
+.agenda-note.empty {
+  color: #6b7280;
+}
+
+body.dark .agenda-note.empty {
+  color: #9ca3af;
+}
+
 
   </style>
 </head>
 <body>
   <header>
-    <button id="backupBtn" class="secondary">Backup Data</button>
-    <button id="restoreBtn" class="secondary">Restore Data</button>
-    <input id="restoreInput" type="file" accept=".json" style="display:none;">
-    <button id="darkModeToggle" class="secondary">Dark Mode</button>
-    <button id="jumpTodayBtn" class="secondary">Today</button>
-    <button id="exportTestsBtn" class="secondary">Copy Test Days</button>
-    <button id="printCalendarBtn" class="secondary">Print with Filters</button>
+    <div class="header-bar">
+      <div class="header-left">
+        <button id="backupBtn" class="secondary">Backup Data</button>
+        <button id="restoreBtn" class="secondary">Restore Data</button>
+        <input id="restoreInput" type="file" accept=".json" style="display:none;">
+        <button id="jumpTodayBtn" class="secondary">Today</button>
+      </div>
 
-    <h1>HS Rotation Planner</h1>
-    <div class="small">Static HTML + JS · LocalStorage · GitHub Pages–ready</div>
+      <div class="header-center">
+        <h1>HS Rotation Planner</h1>
+        <div class="small">Static HTML + JS · LocalStorage · GitHub Pages–ready</div>
+      </div>
+
+      <div class="header-right">
+        <button id="darkModeToggle" class="secondary">Dark Mode</button>
+        <button id="helpBtn" class="secondary">? Help</button>
+        <button id="printCalendarBtn" class="secondary">Print with Filters</button>
+        <button id="exportTestsBtn" class="secondary">Copy Test Days</button>
+      </div>
+    </div>
   </header>
 
   <main>
   <section id="config">
-    <h2>Teacher schedule (HS periods 1–7)</h2>
-    <form id="scheduleForm">
-      <div>
-        <label for="p1">Period 1</label>
-        <input id="p1" name="p1" type="text" placeholder="AP Stats" />
+    <div class="config-section" data-section-key="schedule">
+      <button class="config-section-toggle" type="button">
+        <span class="config-chevron">▼</span>
+        <span>Teacher Schedule</span>
+      </button>
+      <div class="config-section-body">
+        <form id="scheduleForm">
+          <div>
+            <label for="p1">Period 1</label>
+            <input id="p1" name="p1" type="text" placeholder="AP Stats" />
+          </div>
+          <div>
+            <label for="p2">Period 2</label>
+            <input id="p2" name="p2" type="text" placeholder="Stats" />
+          </div>
+          <div>
+            <label for="p3">Period 3</label>
+            <input id="p3" name="p3" type="text" placeholder="Bible" />
+          </div>
+          <div>
+            <label for="p4">Period 4</label>
+            <input id="p4" name="p4" type="text" placeholder="History" />
+          </div>
+          <div>
+            <label for="p5">Period 5</label>
+            <input id="p5" name="p5" type="text" placeholder="PE" />
+          </div>
+          <div>
+            <label for="p6">Period 6</label>
+            <input id="p6" name="p6" type="text" placeholder="Calculus" />
+          </div>
+          <div>
+            <label for="p7">Period 7</label>
+            <input id="p7" name="p7" type="text" placeholder="Off" />
+          </div>
+          <button type="submit">Save schedule</button>
+        </form>
       </div>
-      <div>
-        <label for="p2">Period 2</label>
-        <input id="p2" name="p2" type="text" placeholder="Stats" />
-      </div>
-      <div>
-        <label for="p3">Period 3</label>
-        <input id="p3" name="p3" type="text" placeholder="Bible" />
-      </div>
-      <div>
-        <label for="p4">Period 4</label>
-        <input id="p4" name="p4" type="text" placeholder="History" />
-      </div>
-      <div>
-        <label for="p5">Period 5</label>
-        <input id="p5" name="p5" type="text" placeholder="PE" />
-      </div>
-      <div>
-        <label for="p6">Period 6</label>
-        <input id="p6" name="p6" type="text" placeholder="Calculus" />
-      </div>
-      <div>
-        <label for="p7">Period 7</label>
-        <input id="p7" name="p7" type="text" placeholder="Off" />
-      </div>
-      <button type="submit">Save schedule</button>
-    </form>
-
-    <hr style="margin:1rem 0;" />
-
-    <h2>Rotation rules (fixed HS A–G)</h2>
-    <div class="small">
-      A: 1,2,3,4,5<br/>
-      B: 6,7,1,2,3<br/>
-      C: 4,5,6,7,1<br/>
-      D: 2,3,4,5,6<br/>
-      E: 7,1,2,3,4<br/>
-      F: 5,6,7,1,2<br/>
-      G: 3,4,5,6,7
     </div>
 
-        <hr style="margin:1rem 0;" />
+    <div class="config-section" data-section-key="rotation">
+      <button class="config-section-toggle" type="button">
+        <span class="config-chevron">▼</span>
+        <span>Rotation Rules</span>
+      </button>
+      <div class="config-section-body">
+        <div class="small">
+          A: 1,2,3,4,5<br/>
+          B: 6,7,1,2,3<br/>
+          C: 4,5,6,7,1<br/>
+          D: 2,3,4,5,6<br/>
+          E: 7,1,2,3,4<br/>
+          F: 5,6,7,1,2<br/>
+          G: 3,4,5,6,7
+        </div>
 
-    <h2>Units per Class</h2>
-    <div id="unitsContainer"></div>
-    <button id="addUnitBtn">+ Add New Unit</button>
+        <div class="small" style="margin-top:0.5rem;"><strong>Cycle color key</strong></div>
+        <div class="rotation-key" aria-label="Cycle color key">
+          <span class="rotation-chip"><span class="rotation-dot rotation-dot-A"></span>A</span>
+          <span class="rotation-chip"><span class="rotation-dot rotation-dot-B"></span>B</span>
+          <span class="rotation-chip"><span class="rotation-dot rotation-dot-C"></span>C</span>
+          <span class="rotation-chip"><span class="rotation-dot rotation-dot-D"></span>D</span>
+          <span class="rotation-chip"><span class="rotation-dot rotation-dot-E"></span>E</span>
+          <span class="rotation-chip"><span class="rotation-dot rotation-dot-F"></span>F</span>
+          <span class="rotation-chip"><span class="rotation-dot rotation-dot-G"></span>G</span>
+        </div>
+      </div>
+    </div>
 
-    <hr style="margin:1rem 0;" />
+    <div class="config-section" data-section-key="units">
+      <button class="config-section-toggle" type="button">
+        <span class="config-chevron">▼</span>
+        <span>Units per Class</span>
+      </button>
+      <div class="config-section-body">
+        <div id="unitsContainer"></div>
+        <button id="addUnitBtn">+ Add New Unit</button>
+      </div>
+    </div>
 
-    <h2>Summary</h2>
-    <div id="summaryStats" class="small"></div>
+    <div class="config-section" data-section-key="special">
+      <button class="config-section-toggle" type="button">
+        <span class="config-chevron">▼</span>
+        <span>Special Days</span>
+      </button>
+      <div class="config-section-body">
+        <div id="specialDaysContainer"></div>
+        <button id="addSpecialDayBtn">+ Add Special Day</button>
+        <div class="small" style="margin-top:0.4rem;">Any row can be removed from this list.</div>
+      </div>
+    </div>
 
-    <hr style="margin:1rem 0;" />
-
+    <div class="config-section" data-section-key="summary">
+      <button class="config-section-toggle" type="button">
+        <span class="config-chevron">▼</span>
+        <span>Summary</span>
+      </button>
+      <div class="config-section-body">
+        <div id="summaryStats" class="small"></div>
+      </div>
+    </div>
 
     <p class="small" style="margin-top:0.5rem;">
       These are hard coded in JS but you can adjust them if your school changes rotation.
@@ -549,19 +1130,627 @@ let currentMonthIndex = 0;
 
 function groupByMonth() {
   const buckets = {};
+
   HS_ROTATION_2026.forEach(day => {
+    if (!day.date) return;
     const [year, month] = day.date.split("-").map(Number);
-    const key = `${year}-${month}`;
+    const key = `${year}-${String(month).padStart(2, "0")}`;
     if (!buckets[key]) buckets[key] = [];
     buckets[key].push(day);
   });
-  return Object.entries(buckets).map(([key, days]) => {
-    const [year, month] = key.split("-").map(Number);
-    return { year, month, days };
-  });
+
+  // Sort months chronologically
+  return Object.entries(buckets)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, days]) => {
+      const [year, month] = key.split("-").map(Number);
+      return { year, month, days };
+    });
 }
 
 const MONTHS = groupByMonth();
+console.log("Loaded months:", MONTHS.map(m => `${m.year}-${m.month}`));
+
+const HARD_CODED_NO_TEST_DATES = new Set([
+  "2026-09-18",
+  "2026-10-23",
+  "2027-02-05"
+]);
+
+const FAMILY_NIGHT_DATES = new Set([
+  "2026-09-17",
+  "2026-10-22",
+  "2027-02-04",
+  "2027-03-24"
+]);
+
+const ALL_SEVEN_PERIOD_DATES = new Set([
+  "2026-08-13"
+]);
+
+const HARD_CODED_PERIOD_OVERRIDES = {
+  "2026-12-10": [7, 1, 2, 3]
+};
+
+const HARD_CODED_DAY_TAGS = {
+  "2026-12-10": ["READING DAY"],
+  "2026-12-11": ["READING DAY", "Statistics/Computer Science Exam"],
+  "2026-12-14": ["Science Exam"],
+  "2026-12-15": ["English Exam"],
+  "2026-12-16": ["Social Science Exam"],
+  "2026-12-17": ["Math Exam", "Conflict Exam"],
+  "2026-12-18": ["Conflict Exam"]
+};
+
+const LS_SPECIAL_DAYS_KEY = "hsSpecialDays";
+const LS_HIDDEN_SPECIAL_ENTRIES_KEY = "hsHiddenSpecialEntries";
+const LS_HIDE_WELCOME_KEY = "hsHideWelcome";
+const LS_COLLAPSED_SECTIONS_KEY = "hsCollapsedSections";
+
+const DEFAULT_SPECIAL_DAYS = [
+  { id: "sd-2026-09-18", date: "2026-09-18", label: "Family Night / Late Arrival", badgeText: "FN", color: "#e9d5ff", appliesTo: "day", periods: [] },
+  { id: "sd-2026-10-23", date: "2026-10-23", label: "Family Night / Late Arrival", badgeText: "FN", color: "#e9d5ff", appliesTo: "day", periods: [] },
+  { id: "sd-2027-02-05", date: "2027-02-05", label: "Family Night / Late Arrival", badgeText: "FN", color: "#e9d5ff", appliesTo: "day", periods: [] },
+  { id: "sd-2027-03-24", date: "2027-03-24", label: "Family Night", badgeText: "FN", color: "#e9d5ff", appliesTo: "day", periods: [] }
+];
+
+let specialDays = [];
+let hiddenSpecialEntryKeys = new Set();
+
+function createId(prefix) {
+  return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function normalizeUnit(unit, index) {
+  const length = Math.max(1, parseInt(unit?.length, 10) || 10);
+  const rawDays = Array.isArray(unit?.days) ? unit.days : [];
+  const days = [];
+
+  for (let i = 0; i < length; i++) {
+    const raw = rawDays[i] || {};
+    days.push({
+      topic: (raw.topic || "").trim(),
+      quiz: !!raw.quiz,
+      test: !!raw.test
+    });
+  }
+
+  // Backward compatibility for older single-topic / last-day quiz-test formats.
+  if (!rawDays.length && unit?.topic) {
+    days[0].topic = String(unit.topic).trim();
+  }
+  if (!rawDays.length && unit?.hasQuiz) {
+    days[length - 1].quiz = true;
+  }
+  if (!rawDays.length && unit?.hasTest) {
+    days[length - 1].test = true;
+  }
+
+  return {
+    name: (unit?.name || `Unit ${index + 1}`).trim(),
+    length,
+    startDate: unit?.startDate || "",
+    days
+  };
+}
+
+function normalizeSpecialDay(day) {
+  const appliesTo = day?.appliesTo === "periods" ? "periods" : "day";
+  const parsedPeriods = Array.isArray(day?.periods)
+    ? day.periods.map(Number).filter(period => period >= 1 && period <= 7)
+    : [];
+
+  return {
+    id: day?.id || createId("special"),
+    date: day?.date || "",
+    label: (day?.label || "Special Day").trim(),
+    badgeText: (day?.badgeText || "SD").trim() || "SD",
+    color: day?.color || "#e9d5ff",
+    appliesTo,
+    periods: appliesTo === "periods" ? parsedPeriods : []
+  };
+}
+
+function buildSpecialEntryKey(date, badgeText, label) {
+  return `${date || ""}|${badgeText || ""}|${label || ""}`;
+}
+
+function loadHiddenSpecialEntries() {
+  const raw = localStorage.getItem(LS_HIDDEN_SPECIAL_ENTRIES_KEY);
+  if (!raw) {
+    hiddenSpecialEntryKeys = new Set();
+    return;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    hiddenSpecialEntryKeys = new Set(Array.isArray(parsed) ? parsed : []);
+  } catch (e) {
+    console.warn("Failed to parse hidden special entries", e);
+    hiddenSpecialEntryKeys = new Set();
+  }
+}
+
+function saveHiddenSpecialEntries() {
+  localStorage.setItem(LS_HIDDEN_SPECIAL_ENTRIES_KEY, JSON.stringify(Array.from(hiddenSpecialEntryKeys)));
+}
+
+function hideSpecialEntryByKey(key) {
+  if (!key) return;
+  hiddenSpecialEntryKeys.add(key);
+  saveHiddenSpecialEntries();
+}
+
+function unhideSpecialEntryByKey(key) {
+  if (!key) return;
+  if (hiddenSpecialEntryKeys.delete(key)) {
+    saveHiddenSpecialEntries();
+  }
+}
+
+function hasActiveSpecialEntryForDate(date) {
+  if (!date) return false;
+  const seen = new Set();
+
+  const isVisibleMatch = (entryDate, badgeText, label) => {
+    if (entryDate !== date) return false;
+    const key = buildSpecialEntryKey(entryDate, badgeText, label);
+    if (hiddenSpecialEntryKeys.has(key) || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  };
+
+  for (const specialDay of specialDays) {
+    if (isVisibleMatch(specialDay.date, specialDay.badgeText || "SD", specialDay.label || "Special Day")) {
+      return true;
+    }
+  }
+
+  for (const familyDate of FAMILY_NIGHT_DATES) {
+    if (isVisibleMatch(familyDate, "FN", "Family Night / Late Arrival")) {
+      return true;
+    }
+  }
+
+  for (const noTestDate of AUTO_NO_TEST_DATES) {
+    if (isVisibleMatch(noTestDate, "NT", "No Test Policy Day")) {
+      return true;
+    }
+  }
+
+  for (const day of HS_ROTATION_2026) {
+    if (!isHolidayLabel(day.letter)) continue;
+    if (isVisibleMatch(day.date, "HOL", day.letter)) {
+      return true;
+    }
+  }
+
+  for (const [tagDate, tags] of Object.entries(HARD_CODED_DAY_TAGS)) {
+    for (const tag of tags) {
+      if (isVisibleMatch(tagDate, "TAG", tag)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+function getSpecialDayForDate(date) {
+  return specialDays.find(day => day.date === date) || null;
+}
+
+function specialDayAppliesToPeriod(specialDay, periodNum) {
+  if (!specialDay) return false;
+  return specialDay.appliesTo === "day" || specialDay.periods.includes(periodNum);
+}
+
+function upsertSpecialDay(specialDay) {
+  const normalized = normalizeSpecialDay(specialDay);
+  const existingIndex = specialDays.findIndex(day => day.date === normalized.date);
+  if (existingIndex >= 0) {
+    specialDays[existingIndex] = { ...specialDays[existingIndex], ...normalized };
+  } else {
+    specialDays.push(normalized);
+  }
+  unhideSpecialEntryByKey(buildSpecialEntryKey(normalized.date, normalized.badgeText, normalized.label));
+  saveSpecialDays();
+}
+
+function removeSpecialDayByDate(date) {
+  specialDays = specialDays.filter(day => day.date !== date);
+  saveSpecialDays();
+}
+
+function hexToRgba(hex, alpha) {
+  const clean = hex.replace("#", "");
+  const full = clean.length === 3 ? clean.split("").map(ch => ch + ch).join("") : clean;
+  const value = parseInt(full, 16);
+  const red = (value >> 16) & 255;
+  const green = (value >> 8) & 255;
+  const blue = value & 255;
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+function getPeriodsForDate(date, letterLike) {
+  if (HARD_CODED_PERIOD_OVERRIDES[date]) {
+    return HARD_CODED_PERIOD_OVERRIDES[date];
+  }
+  if (ALL_SEVEN_PERIOD_DATES.has(date)) {
+    return [1, 2, 3, 4, 5, 6, 7];
+  }
+  const letter = normalizeLetter(letterLike);
+  return ROTATION_RULES[letter] || [];
+}
+
+function getPeriodOccurrenceDates(periodNum) {
+  const dates = [];
+  HS_ROTATION_2026.forEach(day => {
+    const periods = getPeriodsForDate(day.date, day.letter);
+    if (periods.includes(periodNum)) {
+      dates.push(day.date);
+    }
+  });
+  return dates;
+}
+
+function applyUnitSchedule(periodNum, periodUnits, showAlert = false) {
+  const unitsToSchedule = periodUnits.map((unit, index) => normalizeUnit(unit, index));
+  const occurrenceDates = getPeriodOccurrenceDates(periodNum);
+  const windows = [];
+  const errors = [];
+  let nextStartIndex = 0;
+
+  for (let i = 0; i < unitsToSchedule.length; i++) {
+    const unit = unitsToSchedule[i];
+    let startIndex;
+
+    if (unit.startDate) {
+      startIndex = occurrenceDates.indexOf(unit.startDate);
+      if (startIndex === -1) {
+        errors.push(`Unit ${i + 1} (${unit.name}) start date is not a class day for Period ${periodNum}.`);
+        break;
+      }
+    } else {
+      startIndex = nextStartIndex;
+    }
+
+    if (startIndex < nextStartIndex) {
+      errors.push(`Unit ${i + 1} (${unit.name}) starts inside an existing unit.`);
+      break;
+    }
+
+    if (startIndex >= occurrenceDates.length) {
+      errors.push(`Unit ${i + 1} (${unit.name}) starts after the semester ends.`);
+      break;
+    }
+
+    const endIndex = startIndex + unit.length - 1;
+    if (endIndex >= occurrenceDates.length) {
+      errors.push(`Unit ${i + 1} (${unit.name}) is longer than remaining class days in the semester.`);
+      break;
+    }
+
+    unit.startDate = occurrenceDates[startIndex];
+    windows.push({
+      unitIndex: i,
+      startIndex,
+      endIndex,
+      startDate: occurrenceDates[startIndex],
+      endDate: occurrenceDates[endIndex],
+      unit
+    });
+
+    nextStartIndex = endIndex + 1;
+  }
+
+  if (errors.length && showAlert) {
+    alert(`Unit scheduling issue:\n${errors.join("\n")}`);
+  }
+
+  return {
+    valid: errors.length === 0,
+    units: unitsToSchedule,
+    occurrenceDates,
+    windows,
+    errors
+  };
+}
+
+function getUnitScheduleForPeriod(periodNum) {
+  const periodUnits = getUnitsForPeriod(periodNum);
+  return applyUnitSchedule(periodNum, periodUnits, false);
+}
+
+function getUnitProgress(periodNum, dayCount, classDate) {
+  const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
+  const { occurrenceDates, windows } = getUnitScheduleForPeriod(periodNum);
+
+  if (!occurrenceDates.length) {
+    return {
+      periodNum,
+      dayCount,
+      courseName,
+      displayText: `${courseName}`,
+      unitIndex: null,
+      unitName: "",
+      topicName: "",
+      dayInUnit: null,
+      unitLength: null,
+      hasQuizToday: false,
+      hasTestToday: false
+    };
+  }
+
+  const currentIndex = classDate ? occurrenceDates.indexOf(classDate) : dayCount - 1;
+
+  if (currentIndex < 0 || windows.length === 0) {
+    return {
+      periodNum,
+      dayCount,
+      courseName,
+      displayText: `${courseName}`,
+      unitIndex: null,
+      unitName: "",
+      topicName: "",
+      dayInUnit: null,
+      unitLength: null,
+      hasQuizToday: false,
+      hasTestToday: false
+    };
+  }
+
+  const window = windows.find(w => currentIndex >= w.startIndex && currentIndex <= w.endIndex);
+  if (!window) {
+    return {
+      periodNum,
+      dayCount,
+      courseName,
+      displayText: `${courseName}`,
+      unitIndex: null,
+      unitName: "",
+      topicName: "",
+      dayInUnit: null,
+      unitLength: null,
+      hasQuizToday: false,
+      hasTestToday: false
+    };
+  }
+
+  const activeIndex = window.unitIndex;
+  const activeUnit = window.unit;
+  const activeLength = activeUnit.length;
+  const dayInUnit = currentIndex - window.startIndex + 1;
+
+  const unitName = (activeUnit.name || "").trim();
+  const safeDay = Math.max(1, Math.min(dayInUnit, activeLength));
+  const dayPlan = activeUnit.days?.[safeDay - 1] || { topic: "", quiz: false, test: false };
+  const topicName = (dayPlan.topic || "").trim();
+
+  let displayText;
+  if (topicName) {
+    displayText = `${courseName} • Unit ${activeIndex + 1}: ${topicName} (Day ${safeDay}/${activeLength})`;
+  } else {
+    displayText = `${courseName} • Unit ${activeIndex + 1} (Day ${safeDay}/${activeLength})`;
+  }
+
+  return {
+    periodNum,
+    dayCount,
+    courseName,
+    displayText,
+    unitIndex: activeIndex,
+    unitName: unitName || `Unit ${activeIndex + 1}`,
+    topicName,
+    dayInUnit: safeDay,
+    unitLength: activeLength,
+    hasQuizToday: !!dayPlan.quiz,
+    hasTestToday: !!dayPlan.test
+  };
+}
+
+function getClassDisplayText(periodNum, dayCount, classDate) {
+  return getUnitProgress(periodNum, dayCount, classDate).displayText;
+}
+
+function isRotationDay(label) {
+  const normalized = normalizeLetter(label);
+  return !!(normalized && ROTATION_RULES[normalized]);
+}
+
+function isHolidayLabel(label) {
+  if (!label) return false;
+  const value = String(label).toLowerCase();
+  return value.includes("no school") || value.includes("holiday") || value.includes("labor day") || value.includes("thanksgiving");
+}
+
+function buildAutoNoTestDates() {
+  const autoNoTestDates = new Set(HARD_CODED_NO_TEST_DATES);
+  const sortedDays = [...HS_ROTATION_2026].sort((a, b) => a.date.localeCompare(b.date));
+
+  for (let i = 0; i < sortedDays.length; i++) {
+    const current = sortedDays[i];
+    if (!isHolidayLabel(current.letter)) continue;
+
+    for (let j = i + 1; j < sortedDays.length; j++) {
+      const nextDay = sortedDays[j];
+      if (isRotationDay(nextDay.letter)) {
+        autoNoTestDates.add(nextDay.date);
+        break;
+      }
+    }
+  }
+
+  return autoNoTestDates;
+}
+
+const AUTO_NO_TEST_DATES = buildAutoNoTestDates();
+
+function isAutoNoTestDay(date) {
+  return AUTO_NO_TEST_DATES.has(date);
+}
+
+function getLocalTodayISO() {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+}
+
+function getRotationDayByDate(date) {
+  return HS_ROTATION_2026.find(day => day.date === date) || null;
+}
+
+function formatAgendaDateLine(date, letterText) {
+  const [year, month, day] = date.split("-").map(Number);
+  const dateObj = new Date(year, month - 1, day);
+  const prettyDate = isNaN(dateObj)
+    ? date
+    : dateObj.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  return `${prettyDate} - ${letterText}`;
+}
+
+function closeTodayAgendaModal() {
+  const backdrop = document.getElementById("todayAgendaBackdrop");
+  if (backdrop) backdrop.style.display = "none";
+}
+
+function openTodayAgendaModal() {
+  const todayISO = getLocalTodayISO();
+  const schoolDay = getRotationDayByDate(todayISO);
+  const dayNotes = loadNotesForDate(todayISO);
+  const specialDay = getSpecialDayForDate(todayISO);
+  const hardCodedTags = HARD_CODED_DAY_TAGS[todayISO] || [];
+  const noTestPolicyDay = isAutoNoTestDay(todayISO) || !!dayNotes.noTest;
+  const periods = schoolDay ? getPeriodsForDate(todayISO, schoolDay.letter) : [];
+  const dayCounts = getDayCountsForDate(todayISO, periods);
+
+  const backdrop = document.getElementById("todayAgendaBackdrop");
+  const dateLine = document.getElementById("todayAgendaDateLine");
+  const badgeRow = document.getElementById("todayAgendaBadges");
+  const body = document.getElementById("todayAgendaBody");
+
+  const letterText = schoolDay?.letter || "No HS classes";
+  dateLine.textContent = formatAgendaDateLine(todayISO, letterText);
+  badgeRow.innerHTML = "";
+  body.innerHTML = "";
+
+  if (specialDay) {
+    const specialBadge = document.createElement("span");
+    specialBadge.className = "special-day-badge";
+    specialBadge.textContent = specialDay.badgeText;
+    specialBadge.title = specialDay.label;
+    specialBadge.style.background = hexToRgba(specialDay.color, 0.45);
+    specialBadge.style.color = "#1f2937";
+    specialBadge.style.borderColor = specialDay.color;
+    badgeRow.appendChild(specialBadge);
+  }
+
+  if (FAMILY_NIGHT_DATES.has(todayISO)) {
+    const familyBadge = document.createElement("span");
+    familyBadge.className = "family-night-badge";
+    familyBadge.textContent = "Family Night";
+    badgeRow.appendChild(familyBadge);
+  }
+
+  if (noTestPolicyDay) {
+    const noTestBadge = document.createElement("span");
+    noTestBadge.className = "status-badge no-test-day";
+    noTestBadge.textContent = "NO TEST TODAY";
+    badgeRow.appendChild(noTestBadge);
+  } else if (dayNotes.isTestDay) {
+    const testBadge = document.createElement("span");
+    testBadge.className = "status-badge test-day";
+    testBadge.textContent = "TEST DAY";
+    badgeRow.appendChild(testBadge);
+  }
+
+  hardCodedTags.forEach(tag => {
+    const tagBadge = document.createElement("span");
+    tagBadge.className = "day-tag-badge";
+    tagBadge.textContent = tag;
+    badgeRow.appendChild(tagBadge);
+  });
+
+  if (!periods.length) {
+    const emptyBlock = document.createElement("div");
+    emptyBlock.className = "agenda-note empty";
+    emptyBlock.textContent = schoolDay ? "No class periods are scheduled for this day." : "No calendar entry found for today.";
+    body.appendChild(emptyBlock);
+
+    const generalNote = (dayNotes.general || "").trim();
+    if (generalNote) {
+      const general = document.createElement("div");
+      general.className = "agenda-period-card";
+      const generalTitle = document.createElement("div");
+      generalTitle.className = "agenda-period-title";
+      generalTitle.textContent = "General Note";
+      const generalText = document.createElement("div");
+      generalText.className = "agenda-note";
+      generalText.textContent = generalNote;
+      general.appendChild(generalTitle);
+      general.appendChild(generalText);
+      body.appendChild(general);
+    }
+
+    backdrop.style.display = "flex";
+    return;
+  }
+
+  const periodList = document.createElement("div");
+  periodList.className = "agenda-period-list";
+
+  periods.forEach(periodNum => {
+    const unitInfo = getUnitProgress(periodNum, dayCounts[periodNum], todayISO);
+    const card = document.createElement("div");
+    card.className = "agenda-period-card";
+
+    const title = document.createElement("div");
+    title.className = "agenda-period-title";
+    title.textContent = `${periodNum}: ${unitInfo.courseName}`;
+    card.appendChild(title);
+
+    const note = document.createElement("div");
+    const noteText = (dayNotes[periodNum] || "").trim();
+    note.className = `agenda-note ${noteText ? "" : "empty"}`.trim();
+    note.textContent = noteText ? `Note: ${noteText}` : "No notes";
+    card.appendChild(note);
+
+    const infoRow = document.createElement("div");
+    infoRow.className = "agenda-badge-row";
+
+    if (unitInfo.unitIndex !== null) {
+      const unitBadge = document.createElement("span");
+      unitBadge.className = "special-day-badge";
+      const topic = unitInfo.topicName ? `: ${unitInfo.topicName}` : "";
+      const dayCounter = (unitInfo.dayInUnit && unitInfo.unitLength)
+        ? ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})`
+        : "";
+      unitBadge.textContent = `${unitInfo.unitName || `Unit ${unitInfo.unitIndex + 1}`}${topic}${dayCounter}`;
+      infoRow.appendChild(unitBadge);
+    }
+
+    if (unitInfo.hasQuizToday) {
+      const quizBadge = document.createElement("span");
+      quizBadge.className = "assessment-badge quiz";
+      quizBadge.textContent = "Quiz";
+      infoRow.appendChild(quizBadge);
+    }
+
+    if (unitInfo.hasTestToday) {
+      const testBadge = document.createElement("span");
+      testBadge.className = "assessment-badge test";
+      testBadge.textContent = "Test";
+      infoRow.appendChild(testBadge);
+    }
+
+    if (infoRow.childElementCount) {
+      card.appendChild(infoRow);
+    }
+
+    periodList.appendChild(card);
+  });
+
+  body.appendChild(periodList);
+  backdrop.style.display = "flex";
+}
 
 
     // --- LocalStorage keys ---
@@ -623,6 +1812,28 @@ function formatDateLabel(dateStr) {
   });
 }
 
+function loadSpecialDays() {
+  const raw = localStorage.getItem(LS_SPECIAL_DAYS_KEY);
+  if (!raw) {
+    specialDays = DEFAULT_SPECIAL_DAYS.map(normalizeSpecialDay);
+    saveSpecialDays();
+    return;
+  }
+
+  try {
+    specialDays = JSON.parse(raw).map(normalizeSpecialDay);
+  } catch (e) {
+    console.warn("Failed to parse special days", e);
+    specialDays = DEFAULT_SPECIAL_DAYS.map(normalizeSpecialDay);
+    saveSpecialDays();
+  }
+}
+
+function saveSpecialDays() {
+  specialDays = specialDays.map(normalizeSpecialDay);
+  localStorage.setItem(LS_SPECIAL_DAYS_KEY, JSON.stringify(specialDays));
+}
+
 function countScheduledClassesBefore(dateLimit) {
   const counts = {};
 
@@ -642,6 +1853,70 @@ function countScheduledClassesBefore(dateLimit) {
   });
 
   return counts;
+}
+
+function countRotationDaysBefore(dateLimit) {
+  const counts = {};
+
+  HS_ROTATION_2026.forEach(day => {
+    if (day.date >= dateLimit) {
+      return;
+    }
+    const letter = normalizeLetter(day.letter);
+    if (!letter || !ROTATION_RULES[letter]) {
+      return;
+    }
+    counts[letter] = (counts[letter] || 0) + 1;
+  });
+
+  return counts;
+}
+
+function getDayCountsForDate(date, periods) {
+  const countsBefore = countScheduledClassesBefore(date);
+  const countsForDay = { ...countsBefore };
+  periods.forEach(periodNum => {
+    countsForDay[periodNum] = (countsForDay[periodNum] || 0) + 1;
+  });
+  return countsForDay;
+}
+
+function getAssessmentSchedule() {
+  const counts = {};
+  const events = [];
+
+  HS_ROTATION_2026.forEach(day => {
+    const periods = getPeriodsForDate(day.date, day.letter);
+    periods.forEach(periodNum => {
+      counts[periodNum] = (counts[periodNum] || 0) + 1;
+      const unitInfo = getUnitProgress(periodNum, counts[periodNum], day.date);
+      if (!unitInfo.hasQuizToday && !unitInfo.hasTestToday) {
+        return;
+      }
+      events.push({
+        date: day.date,
+        letter: day.letter,
+        periodNum,
+        courseName: unitInfo.courseName,
+        unitInfo,
+        isNoTestDay: isAutoNoTestDay(day.date) || !!loadNotesForDate(day.date).noTest
+      });
+    });
+  });
+
+  return events;
+}
+
+function getAssessmentWarnings(periodFilter) {
+  return getAssessmentSchedule().filter(event => event.unitInfo.hasTestToday && event.isNoTestDay && (!periodFilter || event.periodNum === periodFilter));
+}
+
+function alertAssessmentWarnings(periodFilter) {
+  const warnings = getAssessmentWarnings(periodFilter);
+  if (!warnings.length) return;
+
+  const lines = warnings.map(event => `${event.date}: ${event.courseName} test falls on a No Test day.`);
+  alert(`Warning:\n${lines.join("\n")}`);
 }
 
     // --- UI: schedule form ---
@@ -672,20 +1947,25 @@ function renderCalendar() {
   const monthTitle = document.getElementById("monthTitle");
   calendarRoot.innerHTML = "";
 
+  if (!MONTHS.length) {
+    monthTitle.textContent = "No calendar data";
+    return;
+  }
+
+  currentMonthIndex = Math.max(0, Math.min(currentMonthIndex, MONTHS.length - 1));
+
   const { year, month, days } = MONTHS[currentMonthIndex];
   const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
   const today = new Date();
   const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   classCounts = countScheduledClassesBefore(monthStart);
+  const rotationDayCounts = countRotationDaysBefore(monthStart);
 
-  monthTitle.textContent = new Date(year, month - 1).toLocaleDateString(undefined, {
-    month: "long",
-    year: "numeric"
-  });
+  monthTitle.textContent = new Date(year, month - 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
 
   const dayMap = {};
-  days.forEach(d => { dayMap[d.date] = d; });
+  days.forEach(d => dayMap[d.date] = d);
 
   const last = new Date(year, month, 0);
   const totalDays = last.getDate();
@@ -718,29 +1998,172 @@ function renderCalendar() {
     const dateObj = new Date(year, month - 1, dayNum);
     const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
     const schoolDay = dayMap[iso] || null;
+    const cycleLetter = normalizeLetter(schoolDay?.letter);
+    const dayNotes = loadNotesForDate(iso);
+    const specialDay = getSpecialDayForDate(iso);
+    const hardCodedTags = HARD_CODED_DAY_TAGS[iso] || [];
 
     const cell = document.createElement("div");
-    cell.className = `day-cell ${isWeekend ? 'weekend' : ''}`;
+    cell.className = `day-cell ${isWeekend ? 'weekend' : ''} ${!schoolDay ? 'empty' : ''}`;
     cell.dataset.date = iso;
 
+    const noTestPolicyDay = isAutoNoTestDay(iso) || !!dayNotes.noTest;
+
+    if (cycleLetter && ROTATION_RULES[cycleLetter]) {
+      cell.classList.add(`cycle-${cycleLetter}`);
+    }
     if (iso === todayISO) cell.classList.add("today");
+    if (specialDay && specialDay.appliesTo === "day") {
+      cell.style.background = hexToRgba(specialDay.color, 0.32);
+      cell.style.borderColor = specialDay.color;
+      cell.style.boxShadow = `inset 0 0 0 1px ${specialDay.color}`;
+    }
 
     const header = document.createElement("div");
     header.className = "day-cell-header";
-    const cleanDate = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-    header.textContent = cleanDate;
+    const monthAbbrev = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][month - 1];
+    const cleanDate = `${monthAbbrev}. ${dayNum}`;
+    let codedLabel = "";
+    if (cycleLetter && ROTATION_RULES[cycleLetter]) {
+      rotationDayCounts[cycleLetter] = (rotationDayCounts[cycleLetter] || 0) + 1;
+      codedLabel = ` - ${schoolDay.letter}`;
+    } else if (schoolDay?.letter) {
+      codedLabel = ` - ${schoolDay.letter}`;
+    }
+    const dateLine = document.createElement("div");
+    dateLine.className = "day-date-line";
+    dateLine.textContent = `${cleanDate}${codedLabel}`;
+
+    header.appendChild(dateLine);
+
+    const badgeRow = document.createElement("div");
+    badgeRow.className = "day-badge-row";
+    let hasAnyQuizDay = false;
+    let hasAnyTestDay = false;
+
+    if (specialDay && specialDay.appliesTo === "day") {
+      const customBadge = document.createElement("span");
+      customBadge.className = "special-day-badge";
+      customBadge.textContent = specialDay.label;
+      customBadge.title = specialDay.label;
+      customBadge.style.background = hexToRgba(specialDay.color, 0.45);
+      customBadge.style.color = "#1f2937";
+      customBadge.style.borderColor = specialDay.color;
+      badgeRow.appendChild(customBadge);
+    }
+
+    if (FAMILY_NIGHT_DATES.has(iso)) {
+      const familyNightBadge = document.createElement("span");
+      familyNightBadge.className = "family-night-badge";
+      familyNightBadge.textContent = "Family Night";
+      badgeRow.appendChild(familyNightBadge);
+    }
+
+    if (noTestPolicyDay) {
+      const noTestBadge = document.createElement("span");
+      noTestBadge.className = "status-badge no-test-day";
+      noTestBadge.textContent = "NO TEST TODAY";
+      badgeRow.appendChild(noTestBadge);
+    } else if (dayNotes.isTestDay) {
+      const testBadge = document.createElement("span");
+      testBadge.className = "status-badge test-day";
+      testBadge.textContent = "TEST DAY";
+      badgeRow.appendChild(testBadge);
+    }
+
+    hardCodedTags.forEach(tag => {
+      const tagBadge = document.createElement("span");
+      tagBadge.className = "day-tag-badge";
+      tagBadge.textContent = tag;
+      badgeRow.appendChild(tagBadge);
+    });
+
+    if (badgeRow.childElementCount > 0) {
+      header.appendChild(badgeRow);
+    }
+
     cell.appendChild(header);
 
     if (schoolDay) {
-      const rotationLetter = normalizeLetter(schoolDay.letter) || "";
-      if (rotationLetter) {
-        const rotSpan = document.createElement("span");
-        rotSpan.className = `rotation-${rotationLetter}`;
-        rotSpan.textContent = ` ${rotationLetter}`;
-        header.appendChild(rotSpan);
+      const periodsForDay = getPeriodsForDate(iso, schoolDay.letter);
+      if (periodsForDay.length) {
+        const ul = document.createElement("ul");
+        ul.className = "classes-list";
+        periodsForDay.forEach(periodNum => {
+          classCounts[periodNum] = (classCounts[periodNum] || 0) + 1;
+          const periodDayCount = classCounts[periodNum];
+          const unitInfo = getUnitProgress(periodNum, periodDayCount, iso);
+          const li = document.createElement("li");
+          li.dataset.period = String(periodNum);
+          li.dataset.unitName = (unitInfo.unitName || "").toLowerCase();
+          li.dataset.courseName = unitInfo.courseName.toLowerCase();
+
+          const classPrefix = `${periodNum}: ${unitInfo.courseName} (${periodDayCount})`;
+          let classLine = classPrefix;
+
+          if (unitInfo.unitIndex !== null) {
+            const unitLabel = unitInfo.unitName || `Unit ${unitInfo.unitIndex + 1}`;
+            const topicSuffix = unitInfo.topicName ? `: ${unitInfo.topicName}` : "";
+            const dayCounter = (unitInfo.dayInUnit && unitInfo.unitLength)
+              ? ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})`
+              : "";
+            classLine = `${classPrefix} • ${unitLabel}${topicSuffix}${dayCounter}`;
+          }
+
+          li.appendChild(document.createTextNode(classLine));
+
+          if (specialDay && specialDay.appliesTo === "periods" && specialDayAppliesToPeriod(specialDay, periodNum)) {
+            const specialBadge = document.createElement("span");
+            specialBadge.className = "special-day-badge";
+            specialBadge.textContent = specialDay.label;
+            specialBadge.title = specialDay.label;
+            specialBadge.style.background = hexToRgba(specialDay.color, 0.45);
+            specialBadge.style.color = "#1f2937";
+            specialBadge.style.borderColor = specialDay.color;
+            li.appendChild(specialBadge);
+          }
+
+          if (unitInfo.hasQuizToday) {
+            hasAnyQuizDay = true;
+            const quizBadge = document.createElement("span");
+            quizBadge.className = "assessment-badge quiz";
+            quizBadge.textContent = "Quiz";
+            quizBadge.title = "Quiz on last unit day";
+            li.appendChild(quizBadge);
+          }
+
+          if (unitInfo.hasTestToday) {
+            hasAnyTestDay = true;
+            const testBadge = document.createElement("span");
+            testBadge.className = "assessment-badge test";
+            testBadge.textContent = "Test";
+            testBadge.title = "Test on last unit day";
+            li.appendChild(testBadge);
+          }
+
+          li.classList.add(`period-${periodNum}`);
+          ul.appendChild(li);
+        });
+        cell.appendChild(ul);
       }
-    } else {
-      cell.classList.add("empty");
+    }
+
+    if (hasAnyQuizDay) {
+      const quizDayBadge = document.createElement("span");
+      quizDayBadge.className = "status-badge";
+      quizDayBadge.textContent = "QUIZ DAY";
+      badgeRow.appendChild(quizDayBadge);
+    }
+
+    if (hasAnyTestDay) {
+      const testDayBadge = document.createElement("span");
+      testDayBadge.className = "status-badge test-day";
+      testDayBadge.textContent = "TEST DAY";
+      badgeRow.appendChild(testDayBadge);
+    }
+
+    if (badgeRow.childElementCount > 0 && !header.contains(badgeRow)) {
+      header.appendChild(badgeRow);
     }
 
     cell.addEventListener("click", () => openDayModal({ date: iso, letter: schoolDay ? schoolDay.letter : "No HS classes" }));
@@ -750,7 +2173,177 @@ function renderCalendar() {
 
   calendarRoot.appendChild(monthGrid);
   localStorage.setItem(LS_CLASS_COUNT_KEY, JSON.stringify(classCounts));
-}    
+  renderSummary();
+}
+
+function openDayModal(day) {
+  currentModalDay = day;
+
+  const backdrop = document.getElementById("modalBackdrop");
+  const dateLabel = document.getElementById("modalDateLabel");
+  const letterLabel = document.getElementById("modalLetterLabel");
+  const body = document.getElementById("modalBody");
+
+  dateLabel.textContent = formatDateLabel(day.date);
+  letterLabel.textContent = ROTATION_RULES[normalizeLetter(day.letter)]
+    ? `HS letter: ${day.letter}`
+    : (day.letter || "No HS classes");
+
+  body.innerHTML = "";
+
+  const existingNotes = loadNotesForDate(day.date);
+  const autoNoTest = isAutoNoTestDay(day.date);
+  const hasSpecialEntryForDate = hasActiveSpecialEntryForDate(day.date);
+  const specialSelected = hasSpecialEntryForDate || !!existingNotes.specialDay;
+  const noTestSelected = (autoNoTest || !!existingNotes.noTest) && !specialSelected;
+  const existingSpecialDay = getSpecialDayForDate(day.date);
+
+  const periods = getPeriodsForDate(day.date, day.letter);
+  const dayCounts = getDayCountsForDate(day.date, periods);
+
+  if (periods.length === 0) {
+    const block = document.createElement("div");
+    block.className = "note-block";
+
+    const label = document.createElement("label");
+    label.textContent = "General Notes";
+    block.appendChild(label);
+
+    const textarea = document.createElement("textarea");
+    textarea.value = existingNotes.general || "";
+    textarea.dataset.period = "general";
+    block.appendChild(textarea);
+
+    body.appendChild(block);
+  }
+
+  periods.forEach(periodNum => {
+    const unitInfo = getUnitProgress(periodNum, dayCounts[periodNum], day.date);
+    const block = document.createElement("div");
+    block.className = "note-block";
+
+    const label = document.createElement("label");
+    label.textContent = unitInfo.displayText;
+    block.appendChild(label);
+
+    if (unitInfo.unitIndex !== null) {
+      const editUnitBtn = document.createElement("button");
+      editUnitBtn.type = "button";
+      editUnitBtn.className = "secondary";
+      editUnitBtn.textContent = "Edit Unit";
+      editUnitBtn.addEventListener("click", () => {
+        closeDayModal();
+        openUnitDaysEditor(periodNum, unitInfo.unitIndex);
+      });
+      block.appendChild(editUnitBtn);
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = existingNotes[periodNum] || "";
+    textarea.dataset.period = periodNum;
+    block.appendChild(textarea);
+
+    body.appendChild(block);
+  });
+
+  // Test Day Options (with No Test)
+  const testBlock = document.createElement("div");
+  testBlock.className = "note-block";
+  testBlock.innerHTML = `
+    <label>Test Day Status</label><br/>
+    <label><input type="radio" name="testStatus" value="test" ${existingNotes.isTestDay && !noTestSelected && !specialSelected ? 'checked' : ''}> Test Day</label><br/>
+    <label><input type="radio" name="testStatus" value="noTest" ${noTestSelected ? 'checked' : ''}> No Tests May Be Given Today</label><br/>
+    <label><input type="radio" name="testStatus" value="special" ${specialSelected ? 'checked' : ''}> Special Day</label><br/>
+    <label><input type="radio" name="testStatus" value="normal" ${!existingNotes.isTestDay && !noTestSelected && !specialSelected ? 'checked' : ''}> Normal Day</label>
+  `;
+
+  if (autoNoTest) {
+    const policyNote = document.createElement("div");
+    policyNote.className = "small";
+    policyNote.textContent = "Policy day: No tests may be given today.";
+    testBlock.appendChild(policyNote);
+
+    const testOption = testBlock.querySelector('input[name="testStatus"][value="test"]');
+    if (testOption) testOption.disabled = true;
+  }
+
+  if (hasSpecialEntryForDate) {
+    const specialNote = document.createElement("div");
+    specialNote.className = "small";
+    specialNote.textContent = "This date appears in Special Days and is treated as Special Day status.";
+    testBlock.appendChild(specialNote);
+
+    const normalOption = testBlock.querySelector('input[name="testStatus"][value="normal"]');
+    if (normalOption) normalOption.disabled = true;
+  }
+
+  body.appendChild(testBlock);
+
+  const specialDayBlock = document.createElement("div");
+  specialDayBlock.className = "note-block modal-special-day";
+  const specialPeriods = existingSpecialDay?.periods || [];
+  const specialAppliesTo = existingSpecialDay?.appliesTo || "day";
+  specialDayBlock.innerHTML = `
+    <label class="check-row"><input type="checkbox" id="modalSpecialDayEnabled" ${existingSpecialDay ? "checked" : ""}> Special Day for this date</label>
+    <div id="modalSpecialDayFields" style="margin-top:0.5rem; ${existingSpecialDay ? "" : "display:none;"}">
+      <div class="special-day-grid">
+        <div>
+          <label>Label</label>
+          <input id="modalSpecialDayLabel" type="text" value="${existingSpecialDay?.label || "Special Day"}">
+        </div>
+        <div>
+          <label>Badge</label>
+          <input id="modalSpecialDayBadge" type="text" maxlength="6" value="${existingSpecialDay?.badgeText || "SD"}">
+        </div>
+        <div>
+          <label>Color</label>
+          <input id="modalSpecialDayColor" type="color" value="${existingSpecialDay?.color || "#e9d5ff"}">
+        </div>
+        <div>
+          <label>Applies to</label>
+          <select id="modalSpecialDayAppliesTo">
+            <option value="day" ${specialAppliesTo === "day" ? "selected" : ""}>Whole day</option>
+            <option value="periods" ${specialAppliesTo === "periods" ? "selected" : ""}>Specific periods</option>
+          </select>
+        </div>
+      </div>
+      <div id="modalSpecialDayPeriods" style="margin-top:0.5rem; ${specialAppliesTo === "periods" ? "" : "display:none;"}">
+        <label>Periods</label>
+        <div class="print-filter-checkboxes">
+          ${Array.from({ length: 7 }, (_, idx) => idx + 1).map(periodNum => `<label class="check-row"><input type="checkbox" value="${periodNum}" ${specialPeriods.includes(periodNum) ? "checked" : ""}> Period ${periodNum}</label>`).join("")}
+        </div>
+      </div>
+      <div class="special-day-actions">
+        <button type="button" class="secondary" id="removeModalSpecialDayBtn">Remove Special Day</button>
+      </div>
+    </div>
+  `;
+
+  body.appendChild(specialDayBlock);
+
+  const specialEnabled = document.getElementById("modalSpecialDayEnabled");
+  const specialFields = document.getElementById("modalSpecialDayFields");
+  const specialApplies = document.getElementById("modalSpecialDayAppliesTo");
+  const specialPeriodsWrap = document.getElementById("modalSpecialDayPeriods");
+  const removeModalSpecialDayBtn = document.getElementById("removeModalSpecialDayBtn");
+
+  specialEnabled.addEventListener("change", () => {
+    specialFields.style.display = specialEnabled.checked ? "block" : "none";
+  });
+
+  specialApplies.addEventListener("change", () => {
+    specialPeriodsWrap.style.display = specialApplies.value === "periods" ? "block" : "none";
+  });
+
+  removeModalSpecialDayBtn.addEventListener("click", () => {
+    removeSpecialDayByDate(day.date);
+    closeDayModal();
+    renderSpecialDays();
+    renderCalendar();
+  });
+
+  backdrop.style.display = "flex";
+}
 
 function closeDayModal() {
       const backdrop = document.getElementById("modalBackdrop");
@@ -774,12 +2367,40 @@ function closeDayModal() {
 
       // New radio button handling
       const testStatus = document.querySelector('input[name="testStatus"]:checked')?.value || "normal";
-      notesObj.isTestDay = testStatus === "test";
-      notesObj.noTest = testStatus === "noTest";
+      const autoNoTest = isAutoNoTestDay(currentModalDay.date);
+      const specialDayStatus = hasActiveSpecialEntryForDate(currentModalDay.date) || testStatus === "special";
+      notesObj.specialDay = specialDayStatus;
+      notesObj.isTestDay = !autoNoTest && !specialDayStatus && testStatus === "test";
+      notesObj.noTest = autoNoTest || specialDayStatus || testStatus === "noTest";
+
+      const specialEnabled = document.getElementById("modalSpecialDayEnabled")?.checked;
+      if (specialEnabled) {
+        const appliesTo = document.getElementById("modalSpecialDayAppliesTo")?.value || "day";
+        const periods = appliesTo === "periods"
+          ? Array.from(document.querySelectorAll('#modalSpecialDayPeriods input[type="checkbox"]:checked')).map(input => Number(input.value))
+          : [];
+        upsertSpecialDay({
+          id: getSpecialDayForDate(currentModalDay.date)?.id || createId("special"),
+          date: currentModalDay.date,
+          label: document.getElementById("modalSpecialDayLabel")?.value || "Special Day",
+          badgeText: document.getElementById("modalSpecialDayBadge")?.value || "SD",
+          color: document.getElementById("modalSpecialDayColor")?.value || "#e9d5ff",
+          appliesTo,
+          periods
+        });
+      } else {
+        removeSpecialDayByDate(currentModalDay.date);
+      }
 
       saveNotesForDate(currentModalDay.date, notesObj);
+      const dayWarnings = getAssessmentWarnings().filter(event => event.date === currentModalDay.date);
+      if (notesObj.noTest && dayWarnings.length) {
+        alert(`Warning: ${dayWarnings.map(event => `${event.courseName} has a unit test on this No Test day.`).join(" ")}`);
+      }
       closeDayModal();
+      renderSpecialDays();
       renderCalendar();
+      renderSummary();
     }
   
     function handleClearNotes() {
@@ -787,6 +2408,7 @@ function closeDayModal() {
       localStorage.removeItem(getNotesKey(currentModalDay.date));
       closeDayModal();
       renderCalendar();
+      renderSummary();
     }
 
     // === NEW: UNIT MANAGEMENT ===
@@ -795,10 +2417,28 @@ let units = {};
 
 function loadUnits() {
   const raw = localStorage.getItem(LS_UNITS_KEY);
-  if (raw) units = JSON.parse(raw);
+  if (!raw) {
+    units = {};
+    return;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    units = Object.fromEntries(
+      Object.entries(parsed).map(([period, periodUnits]) => [
+        period,
+        Array.isArray(periodUnits) ? periodUnits.map((unit, index) => normalizeUnit(unit, index)) : []
+      ])
+    );
+  } catch (e) {
+    console.warn("Failed to parse units", e);
+    units = {};
+  }
 }
 
 function saveUnits() {
+  Object.keys(units).forEach(period => {
+    units[period] = (units[period] || []).map((unit, index) => normalizeUnit(unit, index));
+  });
   localStorage.setItem(LS_UNITS_KEY, JSON.stringify(units));
 }
 
@@ -816,54 +2456,500 @@ function renderUnits() {
     const courseName = teacherSchedule[p] || `Period ${p}`;
 
     const div = document.createElement("div");
-    div.innerHTML = `<strong>Period ${p} – ${courseName}</strong><div id="units-list-${p}"></div>`;
+    div.className = "unit-card";
+    div.innerHTML = `
+      <div class="unit-heading">Period ${p} - ${courseName}</div>
+      <div class="unit-grid">
+        <div>
+          <label>Unit Name</label>
+          <input type="text" id="newUnitName-${p}" placeholder="Exploring Data">
+        </div>
+        <div>
+          <label>Length (days)</label>
+          <input type="number" id="newUnitLength-${p}" min="1" value="10">
+        </div>
+      </div>
+      <div class="unit-actions">
+        <button onclick="addUnitFromInputs(${p})">+ Add Unit</button>
+      </div>
+      <div id="units-list-${p}"></div>
+    `;
     container.appendChild(div);
 
     const list = document.getElementById(`units-list-${p}`);
     periodUnits.forEach((unit, i) => {
+      const normalized = normalizeUnit(unit, i);
       const row = document.createElement("div");
-      row.className = "unit-row";
+      row.className = "unit-row unit-card";
       row.innerHTML = `
-        <input type="text" value="${unit.name || 'Unit ' + (i+1)}" style="flex:1" onchange="updateUnitName(${p},${i}, this.value)">
-        <input type="number" value="${unit.length || 10}" style="width:70px" onchange="updateUnitLength(${p},${i}, this.value)">
-        <button onclick="removeUnit(${p},${i})" class="secondary">×</button>
+        <div class="unit-grid">
+          <div>
+            <label>Unit Name</label>
+            <input id="unitName-${p}-${i}" type="text" value="${normalized.name}">
+          </div>
+          <div>
+            <label>Length (days)</label>
+            <input id="unitLength-${p}-${i}" type="number" min="1" value="${normalized.length}">
+          </div>
+          <div>
+            <label>Start Date</label>
+            <input id="unitStart-${p}-${i}" type="date" value="${normalized.startDate || ""}">
+          </div>
+        </div>
+        <div class="unit-actions">
+          <button onclick="saveUnitInfo(${p}, ${i})">Save Info</button>
+          <button onclick="openUnitDaysEditor(${p}, ${i})">Edit Days</button>
+          <button onclick="removeUnit(${p},${i})" class="secondary">Remove Unit</button>
+        </div>
       `;
       list.appendChild(row);
     });
   }
 }
 
+function renderSpecialDays() {
+  const container = document.getElementById("specialDaysContainer");
+  container.innerHTML = "";
+
+  const unifiedEntries = [];
+  const seen = new Set();
+
+  function pushEntry(entry) {
+    const key = buildSpecialEntryKey(entry.date, entry.badgeText, entry.label);
+    if (hiddenSpecialEntryKeys.has(key)) return;
+    if (seen.has(key)) return;
+    seen.add(key);
+    unifiedEntries.push({ ...entry, key });
+  }
+
+  specialDays.forEach(specialDay => {
+    pushEntry({
+      id: specialDay.id,
+      date: specialDay.date,
+      label: specialDay.label || "Special Day",
+      badgeText: specialDay.badgeText || "SD",
+      color: specialDay.color || "#e9d5ff",
+      source: "special"
+    });
+  });
+
+  FAMILY_NIGHT_DATES.forEach(date => {
+    pushEntry({
+      date,
+      label: "Family Night / Late Arrival",
+      badgeText: "FN",
+      color: "#e9d5ff",
+      source: "generated"
+    });
+  });
+
+  AUTO_NO_TEST_DATES.forEach(date => {
+    pushEntry({
+      date,
+      label: "No Test Policy Day",
+      badgeText: "NT",
+      color: "#bbf7d0",
+      source: "generated"
+    });
+  });
+
+  HS_ROTATION_2026.forEach(day => {
+    if (!isHolidayLabel(day.letter)) return;
+    pushEntry({
+      date: day.date,
+      label: day.letter,
+      badgeText: "HOL",
+      color: "#d1d5db",
+      source: "generated"
+    });
+  });
+
+  Object.entries(HARD_CODED_DAY_TAGS).forEach(([date, tags]) => {
+    tags.forEach(tag => {
+      pushEntry({
+        date,
+        label: tag,
+        badgeText: "TAG",
+        color: "#bfdbfe",
+        source: "generated"
+      });
+    });
+  });
+
+  unifiedEntries.sort((a, b) => a.date.localeCompare(b.date) || a.label.localeCompare(b.label));
+
+  if (!unifiedEntries.length) {
+    const empty = document.createElement("div");
+    empty.className = "small";
+    empty.textContent = "No special days added yet.";
+    container.appendChild(empty);
+    return;
+  }
+
+  unifiedEntries.forEach(entry => {
+      const row = document.createElement("div");
+      row.className = "special-day-row";
+
+      const dateCell = document.createElement("div");
+      dateCell.className = "special-day-row-date";
+      dateCell.textContent = entry.date || "(No date)";
+      if (entry.date) {
+        dateCell.classList.add("clickable");
+        dateCell.title = "Open this day";
+        dateCell.addEventListener("click", () => {
+          const schoolDay = getRotationDayByDate(entry.date);
+          openDayModal({
+            date: entry.date,
+            letter: schoolDay ? schoolDay.letter : "No HS classes"
+          });
+        });
+      }
+
+      const labelWrap = document.createElement("div");
+      labelWrap.className = "special-day-label-wrap";
+
+      const badge = document.createElement("span");
+      badge.className = "special-day-badge";
+      badge.style.background = hexToRgba(entry.color, 0.45);
+      badge.style.borderColor = entry.color;
+      badge.style.color = "#1f2937";
+      badge.textContent = entry.badgeText || "SD";
+
+      const label = document.createElement("span");
+      label.className = "special-day-row-label";
+      label.textContent = entry.label || "Special Day";
+
+      labelWrap.appendChild(badge);
+      labelWrap.appendChild(label);
+
+      const swatch = document.createElement("span");
+      swatch.className = "special-day-swatch";
+      swatch.style.background = entry.color || "#e9d5ff";
+
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "secondary";
+      removeBtn.textContent = "Remove";
+      removeBtn.addEventListener("click", () => {
+        if (entry.source === "special") {
+          removeSpecialDay(entry.id);
+          return;
+        }
+        hideSpecialEntryByKey(entry.key);
+        renderSpecialDays();
+      });
+
+      row.appendChild(dateCell);
+      row.appendChild(labelWrap);
+      row.appendChild(swatch);
+      row.appendChild(removeBtn);
+      container.appendChild(row);
+    });
+}
+
 window.addUnit = function(period) {
   if (!units[period]) units[period] = [];
-  units[period].push({ name: `Unit ${units[period].length + 1}`, length: 10 });
+  const preview = applyUnitSchedule(period, units[period], false);
+  const defaultStartDate = preview.valid && preview.windows.length
+    ? preview.occurrenceDates[Math.min(preview.windows[preview.windows.length - 1].endIndex + 1, preview.occurrenceDates.length - 1)] || ""
+    : "";
+  const newUnits = [...units[period], normalizeUnit({ name: `Unit ${units[period].length + 1}`, length: 10, startDate: defaultStartDate }, units[period].length)];
+  const validated = applyUnitSchedule(period, newUnits, true);
+  if (!validated.valid) return;
+  units[period] = validated.units;
   saveUnits();
   renderUnits();
+  renderCalendar();
+  renderSummary();
+  openUnitDaysEditor(period, units[period].length - 1);
+  alertAssessmentWarnings(period);
 };
 
-window.updateUnitName = function(period, index, name) {
-  units[period][index].name = name;
+window.addUnitFromInputs = function(period) {
+  const nameInput = document.getElementById(`newUnitName-${period}`);
+  const lengthInput = document.getElementById(`newUnitLength-${period}`);
+  const name = (nameInput?.value || "").trim();
+  const length = Math.max(1, parseInt(lengthInput?.value, 10) || 1);
+
+  if (!name) {
+    alert("Please enter a unit name.");
+    return;
+  }
+
+  if (!units[period]) units[period] = [];
+  const preview = applyUnitSchedule(period, units[period], false);
+  const defaultStartDate = preview.valid && preview.windows.length
+    ? preview.occurrenceDates[Math.min(preview.windows[preview.windows.length - 1].endIndex + 1, preview.occurrenceDates.length - 1)] || ""
+    : "";
+  const candidate = [...units[period], normalizeUnit({ name, length, startDate: defaultStartDate }, units[period].length)];
+  const validated = applyUnitSchedule(period, candidate, true);
+  if (!validated.valid) {
+    return;
+  }
+  units[period] = validated.units;
   saveUnits();
+  renderUnits();
+  renderCalendar();
+  renderSummary();
+  openUnitDaysEditor(period, units[period].length - 1);
 };
 
-window.updateUnitLength = function(period, index, length) {
-  units[period][index].length = parseInt(length) || 10;
+window.saveUnitInfo = function(period, index) {
+  const periodUnits = [...getUnitsForPeriod(period)];
+  const unit = periodUnits[index];
+  if (!unit) return;
+
+  const nameInput = document.getElementById(`unitName-${period}-${index}`);
+  const lengthInput = document.getElementById(`unitLength-${period}-${index}`);
+  const startInput = document.getElementById(`unitStart-${period}-${index}`);
+
+  const updated = normalizeUnit({
+    ...unit,
+    name: (nameInput?.value || unit.name || `Unit ${index + 1}`).trim(),
+    length: Math.max(1, parseInt(lengthInput?.value, 10) || unit.length || 1),
+    startDate: startInput?.value || ""
+  }, index);
+
+  periodUnits[index] = updated;
+  const validated = applyUnitSchedule(period, periodUnits, true);
+  if (!validated.valid) {
+    return;
+  }
+
+  units[period] = validated.units;
   saveUnits();
+  renderUnits();
+  renderCalendar();
+  renderSummary();
+  alertAssessmentWarnings(period);
 };
+
+window.choosePeriodForNewUnit = function() {
+  const response = prompt("Add unit to which period? Enter 1-7.", "1");
+  if (response === null) return;
+  const period = parseInt(response, 10);
+  if (!Number.isInteger(period) || period < 1 || period > 7) {
+    alert("Please enter a period number from 1 to 7.");
+    return;
+  }
+  addUnit(period);
+};
+
+let currentUnitEditor = null;
+
+window.openUnitDaysEditor = function(period, index) {
+  const unit = getUnitsForPeriod(period)[index];
+  if (!unit) return;
+
+  const normalized = normalizeUnit(unit, index);
+  currentUnitEditor = { period, index };
+
+  const backdrop = document.getElementById("unitDaysBackdrop");
+  const title = document.getElementById("unitDaysTitle");
+  const tbody = document.getElementById("unitDaysTableBody");
+  title.textContent = `Period ${period} - ${normalized.name}`;
+  tbody.innerHTML = "";
+
+  normalized.days.forEach((dayPlan, dayIndex) => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${dayIndex + 1}</td>
+      <td><input type="text" data-day-index="${dayIndex}" class="unit-day-topic" value="${dayPlan.topic || ""}" placeholder="Optional lesson/topic"></td>
+      <td style="text-align:center;"><input type="checkbox" data-day-index="${dayIndex}" class="unit-day-quiz" ${dayPlan.quiz ? "checked" : ""}></td>
+      <td style="text-align:center;"><input type="checkbox" data-day-index="${dayIndex}" class="unit-day-test" ${dayPlan.test ? "checked" : ""}></td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  backdrop.style.display = "flex";
+};
+
+function closeUnitDaysEditor() {
+  document.getElementById("unitDaysBackdrop").style.display = "none";
+  currentUnitEditor = null;
+}
+
+function saveUnitDaysEditor() {
+  if (!currentUnitEditor) return;
+  const { period, index } = currentUnitEditor;
+  const unit = getUnitsForPeriod(period)[index];
+  if (!unit) return;
+
+  const normalized = normalizeUnit(unit, index);
+  const topics = Array.from(document.querySelectorAll("#unitDaysTableBody .unit-day-topic"));
+  const quizChecks = Array.from(document.querySelectorAll("#unitDaysTableBody .unit-day-quiz"));
+  const testChecks = Array.from(document.querySelectorAll("#unitDaysTableBody .unit-day-test"));
+
+  normalized.days = normalized.days.map((dayPlan, dayIndex) => ({
+    ...dayPlan,
+    topic: (topics[dayIndex]?.value || "").trim(),
+    quiz: !!quizChecks[dayIndex]?.checked,
+    test: !!testChecks[dayIndex]?.checked
+  }));
+
+  const previousUnit = units[period][index];
+  const periodUnits = [...getUnitsForPeriod(period)];
+  periodUnits[index] = normalized;
+  const validated = applyUnitSchedule(period, periodUnits, true);
+  if (!validated.valid) {
+    return;
+  }
+
+  units[period] = validated.units;
+  const unitWarnings = getAssessmentWarnings(period).filter(event => event.unitInfo.unitIndex === index);
+  if (unitWarnings.length) {
+    const warningLines = unitWarnings.map(event => `${event.date}: ${event.courseName} test lands on a No Test day.`);
+    const proceed = confirm(`Warning: This unit creates test conflicts.\n\n${warningLines.join("\n")}\n\nSave anyway?`);
+    if (!proceed) {
+      units[period][index] = previousUnit;
+      return;
+    }
+  }
+
+  saveUnits();
+  closeUnitDaysEditor();
+  renderUnits();
+  renderCalendar();
+  renderSummary();
+  alertAssessmentWarnings(period);
+}
 
 window.removeUnit = function(period, index) {
   units[period].splice(index, 1);
   saveUnits();
   renderUnits();
+  renderCalendar();
+  renderSummary();
+};
+
+window.addSpecialDay = function() {
+  const date = prompt("Date (YYYY-MM-DD):", "") || "";
+  if (!date) return;
+
+  const label = (prompt("Label:", "Special Day") || "Special Day").trim();
+  const badgeText = (prompt("Badge text (up to 6 chars):", "SD") || "SD").trim().slice(0, 6).toUpperCase() || "SD";
+  const colorInput = (prompt("Color hex (optional):", "#e9d5ff") || "#e9d5ff").trim();
+  const color = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(colorInput) ? colorInput : "#e9d5ff";
+
+  specialDays.push(normalizeSpecialDay({
+    id: createId("special"),
+    date,
+    label,
+    badgeText,
+    color,
+    appliesTo: "day",
+    periods: []
+  }));
+  unhideSpecialEntryByKey(buildSpecialEntryKey(date, badgeText, label));
+  saveSpecialDays();
+  renderSpecialDays();
+  renderCalendar();
+};
+
+window.updateSpecialDayField = function(index, field, value) {
+  const specialDay = specialDays[index];
+  if (!specialDay) return;
+  specialDay[field] = field === "badgeText" ? value.slice(0, 6).toUpperCase() : value;
+  if (field === "appliesTo" && value === "day") {
+    specialDay.periods = [];
+  }
+  saveSpecialDays();
+  renderSpecialDays();
+  renderCalendar();
+};
+
+window.toggleSpecialDayPeriod = function(index, periodNum, checked) {
+  const specialDay = specialDays[index];
+  if (!specialDay) return;
+  const set = new Set(specialDay.periods || []);
+  if (checked) set.add(periodNum);
+  else set.delete(periodNum);
+  specialDay.periods = Array.from(set).sort((a, b) => a - b);
+  saveSpecialDays();
+  renderSpecialDays();
+  renderCalendar();
+};
+
+window.removeSpecialDay = function(index) {
+  const itemIndex = typeof index === "string"
+    ? specialDays.findIndex(day => day.id === index)
+    : Number(index);
+
+  if (itemIndex < 0 || itemIndex >= specialDays.length) return;
+
+  specialDays.splice(itemIndex, 1);
+  saveSpecialDays();
+  renderSpecialDays();
+  renderCalendar();
 };
 
 function renderSummary() {
-  const total = Object.values(units).flat().length;
-  document.getElementById("summaryStats").innerHTML = `<p><strong>Total Units:</strong> ${total}</p>`;
+  let totalUnits = Object.values(units).flat().length;
+  const totalSchoolDays = new Set(
+    HS_ROTATION_2026
+      .filter(day => getPeriodsForDate(day.date, day.letter).length > 0)
+      .map(day => day.date)
+  ).size;
+  const todayISO = new Date().toISOString().split("T")[0];
+  const upcomingAssessments = getAssessmentSchedule()
+    .filter(event => event.date >= todayISO)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.periodNum - b.periodNum);
+  const warnings = getAssessmentWarnings();
+
+  let html = `
+    <p><strong>Total Units Defined:</strong> ${totalUnits}</p>
+    <p><strong>Total School Days In Semester:</strong> ${totalSchoolDays}</p>
+    <hr>
+    <p><strong>Upcoming Quizzes / Tests:</strong></p>
+    <ul id="testDaysList" style="padding-left:1.2rem; font-size:0.85rem;"></ul>
+    <p><strong>Warnings:</strong></p>
+    <ul id="warningList" style="padding-left:1.2rem; font-size:0.85rem;"></ul>
+  `;
+
+  document.getElementById("summaryStats").innerHTML = html;
+
+  // Populate upcoming test days
+  const testList = document.getElementById("testDaysList");
+  testList.innerHTML = "";
+  if (!upcomingAssessments.length) {
+    const li = document.createElement("li");
+    li.textContent = "No upcoming quizzes or tests.";
+    testList.appendChild(li);
+  } else {
+    upcomingAssessments.forEach(event => {
+      const li = document.createElement("li");
+      const parts = [];
+      if (event.unitInfo.hasQuizToday) parts.push("Quiz");
+      if (event.unitInfo.hasTestToday) parts.push("Test");
+      const unitPart = event.unitInfo.unitName ? `${event.unitInfo.unitName}` : "Unit";
+      const topicPart = event.unitInfo.topicName ? ` - ${event.unitInfo.topicName}` : "";
+      const dayPart = event.unitInfo.dayInUnit && event.unitInfo.unitLength
+        ? ` (Day ${event.unitInfo.dayInUnit}/${event.unitInfo.unitLength})`
+        : "";
+      li.textContent = `${event.date} - P${event.periodNum} ${event.courseName}: ${parts.join(" & ")} - ${unitPart}${topicPart}${dayPart}`;
+      testList.appendChild(li);
+    });
+  }
+
+  const warningList = document.getElementById("warningList");
+  warningList.innerHTML = "";
+  if (!warnings.length) {
+    const li = document.createElement("li");
+    li.textContent = "No test conflicts detected.";
+    warningList.appendChild(li);
+  } else {
+    warnings.forEach(event => {
+      const li = document.createElement("li");
+      li.className = "warning-text";
+      li.textContent = `${event.date} - P${event.periodNum} ${event.courseName} test falls on a No Test day.`;
+      warningList.appendChild(li);
+    });
+  }
 }
 document.getElementById("backupBtn").addEventListener("click", () => {
   const data = {
     schedule: teacherSchedule,
     units: units,
+    specialDays: specialDays,
     notes: Object.keys(localStorage)
       .filter(k => k.startsWith(LS_NOTES_KEY_PREFIX))
       .reduce((acc, k) => {
@@ -893,6 +2979,7 @@ document.getElementById("restoreInput").addEventListener("change", async (e) => 
 
   if (data.schedule) teacherSchedule = data.schedule;
   if (data.units) units = data.units;
+  if (data.specialDays) specialDays = data.specialDays.map(normalizeSpecialDay);
 
   // Restore notes
   Object.keys(localStorage).filter(k => k.startsWith(LS_NOTES_KEY_PREFIX)).forEach(k => localStorage.removeItem(k));
@@ -902,35 +2989,145 @@ document.getElementById("restoreInput").addEventListener("change", async (e) => 
 
   saveScheduleToStorage();
   saveUnits();
+  saveSpecialDays();
   renderUnits();
+  renderSpecialDays();
   renderSummary();
   renderCalendar();
   alert("Data restored successfully!");
 });
 
 document.getElementById("printCalendarBtn").addEventListener("click", () => {
-  const period = prompt("Enter period number to filter (1-7), or leave blank for all:", "");
-  const unitName = prompt("Filter by unit name (partial match), or leave blank for all:", "");
+  openPrintFilterModal();
+});
+
+function populatePrintFilters() {
+  const unitFilter = document.getElementById("printUnitFilter");
+  const periodFilters = document.getElementById("printPeriodFilters");
+  const selectedUnit = unitFilter.value;
+  const selectedPeriods = new Set(
+    Array.from(periodFilters.querySelectorAll('input[type="checkbox"]:checked')).map(input => input.value)
+  );
+
+  const unitNames = Array.from(new Set(
+    Object.values(units)
+      .flat()
+      .map(unit => (unit?.name || "").trim())
+      .filter(Boolean)
+  )).sort((a, b) => a.localeCompare(b));
+
+  unitFilter.innerHTML = `<option value="">All units</option>${unitNames.map(name => `<option value="${name}">${name}</option>`).join("")}`;
+  unitFilter.value = selectedUnit;
+
+  periodFilters.innerHTML = Array.from({ length: 7 }, (_, idx) => {
+    const periodNum = idx + 1;
+    return `<label class="check-row"><input type="checkbox" value="${periodNum}" ${selectedPeriods.size === 0 || selectedPeriods.has(String(periodNum)) ? "checked" : ""}> Period ${periodNum}</label>`;
+  }).join("");
+}
+
+function openPrintFilterModal() {
+  populatePrintFilters();
+  document.getElementById("printFilterBackdrop").style.display = "flex";
+}
+
+function closePrintFilterModal() {
+  document.getElementById("printFilterBackdrop").style.display = "none";
+}
+
+function switchHelpSection(sectionName) {
+  document.querySelectorAll(".help-tab-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.helpSection === sectionName);
+  });
+  document.querySelectorAll(".help-section").forEach(section => {
+    section.classList.toggle("active", section.dataset.helpSection === sectionName);
+  });
+}
+
+function openHelp(sectionName = "welcome") {
+  switchHelpSection(sectionName);
+  document.getElementById("helpBackdrop").style.display = "flex";
+}
+
+function closeHelp() {
+  const hideWelcome = document.getElementById("hideWelcomeCheckbox")?.checked;
+  if (hideWelcome) {
+    localStorage.setItem(LS_HIDE_WELCOME_KEY, "true");
+  }
+  document.getElementById("helpBackdrop").style.display = "none";
+}
+
+function initCollapsibleSections() {
+  const defaultCollapsed = {
+    schedule: false,
+    rotation: true,
+    units: false,
+    special: true,
+    summary: true
+  };
+
+  let saved = {};
+  try {
+    saved = JSON.parse(localStorage.getItem(LS_COLLAPSED_SECTIONS_KEY) || "{}");
+  } catch {
+    saved = {};
+  }
+
+  const state = { ...defaultCollapsed, ...saved };
+
+  const applyState = () => {
+    localStorage.setItem(LS_COLLAPSED_SECTIONS_KEY, JSON.stringify(state));
+  };
+
+  document.querySelectorAll(".config-section").forEach(section => {
+    const key = section.dataset.sectionKey;
+    const toggle = section.querySelector(".config-section-toggle");
+    if (!key || !toggle) return;
+
+    section.classList.toggle("collapsed", !!state[key]);
+
+    toggle.addEventListener("click", () => {
+      state[key] = !state[key];
+      section.classList.toggle("collapsed", !!state[key]);
+      applyState();
+    });
+  });
+
+  applyState();
+}
+
+function applyPrintFilters() {
+  const selectedUnit = document.getElementById("printUnitFilter").value.toLowerCase();
+  const selectedPeriods = Array.from(document.querySelectorAll('#printPeriodFilters input[type="checkbox"]:checked')).map(input => input.value);
 
   let html = `<h1>${document.getElementById("monthTitle").textContent}</h1>`;
-
-  if (period) html += `<p><strong>Showing only Period ${period}</strong></p>`;
-  if (unitName) html += `<p><strong>Unit filter: ${unitName}</strong></p>`;
-
+  if (selectedPeriods.length && selectedPeriods.length < 7) {
+    html += `<p><strong>Periods:</strong> ${selectedPeriods.join(", ")}</p>`;
+  }
+  if (selectedUnit) {
+    html += `<p><strong>Unit:</strong> ${selectedUnit}</p>`;
+  }
   html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;">`;
 
-  // Clone current calendar and filter
-  const cells = document.querySelectorAll(".day-cell");
-  cells.forEach(cell => {
-    let keep = true;
-    const content = cell.textContent;
+  document.querySelectorAll("#calendarGrid .day-cell").forEach(cell => {
+    const clone = cell.cloneNode(true);
+    const items = Array.from(clone.querySelectorAll("li"));
 
-    if (period && !content.includes(`Period ${period}`)) keep = false;
-    if (unitName && !content.toLowerCase().includes(unitName.toLowerCase())) keep = false;
+    if (items.length) {
+      items.forEach(item => {
+        const matchesPeriod = !selectedPeriods.length || selectedPeriods.includes(item.dataset.period || "");
+        const matchesUnit = !selectedUnit || (item.dataset.unitName || "").includes(selectedUnit);
+        if (!matchesPeriod || !matchesUnit) {
+          item.remove();
+        }
+      });
 
-    if (keep) {
-      html += cell.outerHTML;
+      const remaining = clone.querySelectorAll("li").length;
+      if (!remaining && (selectedPeriods.length || selectedUnit)) {
+        return;
+      }
     }
+
+    html += clone.outerHTML;
   });
 
   html += `</div>`;
@@ -942,35 +3139,95 @@ document.getElementById("printCalendarBtn").addEventListener("click", () => {
     <style>
       body { font-family: Arial, sans-serif; margin: 20px; }
       .day-cell { border: 1px solid #ccc; padding: 8px; min-height: 140px; break-inside: avoid; }
-      .day-cell-header { font-weight: bold; margin-bottom: 6px; }
+      .day-cell-header { font-weight: bold; margin-bottom: 6px; text-align: center; }
     </style>
     </head>
     <body>${html}</body>
     </html>
   `);
   printWindow.document.close();
+  closePrintFilterModal();
   setTimeout(() => printWindow.print(), 500);
-});
+}
 
 document.getElementById("exportTestsBtn").addEventListener("click", () => {
-  alert("Test days export coming soon (we'll make a nice list next).");
+  let output = "=== TEST DAYS BY CLASS ===\n\n";
+  const testsByClass = {};
+
+  const testDates = Object.keys(localStorage)
+    .filter(k => k.startsWith(LS_NOTES_KEY_PREFIX))
+    .map(k => k.replace(LS_NOTES_KEY_PREFIX + "-", ""))
+    .filter(date => {
+      try {
+        const notes = JSON.parse(localStorage.getItem(getNotesKey(date)) || "{}");
+        return !!notes.isTestDay;
+      } catch {
+        return false;
+      }
+    })
+    .sort();
+
+  testDates.forEach(date => {
+    const schoolDay = HS_ROTATION_2026.find(d => d.date === date);
+    const letter = normalizeLetter(schoolDay?.letter);
+    const periods = ROTATION_RULES[letter] || [];
+
+    if (periods.length === 0) {
+      const fallback = "Unscheduled / Other";
+      if (!testsByClass[fallback]) testsByClass[fallback] = [];
+      testsByClass[fallback].push(`${date}`);
+      return;
+    }
+
+    periods.forEach(periodNum => {
+      const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
+      if (!testsByClass[courseName]) testsByClass[courseName] = [];
+      testsByClass[courseName].push(`${date} (Period ${periodNum}${letter ? `, ${letter} day` : ""})`);
+    });
+  });
+
+  const classNames = Object.keys(testsByClass).sort((a, b) => a.localeCompare(b));
+  if (classNames.length === 0) {
+    output += "No test days marked yet.\n";
+  } else {
+    classNames.forEach(className => {
+      output += `${className}\n`;
+      testsByClass[className].sort().forEach(item => {
+        output += `- ${item}\n`;
+      });
+      output += "\n";
+    });
+  }
+
+  navigator.clipboard.writeText(output).then(() => {
+    alert("Test days copied to clipboard!");
+  });
 });
 
-document.getElementById("printMonthBtn").addEventListener("click", () => {
-  window.print();
-});
+const printMonthBtn = document.getElementById("printMonthBtn");
+if (printMonthBtn) {
+  printMonthBtn.addEventListener("click", () => {
+    window.print();
+  });
+}
 
 // --- Init ---
 function init() {
   loadUnits();
+  loadHiddenSpecialEntries();
+  loadSpecialDays();
   saveUnits(); // ensure it's initialized
+  saveSpecialDays();
   renderUnits();
+  renderSpecialDays();
   renderSummary();
   loadScheduleFromStorage();
   hydrateScheduleForm();
   renderCalendar();
+  initCollapsibleSections();
 
-  document.getElementById("addUnitBtn").addEventListener("click", () => addUnit(1));
+  document.getElementById("addUnitBtn").addEventListener("click", () => choosePeriodForNewUnit());
+  document.getElementById("addSpecialDayBtn").addEventListener("click", () => addSpecialDay());
 
   document.getElementById("darkModeToggle")
   .addEventListener("click", () => {
@@ -994,6 +3251,52 @@ function init() {
   document.getElementById("clearNotesBtn")
     .addEventListener("click", handleClearNotes);
 
+  document.getElementById("closeTodayAgendaBtn")
+    .addEventListener("click", closeTodayAgendaModal);
+
+  document.getElementById("todayAgendaBackdrop")
+    .addEventListener("click", event => {
+      if (event.target.id === "todayAgendaBackdrop") {
+        closeTodayAgendaModal();
+      }
+    });
+
+  document.getElementById("closePrintFilterBtn")
+    .addEventListener("click", closePrintFilterModal);
+
+  document.getElementById("clearPrintFiltersBtn")
+    .addEventListener("click", () => {
+      document.getElementById("printUnitFilter").value = "";
+      document.querySelectorAll('#printPeriodFilters input[type="checkbox"]').forEach(input => {
+        input.checked = true;
+      });
+    });
+
+  document.getElementById("applyPrintFiltersBtn")
+    .addEventListener("click", applyPrintFilters);
+
+  document.getElementById("helpBtn")
+    .addEventListener("click", () => openHelp("welcome"));
+
+  document.getElementById("closeHelpBtn")
+    .addEventListener("click", closeHelp);
+
+  document.getElementById("startPlanningBtn")
+    .addEventListener("click", closeHelp);
+
+  document.querySelectorAll(".help-tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => switchHelpSection(btn.dataset.helpSection));
+  });
+
+  document.getElementById("closeUnitDaysBtn")
+    .addEventListener("click", closeUnitDaysEditor);
+
+  document.getElementById("cancelUnitDaysBtn")
+    .addEventListener("click", closeUnitDaysEditor);
+
+  document.getElementById("saveUnitDaysBtn")
+    .addEventListener("click", saveUnitDaysEditor);
+
   document.getElementById("prevMonthBtn")
     .addEventListener("click", () => {
       currentMonthIndex = Math.max(0, currentMonthIndex - 1);
@@ -1006,17 +3309,12 @@ function init() {
       renderCalendar();
     });
 
-  document.getElementById("jumpTodayBtn").addEventListener("click", () => {
-  const today = new Date();
-  const todayISO = today.toISOString().split("T")[0];
+  document.getElementById("jumpTodayBtn")
+    .addEventListener("click", openTodayAgendaModal);
 
-  const cells = document.querySelectorAll(".day-cell");
-  cells.forEach(cell => {
-    if (cell.dataset.date === todayISO) {
-      cell.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  });
-});
+  if (localStorage.getItem(LS_HIDE_WELCOME_KEY) !== "true") {
+    openHelp("welcome");
+  }
 
 }
 
@@ -1038,6 +3336,155 @@ document.addEventListener("DOMContentLoaded", init);
       <div class="modal-footer">
         <button class="secondary" id="clearNotesBtn">Clear notes</button>
         <button id="saveNotesBtn">Save notes</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="todayAgendaBackdrop">
+    <div class="modal" style="width:560px; max-width:95vw;">
+      <div class="modal-header">
+        <div>
+          <div>Today's Agenda</div>
+          <div class="small agenda-meta" id="todayAgendaDateLine"></div>
+        </div>
+        <button class="secondary" id="closeTodayAgendaBtn">Close</button>
+      </div>
+      <div class="modal-body" id="todayAgendaBodyWrap">
+        <div class="agenda-badge-row" id="todayAgendaBadges"></div>
+        <div id="todayAgendaBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="printFilterBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <div>Print Calendar</div>
+          <div class="small">Filter by period and unit before printing.</div>
+        </div>
+        <button class="secondary" id="closePrintFilterBtn">Close</button>
+      </div>
+      <div class="modal-body">
+        <div class="print-filter-grid">
+          <div>
+            <label for="printUnitFilter">Unit filter</label>
+            <select id="printUnitFilter">
+              <option value="">All units</option>
+            </select>
+          </div>
+          <div>
+            <label>Periods</label>
+            <div id="printPeriodFilters" class="print-filter-checkboxes"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer print-filter-actions">
+        <button class="secondary" id="clearPrintFiltersBtn">Clear</button>
+        <button id="applyPrintFiltersBtn">Print</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="unitDaysBackdrop">
+    <div class="modal" style="width:640px; max-width:95vw;">
+      <div class="modal-header">
+        <div>
+          <div id="unitDaysTitle">Unit Day Planner</div>
+          <div class="small">Plan each day topic and mark quiz/test days.</div>
+        </div>
+        <button class="secondary" id="closeUnitDaysBtn">Close</button>
+      </div>
+      <div class="modal-body">
+        <table class="unit-days-table">
+          <thead>
+            <tr>
+              <th style="width:70px;">Day #</th>
+              <th>Topic / Lesson</th>
+              <th style="width:90px; text-align:center;">Quiz?</th>
+              <th style="width:90px; text-align:center;">Test?</th>
+            </tr>
+          </thead>
+          <tbody id="unitDaysTableBody"></tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button class="secondary" id="cancelUnitDaysBtn">Cancel</button>
+        <button id="saveUnitDaysBtn">Save Unit Days</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="helpBackdrop">
+    <div class="modal" style="width:680px; max-width:96vw;">
+      <div class="modal-header">
+        <div>
+          <div>Planner Help</div>
+          <div class="small">Quick guidance for first-time setup and daily use.</div>
+        </div>
+        <button class="secondary" id="closeHelpBtn">Close</button>
+      </div>
+      <div class="modal-body">
+        <div class="help-tabs" id="helpTabs">
+          <button class="help-tab-btn active" data-help-section="welcome">Welcome</button>
+          <button class="help-tab-btn" data-help-section="units">Units</button>
+          <button class="help-tab-btn" data-help-section="special">Special Days</button>
+          <button class="help-tab-btn" data-help-section="notes">Notes & Assessments</button>
+          <button class="help-tab-btn" data-help-section="printing">Printing & Backup</button>
+        </div>
+
+        <section class="help-section active" data-help-section="welcome">
+          <h2>Welcome to HS Rotation Planner</h2>
+          <p>This tool helps you plan your classes with rotation days, units, notes, and test days - all saved in your browser.</p>
+          <ul>
+            <li>Enter your class names on the left</li>
+            <li>Define units per period (with topics, quizzes, tests)</li>
+            <li>Click any day to add notes or mark test days</li>
+            <li>Use Backup to save your work</li>
+          </ul>
+          <p>Everything works offline.</p>
+        </section>
+
+        <section class="help-section" data-help-section="units">
+          <h2>Units</h2>
+          <p>Units drive automatic pacing on the calendar.</p>
+          <p><strong>How to use:</strong></p>
+          <ul>
+            <li>Enter Unit Name and Length - + Add Unit</li>
+            <li>Click Edit Days to set topics and mark quizzes/tests per day</li>
+            <li>Calendar will show: AP Stats - Unit 1: Exploring Data (Day 4/10)</li>
+          </ul>
+        </section>
+
+        <section class="help-section" data-help-section="special">
+          <h2>Special Days</h2>
+          <p>Mark Family Nights, holidays, or custom days as No Test.</p>
+          <p>Days after holidays are automatically No Test.</p>
+        </section>
+
+        <section class="help-section" data-help-section="notes">
+          <h2>Notes & Assessments</h2>
+          <p>Click any day to open notes.</p>
+          <ul>
+            <li>Add per-period notes</li>
+            <li>Mark Test Day or No Test Today</li>
+            <li>Quizzes/Tests from units appear as badges</li>
+          </ul>
+        </section>
+
+        <section class="help-section" data-help-section="printing">
+          <h2>Printing & Backup</h2>
+          <p>Use Print with Filters for clean monthly views.</p>
+          <p>Copy Test Days copies a list to clipboard.</p>
+          <p>Always use Backup/Restore to save your data.</p>
+        </section>
+      </div>
+      <div class="help-footer">
+        <label class="welcome-checkbox">
+          <input type="checkbox" id="hideWelcomeCheckbox">
+          Don't show welcome again
+        </label>
+        <button id="startPlanningBtn">Start Planning</button>
       </div>
     </div>
   </div>
