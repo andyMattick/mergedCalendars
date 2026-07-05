@@ -727,7 +727,7 @@ for (let i = 0; i < leadingBlanks; i++) {
   }
 
   weekdays.forEach(weekdayCell => {
-    const [cellYear, cellMonth, cellDay] = weekdayCell.date.split("-").map(Number);
+    const [cellMonth, cellDay] = weekdayCell.date.split("-").map(Number);
     const dateObj = new Date(cellYear, cellMonth - 1, cellDay);
     const weekdayName = dateObj.toLocaleDateString(undefined, { weekday: "short" });
     const notes = loadNotesForDate(weekdayCell.date);
