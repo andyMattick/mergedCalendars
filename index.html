@@ -751,13 +751,11 @@ for (let i = 0; i < leadingBlanks; i++) {
       const day = weekdayCell.schoolDay;
 
       const rotationLetter = day.letter ? normalizeLetter(day.letter) : "";
-      const rotationSuffix =
-        rotationLetter && ROTATION_RULES[rotationLetter] ? ` — ${rotationLetter}` : "";
-
       const cleanDate = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-    header.innerHTML = `${cleanDate} <span class="rotation-${rotationLetter}">${rotationLetter}</span>`;
 
-cell.appendChild(header);
+      header.innerHTML = `${cleanDate} <span class="rotation-${rotationLetter}">${rotationLetter}</span>`;
+
+      cell.appendChild(header);
 
       if (notes.isTestDay) {
         cell.classList.add("test-day");
