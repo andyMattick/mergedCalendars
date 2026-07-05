@@ -309,8 +309,13 @@ body.dark section {
 </head>
 <body>
   <header>
+    <button id="backupBtn" class="secondary">Backup Data</button>
+    <button id="restoreBtn" class="secondary">Restore Data</button>
+    <input id="restoreInput" type="file" accept=".json" style="display:none;">
     <button id="darkModeToggle" class="secondary">Dark Mode</button>
     <button id="jumpTodayBtn" class="secondary">Today</button>
+        <button id="exportTestsBtn" class="secondary">Copy Test Days</button>
+    <button id="printCalendarBtn" class="secondary">Print with Filters</button>
 
     <h1>HS Rotation Planner</h1>
     <div class="small">Static HTML + JS · LocalStorage · GitHub Pages–ready</div>
@@ -377,8 +382,6 @@ body.dark section {
 
     <hr style="margin:1rem 0;" />
 
-    <button id="exportTestsBtn">Copy Test Days</button>
-    <button id="printMonthBtn" class="secondary">Print Current Month</button>
 
     <p class="small" style="margin-top:0.5rem;">
       These are hard coded in JS but you can adjust them if your school changes rotation.
@@ -690,7 +693,7 @@ function renderCalendar() {
   // Weekday header row (Mon–Fri)
   const weekdayHeaderRow = document.createElement("div");
   weekdayHeaderRow.className = "calendar-weekdays";
-  ["Mon","Tue","Wed","Thu","Fri"].forEach(w => {
+  ["Sun", "Mon","Tue","Wed","Thu","Fri", "Sat"].forEach(w => {
     const wd = document.createElement("div");
     wd.textContent = w;
     weekdayHeaderRow.appendChild(wd);
@@ -703,7 +706,7 @@ function renderCalendar() {
 
   // Determine weekday of the 1st day of the month
 const firstDay = new Date(year, month - 1, 1).getDay();
-const weekdayIndex = [1, 2, 3, 4, 5];
+const weekdayIndex = [1, 2, 3, 4, 5, 6, 0]; // Mon=1, Tue=2, ..., Sun=0
 const firstIndex = weekdayIndex.indexOf(firstDay);
 const leadingBlanks = firstIndex === -1 ? 0 : firstIndex;
 
@@ -751,9 +754,10 @@ for (let i = 0; i < leadingBlanks; i++) {
       const rotationSuffix =
         rotationLetter && ROTATION_RULES[rotationLetter] ? ` — ${rotationLetter}` : "";
 
-      header.innerHTML = `${weekdayName} ${formatDateLabel(day.date)} <span class="rotation-${rotationLetter}">${rotationLetter}</span>`;
+      const cleanDate = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    header.innerHTML = `${cleanDate} <span class="rotation-${rotationLetter}">${rotationLetter}</span>`;
 
-      cell.appendChild(header);
+cell.appendChild(header);
 
       if (notes.isTestDay) {
         cell.classList.add("test-day");
@@ -780,7 +784,8 @@ for (let i = 0; i < leadingBlanks; i++) {
 
       cell.addEventListener("click", () => openDayModal(day));
     } else {
-      header.textContent = `${weekdayName} ${formatDateLabel(weekdayCell.date)}`;
+      const cleanDate = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+      header.textContent = `${cleanDate} — No HS classes`;
       cell.appendChild(header);
       cell.classList.add("empty");
 
@@ -870,19 +875,15 @@ function openDayModal(day) {
   });
 
   // Test day checkbox
+  // Test day options
   const testBlock = document.createElement("div");
   testBlock.className = "note-block";
-
-  const testLabel = document.createElement("label");
-  testLabel.textContent = "Test Day";
-  testBlock.appendChild(testLabel);
-
-  const testCheckbox = document.createElement("input");
-  testCheckbox.type = "checkbox";
-  testCheckbox.id = "isTestDay";
-  testCheckbox.checked = existingNotes.isTestDay || false;
-
-  testBlock.appendChild(testCheckbox);
+  testBlock.innerHTML = `
+    <label>Test Day Status</label><br/>
+    <label><input type="radio" name="testStatus" value="test" ${existingNotes.isTestDay ? 'checked' : ''}> Test Day</label><br/>
+    <label><input type="radio" name="testStatus" value="noTest" ${existingNotes.noTest ? 'checked' : ''}> No Test Today</label><br/>
+    <label><input type="radio" name="testStatus" value="normal" ${!existingNotes.isTestDay && !existingNotes.noTest ? 'checked' : ''}> Normal Day</label>
+  `;
   body.appendChild(testBlock);
 
   backdrop.style.display = "flex";
@@ -909,13 +910,15 @@ function openDayModal(day) {
         }
       });
 
-      notesObj.isTestDay = document.getElementById("isTestDay").checked;
+      const testStatus = document.querySelector('input[name="testStatus"]:checked')?.value || "normal";
+      notesObj.isTestDay = testStatus === "test";
+      notesObj.noTest = testStatus === "noTest";
 
       saveNotesForDate(currentModalDay.date, notesObj);
       closeDayModal();
-      renderCalendar(); // refresh note indicators
+      renderCalendar();
     }
-
+  
     function handleClearNotes() {
       if (!currentModalDay) return;
       localStorage.removeItem(getNotesKey(currentModalDay.date));
@@ -994,10 +997,101 @@ function renderSummary() {
   const total = Object.values(units).flat().length;
   document.getElementById("summaryStats").innerHTML = `<p><strong>Total Units:</strong> ${total}</p>`;
 }
+document.getElementById("backupBtn").addEventListener("click", () => {
+  const data = {
+    schedule: teacherSchedule,
+    units: units,
+    notes: Object.keys(localStorage)
+      .filter(k => k.startsWith(LS_NOTES_KEY_PREFIX))
+      .reduce((acc, k) => {
+        acc[k] = JSON.parse(localStorage.getItem(k));
+        return acc;
+      }, {})
+  };
 
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "hs-planner-backup.json";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById("restoreBtn").addEventListener("click", () => {
+  document.getElementById("restoreInput").click();
+});
+
+document.getElementById("restoreInput").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const text = await file.text();
+  const data = JSON.parse(text);
+
+  if (data.schedule) teacherSchedule = data.schedule;
+  if (data.units) units = data.units;
+
+  // Restore notes
+  Object.keys(localStorage).filter(k => k.startsWith(LS_NOTES_KEY_PREFIX)).forEach(k => localStorage.removeItem(k));
+  if (data.notes) {
+    Object.entries(data.notes).forEach(([k, v]) => localStorage.setItem(k, JSON.stringify(v)));
+  }
+
+  saveScheduleToStorage();
+  saveUnits();
+  renderUnits();
+  renderSummary();
+  renderCalendar();
+  alert("Data restored successfully!");
+});
+
+document.getElementById("printCalendarBtn").addEventListener("click", () => {
+  const period = prompt("Enter period number to filter (1-7), or leave blank for all:", "");
+  const unitName = prompt("Filter by unit name (partial match), or leave blank for all:", "");
+
+  let html = `<h1>${document.getElementById("monthTitle").textContent}</h1>`;
+
+  if (period) html += `<p><strong>Showing only Period ${period}</strong></p>`;
+  if (unitName) html += `<p><strong>Unit filter: ${unitName}</strong></p>`;
+
+  html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;">`;
+
+  // Clone current calendar and filter
+  const cells = document.querySelectorAll(".day-cell");
+  cells.forEach(cell => {
+    let keep = true;
+    const content = cell.textContent;
+
+    if (period && !content.includes(`Period ${period}`)) keep = false;
+    if (unitName && !content.toLowerCase().includes(unitName.toLowerCase())) keep = false;
+
+    if (keep) {
+      html += cell.outerHTML;
+    }
+  });
+
+  html += `</div>`;
+
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(`
+    <html>
+    <head><title>Planner Print</title>
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; }
+      .day-cell { border: 1px solid #ccc; padding: 8px; min-height: 140px; break-inside: avoid; }
+      .day-cell-header { font-weight: bold; margin-bottom: 6px; }
+    </style>
+    </head>
+    <body>${html}</body>
+    </html>
+  `);
+  printWindow.document.close();
+  setTimeout(() => printWindow.print(), 500);
+});
 // --- Init ---
 function init() {
   loadUnits();
+  saveUnits(); // ensure it's initialized
   renderUnits();
   renderSummary();
   loadScheduleFromStorage();
