@@ -47,7 +47,6 @@
       display: block;
     }
 
-
     body.dark input[type="text"],
     body.dark textarea {
       background: #3a3d42;
@@ -59,7 +58,6 @@
       background: #111418;
       color: #e5e7eb;
 }
-
 
 
     #darkModeToggle {
@@ -150,14 +148,12 @@
   margin-bottom: 0.5rem;
 }
 
-.day-cell.weekend {
-  opacity: 0.75;
-  background: #f8fafc;
+.unit-row {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.3rem 0;
+  align-items: center;
 }
-body.dark .day-cell.weekend {
-  background: #25282d;
-}
-
 
 .day-cell {
   width: 100%;
@@ -268,7 +264,6 @@ body.dark .day-cell.weekend {
 .period-6 { color: #0ea5e9; font-weight: 600; }
 .period-7 { color: #6b7280; font-weight: 600; }
 
-
 .day-cell.test-day {
   background: #fee2e2;
   border-color: #ef4444;
@@ -309,106 +304,6 @@ body.dark section {
 .rotation-F { color: #b91c1c; font-weight: 600; }
 .rotation-G { color: #6b7280; font-weight: 600; }
 
-@media print {
-  @page {
-    size: landscape;
-    margin: 10mm;
-  }
-
-  body * {
-    visibility: hidden;
-  }
-
-  body {
-    background: #fff;
-    color: #000;
-  }
-
-  #printArea, #printArea * {
-    visibility: visible;
-  }
-  #printArea {
-    display: block !important;
-    position: static;
-    left: 0;
-    top: 0;
-    width: 100%;
-  }
-
-  #printArea .calendar-grid {
-    display: block;
-    gap: 0;
-  }
-
-  #printArea .print-week-row {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0.45rem;
-    margin-bottom: 0.45rem;
-    break-inside: avoid-page;
-    page-break-inside: avoid;
-  }
-
-  #printArea .day-cell {
-    min-height: 0;
-    padding: 0.35rem;
-    break-inside: avoid-page;
-    page-break-inside: avoid;
-  }
-
-  #printArea .day-cell-header,
-  #printArea .classes-list li,
-  #printArea .print-note-line {
-    break-inside: avoid-page;
-    page-break-inside: avoid;
-  }
-
-  #printArea .classes-list li {
-    font-size: 0.78rem;
-    line-height: 1.2;
-  }
-
-  #printArea .print-note-entry,
-  #printArea .print-notes {
-    break-inside: avoid-page;
-    page-break-inside: avoid;
-  }
-}
-
-body.print-compact #printArea .day-cell {
-  padding: 0.25rem;
-}
-
-body.print-compact #printArea .day-cell-header {
-  font-size: 0.78rem;
-}
-
-body.print-compact #printArea .classes-list li,
-body.print-compact #printArea .print-note-line {
-  font-size: 0.7rem;
-}
-
-.print-header {
-  margin: 0 0 0.75rem 0;
-}
-
-.print-notes {
-  margin-top: 0.5rem;
-  padding-top: 0.4rem;
-  border-top: 1px dashed #cbd2d9;
-}
-
-.print-note-line {
-  font-size: 0.82rem;
-  line-height: 1.25;
-  margin-bottom: 0.2rem;
-}
-
-.print-day-summary {
-  margin-bottom: 0.5rem;
-  font-size: 0.85rem;
-}
-
 
   </style>
 </head>
@@ -416,24 +311,6 @@ body.print-compact #printArea .print-note-line {
   <header>
     <button id="darkModeToggle" class="secondary">Dark Mode</button>
     <button id="jumpTodayBtn" class="secondary">Today</button>
-    <button id="exportPdfBtn" class="secondary">Export PDF</button>
-    <label class="small" style="margin-left:0.5rem; display:inline-flex; gap:0.35rem; align-items:center;">
-      <input id="includeNotesInExport" type="checkbox" checked /> Include notes
-    </label>
-    <label class="small" style="margin-left:0.5rem; display:inline-flex; gap:0.35rem; align-items:center;">
-      Print layout
-      <select id="printLayoutMode" style="width:auto; margin-bottom:0;">
-        <option value="standard">Standard</option>
-        <option value="compact">Compact</option>
-      </select>
-    </label>
-    <button id="backupBtn" class="secondary">Backup Data</button>
-    <button id="restoreBtn" class="secondary">Restore Data</button>
-    <input id="restoreInput" type="file" accept="application/json" style="display:none;" />
-    <button id="printNotesBtn" class="secondary">Print Notes</button>
-
-
-
 
     <h1>HS Rotation Planner</h1>
     <div class="small">Static HTML + JS · LocalStorage · GitHub Pages–ready</div>
@@ -487,7 +364,7 @@ body.print-compact #printArea .print-note-line {
       G: 3,4,5,6,7
     </div>
 
-    <hr style="margin:1rem 0;" />
+        <hr style="margin:1rem 0;" />
 
     <h2>Units per Class</h2>
     <div id="unitsContainer"></div>
@@ -502,10 +379,12 @@ body.print-compact #printArea .print-note-line {
 
     <button id="exportTestsBtn">Copy Test Days</button>
     <button id="printMonthBtn" class="secondary">Print Current Month</button>
+
     <p class="small" style="margin-top:0.5rem;">
-      These are hard‑coded in JS but you can adjust them if your school changes rotation.
+      These are hard coded in JS but you can adjust them if your school changes rotation.
     </p>
   </section>
+
   <section id="calendar">
     <div id="monthNav" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
       <button id="prevMonthBtn" class="secondary">◀ Prev</button>
@@ -515,11 +394,12 @@ body.print-compact #printArea .print-note-line {
 
     <!-- Weekday headers will be inserted by JS -->
     <div id="calendarGrid"></div>
+
   </section>
-    <div id="printArea" style="display:none;"></div>
 </main>
-<script>
-    // === ROTATION RULES ===
+
+    <script>
+    // --- Rotation rules (HS A–G) ---
     const ROTATION_RULES = {
       A: [1,2,3,4,5],
       B: [6,7,1,2,3],
@@ -530,64 +410,180 @@ body.print-compact #printArea .print-note-line {
       G: [3,4,5,6,7]
     };
 
-    const HS_ROTATION_2026 = [ /* paste your full HS_ROTATION_2026 array here - keep it unchanged */ ];
+    // --- Sample calendar data ---
+    // In real use, generate this from the HS monthly rotation table in your PDF.
+    // Each entry: { date: "YYYY-MM-DD", label: "A".."G" }
 
-    function normalizeLetter(letter) {
-      if (!letter) return null;
-      if (letter.endsWith("*")) return letter[0];
-      return letter;
-    }
+const HS_ROTATION_2026 = [
+  
+  { date: "2026-08-13", letter: "*" },
+  { date: "2026-08-14", letter: "A*" },
 
-    function groupByMonth() {
-      const buckets = {};
-      HS_ROTATION_2026.forEach(day => {
-        const [year, month] = day.date.split("-").map(Number);
-        const key = `${year}-${month}`;
-        if (!buckets[key]) buckets[key] = [];
-        buckets[key].push(day);
-      });
-      return Object.entries(buckets).map(([key, days]) => {
-        const [year, month] = key.split("-").map(Number);
-        return { year, month, days };
-      });
-    }
+  { date: "2026-08-17", letter: "B" },
+  { date: "2026-08-18", letter: "C" },
+  { date: "2026-08-19", letter: "D" },
+  { date: "2026-08-20", letter: "E*" },
+  { date: "2026-08-21", letter: "F" },
 
-    const MONTHS = groupByMonth();
+  { date: "2026-08-24", letter: "G" },
+  { date: "2026-08-25", letter: "A" },
+  { date: "2026-08-26", letter: "B" },
+  { date: "2026-08-27", letter: "C" },
+  { date: "2026-08-28", letter: "D" },
 
-    // === LOCALSTORAGE ===
+  { date: "2026-08-31", letter: "E" },
+
+  { date: "2026-09-01", letter: "F" },
+  { date: "2026-09-02", letter: "G" },
+  { date: "2026-09-03", letter: "A" },
+  { date: "2026-09-04", letter: "B" },
+
+  { date: "2026-09-07", letter: "Labor Day - No school" },
+  { date: "2026-09-08", letter: "C" },
+  { date: "2026-09-09", letter: "D" },
+  { date: "2026-09-10", letter: "E" },
+  { date: "2026-09-11", letter: "F" },
+
+  { date: "2026-09-14", letter: "G" },
+
+  { date: "2026-09-15", letter: "A" },
+  { date: "2026-09-16", letter: "B" },
+  { date: "2026-09-17", letter: "C" },
+  { date: "2026-09-18", letter: "D*" },
+
+  { date: "2026-09-21", letter: "E" },
+  { date: "2026-09-22", letter: "F" },
+  { date: "2026-09-23", letter: "G" },
+  { date: "2026-09-24", letter: "A" },
+  { date: "2026-09-25", letter: "B" },
+
+  { date: "2026-09-28", letter: "C" },
+  { date: "2026-09-29", letter: "D" },
+  { date: "2026-09-30", letter: "E" },
+
+  { date: "2026-10-01", letter: "F" },
+  { date: "2026-10-02", letter: "G" },
+
+  { date: "2026-10-05", letter: "A" },
+  { date: "2026-10-06", letter: "B" },
+
+  { date: "2026-10-07", letter: "PSAT - no classes" },     // PSAT day
+  { date: "2026-10-08", letter: "C" },
+  { date: "2026-10-09", letter: "D" },
+
+  { date: "2026-10-12", letter: "Fall break - No school" },     // No school
+  { date: "2026-10-13", letter: "Fall break - No school" },     // No school
+
+  { date: "2026-10-14", letter: "E" },
+  { date: "2026-10-15", letter: "F" },
+  { date: "2026-10-16", letter: "G" },
+
+  { date: "2026-10-19", letter: "A" },
+  { date: "2026-10-20", letter: "B" },
+  { date: "2026-10-21", letter: "C" },
+  { date: "2026-10-22", letter: "D" },
+
+  { date: "2026-10-23", letter: "Homecoming - no classes" },     // Homecoming
+
+  { date: "2026-10-26", letter: "E" },
+  { date: "2026-10-27", letter: "F" },
+  { date: "2026-10-28", letter: "G" },
+  { date: "2026-10-29", letter: "A" },
+  { date: "2026-10-30", letter: "B" },
+
+  { date: "2026-11-02", letter: "C" },
+  { date: "2026-11-03", letter: "D" },
+  { date: "2026-11-04", letter: "E" },
+  { date: "2026-11-05", letter: "F" },
+  { date: "2026-11-06", letter: "G" },
+
+  { date: "2026-11-09", letter: "A" },
+  { date: "2026-11-10", letter: "B*" },
+  { date: "2026-11-11", letter: "C" },
+  { date: "2026-11-12", letter: "D" },
+  { date: "2026-11-13", letter: "E" },
+
+  { date: "2026-11-16", letter: "F" },
+  { date: "2026-11-17", letter: "G" },
+  { date: "2026-11-18", letter: "A" },
+  { date: "2026-11-19", letter: "B" },
+  { date: "2026-11-20", letter: "C" },
+
+  { date: "2026-11-23", letter: "Thanksgiving - No school" },
+  { date: "2026-11-24", letter: "Thanksgiving - No school" },
+  { date: "2026-11-25", letter: "Thanksgiving - No school" },
+  { date: "2026-11-26", letter: "Thanksgiving - No school" },
+  { date: "2026-11-27", letter: "Thanksgiving - No school" },
+
+  { date: "2026-11-30", letter: "D" },
+  { date: "2026-12-01", letter: "E" },
+  { date: "2026-12-02", letter: "F" },
+  { date: "2026-12-03", letter: "G" },
+  { date: "2026-12-04", letter: "A" },
+
+  { date: "2026-12-07", letter: "B" },
+  { date: "2026-12-08", letter: "C" },
+  { date: "2026-12-09", letter: "D" },
+  { date: "2026-12-10", letter: "Reading Day"},
+  { date: "2026-12-11", letter: "Reading Day & Statistics/Computer Science Exams" },
+
+  { date: "2026-12-14", letter: "Science Exam" },
+  { date: "2026-12-15", letter: "English Exam" },
+  { date: "2026-12-16", letter: "Social Science Exam" },
+  { date: "2026-12-17", letter: "Math Exam" },
+  { date: "2026-12-18", letter: "Conflict Exam" }
+
+];
+
+function normalizeLetter(letter) {
+  if (!letter) return null;
+  // A* → A, B* → B, etc.
+  if (letter.endsWith("*")) return letter[0];
+  return letter;
+}
+
+let currentMonthIndex = 0;
+
+function groupByMonth() {
+  const buckets = {};
+  HS_ROTATION_2026.forEach(day => {
+    const [year, month] = day.date.split("-").map(Number);
+    const key = `${year}-${month}`;
+    if (!buckets[key]) buckets[key] = [];
+    buckets[key].push(day);
+  });
+  return Object.entries(buckets).map(([key, days]) => {
+    const [year, month] = key.split("-").map(Number);
+    return { year, month, days };
+  });
+}
+
+const MONTHS = groupByMonth();
+
+
+    // --- LocalStorage keys ---
     const LS_SCHEDULE_KEY = "hsSchedule";
-    const LS_NOTES_KEY_PREFIX = "hsNotes";
+    const LS_NOTES_KEY_PREFIX = "hsNotes"; // hsNotes-YYYY-MM-DD
     const LS_CLASS_COUNT_KEY = "hsClassCounts";
-    const LS_UNITS_KEY = "hsUnits";
+    let classCounts = {}; // { "1": 15, "2": 12, ... }
 
-    let teacherSchedule = {};
-    let units = {};
-    let classCounts = {};
-    let currentModalDay = null;
-    let currentMonthIndex = 0;
+    // --- State ---
+    let teacherSchedule = {}; // { "1": "AP Stats", ... }
+    let currentModalDay = null; // { date, letter }
 
-    // === HELPERS ===
+    // --- Helpers ---
     function loadScheduleFromStorage() {
       const raw = localStorage.getItem(LS_SCHEDULE_KEY);
-      if (raw) teacherSchedule = JSON.parse(raw);
+      if (!raw) return;
+      try {
+        teacherSchedule = JSON.parse(raw);
+      } catch (e) {
+        console.warn("Failed to parse stored schedule", e);
+      }
     }
 
     function saveScheduleToStorage() {
       localStorage.setItem(LS_SCHEDULE_KEY, JSON.stringify(teacherSchedule));
-    }
-
-    function loadUnits() {
-      const raw = localStorage.getItem(LS_UNITS_KEY);
-      if (raw) units = JSON.parse(raw);
-    }
-
-    function saveUnits() {
-      localStorage.setItem(LS_UNITS_KEY, JSON.stringify(units));
-    }
-
-    function getUnitsForPeriod(period) {
-      if (!units[period]) units[period] = [];
-      return units[period];
     }
 
     function getNotesKey(date) {
@@ -596,195 +592,471 @@ body.print-compact #printArea .print-note-line {
 
     function loadNotesForDate(date) {
       const raw = localStorage.getItem(getNotesKey(date));
-      return raw ? JSON.parse(raw) : {};
+      if (!raw) return {};
+      try {
+        return JSON.parse(raw); // { periodNumber: "note text" }
+      } catch (e) {
+        console.warn("Failed to parse notes for", date, e);
+        return {};
+      }
     }
 
     function saveNotesForDate(date, notesObj) {
       localStorage.setItem(getNotesKey(date), JSON.stringify(notesObj));
     }
 
-    function formatDateLabel(dateStr) {
-      const [year, month, day] = dateStr.split("-").map(Number);
-      const d = new Date(year, month - 1, day);
-      return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    function hasNotesForDate(date) {
+      return !!localStorage.getItem(getNotesKey(date));
     }
 
-    // === UNIT UI ===
-    function renderUnits() {
-      const container = document.getElementById("unitsContainer");
-      container.innerHTML = "";
+function formatDateLabel(dateStr) {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const d = new Date(year, month - 1, day); // local date, no timezone shift
+  if (isNaN(d)) return dateStr;
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+}
 
+function countScheduledClassesBefore(dateLimit) {
+  const counts = {};
+
+  HS_ROTATION_2026.forEach(day => {
+    if (day.date >= dateLimit) {
+      return;
+    }
+
+    const letter = normalizeLetter(day.letter);
+    if (!letter || !ROTATION_RULES[letter]) {
+      return;
+    }
+
+    ROTATION_RULES[letter].forEach(periodNum => {
+      counts[periodNum] = (counts[periodNum] || 0) + 1;
+    });
+  });
+
+  return counts;
+}
+
+    // --- UI: schedule form ---
+    function hydrateScheduleForm() {
       for (let p = 1; p <= 7; p++) {
-        const periodUnits = getUnitsForPeriod(p);
-        const courseName = teacherSchedule[p] || `Period ${p}`;
+        const input = document.getElementById(`p${p}`);
+        if (!input) continue;
+        input.value = teacherSchedule[p] || "";
+      }
+    }
 
-        const div = document.createElement("div");
-        div.style.marginBottom = "1rem";
-        div.innerHTML = `<strong>Period ${p} – ${courseName}</strong><div id="units-list-${p}"></div>`;
-        container.appendChild(div);
+    function handleScheduleSubmit(event) {
+      event.preventDefault();
+      const form = event.target;
+      const newSchedule = {};
+      for (let p = 1; p <= 7; p++) {
+        const input = form[`p${p}`];
+        newSchedule[p] = input.value.trim() || `Period ${p}`;
+      }
+      teacherSchedule = newSchedule;
+      saveScheduleToStorage();
+      renderCalendar();
+    }
 
-        const list = document.getElementById(`units-list-${p}`);
-        periodUnits.forEach((unit, i) => {
-          const row = document.createElement("div");
-          row.style.display = "flex";
-          row.style.gap = "0.5rem";
-          row.style.margin = "0.3rem 0";
-          row.innerHTML = `
-            <input type="text" value="${unit.name}" style="flex:1" onchange="updateUnitName(${p},${i}, this.value)">
-            <input type="number" value="${unit.length}" style="width:80px" onchange="updateUnitLength(${p},${i}, this.value)">
-            <button onclick="removeUnit(${p},${i})" class="secondary">×</button>
-          `;
-          list.appendChild(row);
+    // --- UI: calendar ---
+function renderCalendar() {
+  const calendarRoot = document.getElementById("calendarGrid");
+  const monthTitle = document.getElementById("monthTitle");
+  calendarRoot.innerHTML = "";
+
+  const { year, month, days } = MONTHS[currentMonthIndex];
+  const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
+  const today = new Date();
+  const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+  classCounts = countScheduledClassesBefore(monthStart);
+
+  monthTitle.textContent = new Date(year, month - 1).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric"
+  });
+
+  const dayMap = {};
+  days.forEach(d => { dayMap[d.date] = d; });
+
+  const last = new Date(year, month, 0);
+  const totalDays = last.getDate();
+
+  // Weekday header row (Mon–Fri)
+  const weekdayHeaderRow = document.createElement("div");
+  weekdayHeaderRow.className = "calendar-weekdays";
+  ["Mon","Tue","Wed","Thu","Fri"].forEach(w => {
+    const wd = document.createElement("div");
+    wd.textContent = w;
+    weekdayHeaderRow.appendChild(wd);
+  });
+  calendarRoot.appendChild(weekdayHeaderRow);
+
+  // Actual grid
+  const monthGrid = document.createElement("div");
+  monthGrid.className = "calendar-grid";
+
+  // Determine weekday of the 1st day of the month
+const firstDay = new Date(year, month - 1, 1).getDay();
+const weekdayIndex = [1, 2, 3, 4, 5];
+const firstIndex = weekdayIndex.indexOf(firstDay);
+const leadingBlanks = firstIndex === -1 ? 0 : firstIndex;
+
+for (let i = 0; i < leadingBlanks; i++) {
+  const empty = document.createElement("div");
+  empty.className = "day-cell empty";
+  monthGrid.appendChild(empty);
+}
+
+  const weekdays = [];
+  for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
+    const iso = `${year}-${String(month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+    const dateObj = new Date(year, month - 1, dayNum);
+    const schoolDay = dayMap[iso] || null;
+
+    weekdays.push({
+      date: iso,
+      schoolDay: schoolDay,
+      isWeekend: dateObj.getDay() === 0 || dateObj.getDay() === 6
+    });
+  }
+
+  weekdays.forEach(weekdayCell => {
+    const [cellYear, cellMonth, cellDay] = weekdayCell.date.split("-").map(Number);
+    const dateObj = new Date(cellYear, cellMonth - 1, cellDay);
+    const weekdayName = dateObj.toLocaleDateString(undefined, { weekday: "short" });
+    const notes = loadNotesForDate(weekdayCell.date);
+    const hasNotes = Object.keys(notes).length > 0;
+
+    const cell = document.createElement("div");
+    cell.className = `day-cell ${weekdayCell.isWeekend ? 'weekend' : ''}`;
+    cell.dataset.date = weekdayCell.date;
+
+    if (weekdayCell.date === todayISO) {
+      cell.classList.add("today");
+    }
+
+    const header = document.createElement("div");
+    header.className = "day-cell-header";
+
+    if (weekdayCell.schoolDay) {
+      const day = weekdayCell.schoolDay;
+
+      const rotationLetter = day.letter ? normalizeLetter(day.letter) : "";
+      const rotationSuffix =
+        rotationLetter && ROTATION_RULES[rotationLetter] ? ` — ${rotationLetter}` : "";
+
+      header.innerHTML = `${weekdayName} ${formatDateLabel(day.date)} <span class="rotation-${rotationLetter}">${rotationLetter}</span>`;
+
+      cell.appendChild(header);
+
+      if (notes.isTestDay) {
+        cell.classList.add("test-day");
+      }
+
+      const letter = normalizeLetter(day.letter);
+      if (!letter || !ROTATION_RULES[letter]) {
+        cell.appendChild(document.createTextNode(day.letter || "No HS classes"));
+      } else {
+        const ul = document.createElement("ul");
+        ul.className = "classes-list";
+        ROTATION_RULES[letter].forEach(periodNum => {
+          classCounts[periodNum] = (classCounts[periodNum] || 0) + 1;
+          const li = document.createElement("li");
+          const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
+          const dayCount = classCounts[periodNum] || 0;
+          li.textContent = `${periodNum}: ${courseName} (Day ${dayCount})`;
+
+          li.classList.add(`period-${periodNum}`);
+          ul.appendChild(li);
         });
-      }
-    }
-
-    window.addUnit = function(period) {
-      if (!units[period]) units[period] = [];
-      units[period].push({ name: `Unit ${units[period].length + 1}`, length: 10 });
-      saveUnits();
-      renderUnits();
-    };
-
-    window.updateUnitName = function(period, index, name) {
-      units[period][index].name = name;
-      saveUnits();
-    };
-
-    window.updateUnitLength = function(period, index, length) {
-      units[period][index].length = parseInt(length) || 10;
-      saveUnits();
-    };
-
-    window.removeUnit = function(period, index) {
-      units[period].splice(index, 1);
-      saveUnits();
-      renderUnits();
-    };
-
-    function renderSummary() {
-      const total = Object.values(units).flat().length;
-      document.getElementById("summaryStats").innerHTML = `
-        <p><strong>Total Units Defined:</strong> ${total}</p>
-      `;
-    }
-
-    // === CALENDAR (restored original logic + weekends) ===
-    function renderCalendar() {
-      const calendarRoot = document.getElementById("calendarGrid");
-      const monthTitle = document.getElementById("monthTitle");
-      calendarRoot.innerHTML = "";
-
-      const { year, month, days } = MONTHS[currentMonthIndex];
-      const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
-      const today = new Date();
-      const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-
-      classCounts = countScheduledClassesBefore(monthStart);
-      monthTitle.textContent = new Date(year, month - 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
-
-      const dayMap = {};
-      days.forEach(d => dayMap[d.date] = d);
-
-      // 7-day headers
-      const weekdayHeader = document.createElement("div");
-      weekdayHeader.className = "calendar-weekdays";
-      ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(w => {
-        const el = document.createElement("div");
-        el.textContent = w;
-        weekdayHeader.appendChild(el);
-      });
-      calendarRoot.appendChild(weekdayHeader);
-
-      const monthGrid = document.createElement("div");
-      monthGrid.className = "calendar-grid";
-
-      // ... (keep your original cell creation logic, but adjust to include weekends)
-      // For now, using a simplified version that should at least show something
-      const lastDay = new Date(year, month, 0).getDate();
-      for (let dayNum = 1; dayNum <= lastDay; dayNum++) {
-        const iso = `${year}-${String(month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
-        const dateObj = new Date(year, month - 1, dayNum);
-        const weekdayName = dateObj.toLocaleDateString(undefined, { weekday: "short" });
-        const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
-
-        const cell = document.createElement("div");
-        cell.className = `day-cell ${isWeekend ? 'weekend' : ''}`;
-        cell.dataset.date = iso;
-
-        if (iso === todayISO) cell.classList.add("today");
-
-        const header = document.createElement("div");
-        header.className = "day-cell-header";
-        header.textContent = `${weekdayName} ${dayNum}`;
-        cell.appendChild(header);
-
-        // Add click handler
-        cell.addEventListener("click", () => openDayModal({ date: iso, letter: "No HS classes" }));
-
-        monthGrid.appendChild(cell);
+        cell.appendChild(ul);
       }
 
-      calendarRoot.appendChild(monthGrid);
+      cell.addEventListener("click", () => openDayModal(day));
+    } else {
+      header.textContent = `${weekdayName} ${formatDateLabel(weekdayCell.date)}`;
+      cell.appendChild(header);
+      cell.classList.add("empty");
+
+      if (notes.isTestDay) {
+        cell.classList.add("test-day");
+      }
+
+      cell.addEventListener("click", () => openDayModal({
+        date: weekdayCell.date,
+        letter: "No HS classes"
+      }));
     }
 
-    function openDayModal(day) {
-      currentModalDay = day;
-      const backdrop = document.getElementById("modalBackdrop");
-      backdrop.style.display = "flex";
-      // You can expand this later with full period fields
+    if (hasNotes) {
+      cell.classList.add("has-notes");
+
+      const preview = document.createElement("div");
+      preview.className = "tooltip";
+
+      const firstNote = Object.values(notes)
+        .find(value => typeof value === "string" && value.trim() !== "");
+
+      preview.textContent = firstNote
+        ? firstNote.slice(0, 60) + "…"
+        : "Notes added";
+
+      cell.appendChild(preview);
     }
+
+    monthGrid.appendChild(cell);
+  });
+
+  calendarRoot.appendChild(monthGrid);
+  localStorage.setItem(LS_CLASS_COUNT_KEY, JSON.stringify(classCounts));
+}
+    // --- UI: modal for notes ---
+function openDayModal(day) {
+  currentModalDay = day;
+
+  const backdrop = document.getElementById("modalBackdrop");
+  const dateLabel = document.getElementById("modalDateLabel");
+  const letterLabel = document.getElementById("modalLetterLabel");
+  const body = document.getElementById("modalBody");
+
+  dateLabel.textContent = formatDateLabel(day.date);
+  letterLabel.textContent = ROTATION_RULES[normalizeLetter(day.letter)]
+    ? `HS letter: ${normalizeLetter(day.letter)}`
+    : (day.letter || "No HS classes");
+
+  body.innerHTML = "";
+
+  const existingNotes = loadNotesForDate(day.date);   // <-- FIXED: moved up
+
+  const periods = ROTATION_RULES[normalizeLetter(day.letter)] || [];
+
+  if (periods.length === 0) {
+    const block = document.createElement("div");
+    block.className = "note-block";
+
+    const label = document.createElement("label");
+    label.textContent = "General Notes";
+    block.appendChild(label);
+
+    const textarea = document.createElement("textarea");
+    textarea.value = existingNotes.general || "";
+    textarea.dataset.period = "general";
+    block.appendChild(textarea);
+
+    body.appendChild(block);
+  }
+
+  periods.forEach(periodNum => {
+    const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
+    const block = document.createElement("div");
+    block.className = "note-block";
+
+    const label = document.createElement("label");
+    label.textContent = `Period ${periodNum} – ${courseName}`;
+    block.appendChild(label);
+
+    const textarea = document.createElement("textarea");
+    textarea.value = existingNotes[periodNum] || "";
+    textarea.dataset.period = periodNum;
+    block.appendChild(textarea);
+
+    body.appendChild(block);
+  });
+
+  // Test day checkbox
+  const testBlock = document.createElement("div");
+  testBlock.className = "note-block";
+
+  const testLabel = document.createElement("label");
+  testLabel.textContent = "Test Day";
+  testBlock.appendChild(testLabel);
+
+  const testCheckbox = document.createElement("input");
+  testCheckbox.type = "checkbox";
+  testCheckbox.id = "isTestDay";
+  testCheckbox.checked = existingNotes.isTestDay || false;
+
+  testBlock.appendChild(testCheckbox);
+  body.appendChild(testBlock);
+
+  backdrop.style.display = "flex";
+
+}
 
     function closeDayModal() {
-      document.getElementById("modalBackdrop").style.display = "none";
+      const backdrop = document.getElementById("modalBackdrop");
+      backdrop.style.display = "none";
+      currentModalDay = null;
     }
 
-    // === INIT ===
-    function init() {
-      loadScheduleFromStorage();
-      loadUnits();
-      hydrateScheduleForm();
-      renderUnits();
-      renderSummary();
-      renderCalendar();
-
-      // Button listeners
-      document.getElementById("darkModeToggle").addEventListener("click", () => {
-        document.body.classList.toggle("dark");
-        localStorage.setItem("hsDarkMode", document.body.classList.contains("dark"));
-      });
-
-      document.getElementById("scheduleForm").addEventListener("submit", (e) => {
-        e.preventDefault();
-        const newSchedule = {};
-        for (let p = 1; p <= 7; p++) {
-          const input = document.getElementById(`p${p}`);
-          newSchedule[p] = input.value.trim() || `Period ${p}`;
+    function handleSaveNotes() {
+      if (!currentModalDay) return;
+      const body = document.getElementById("modalBody");
+      const textareas = body.querySelectorAll("textarea");
+      const notesObj = {};
+      textareas.forEach(ta => {
+        const period = ta.dataset.period;
+        if (period === "general") {
+          notesObj.general = ta.value.trim();
+        } else {
+          notesObj[period] = ta.value.trim();
         }
-        teacherSchedule = newSchedule;
-        saveScheduleToStorage();
-        renderCalendar();
-        renderUnits();
       });
 
-      document.getElementById("prevMonthBtn").addEventListener("click", () => {
-        currentMonthIndex = Math.max(0, currentMonthIndex - 1);
-        renderCalendar();
-      });
+      notesObj.isTestDay = document.getElementById("isTestDay").checked;
 
-      document.getElementById("nextMonthBtn").addEventListener("click", () => {
-        currentMonthIndex = Math.min(MONTHS.length - 1, currentMonthIndex + 1);
-        renderCalendar();
-      });
-
-      document.getElementById("jumpTodayBtn").addEventListener("click", () => renderCalendar());
-
-      if (localStorage.getItem("hsDarkMode") === "true") document.body.classList.add("dark");
+      saveNotesForDate(currentModalDay.date, notesObj);
+      closeDayModal();
+      renderCalendar(); // refresh note indicators
     }
 
-    document.addEventListener("DOMContentLoaded", init);
-</script>
+    function handleClearNotes() {
+      if (!currentModalDay) return;
+      localStorage.removeItem(getNotesKey(currentModalDay.date));
+      closeDayModal();
+      renderCalendar();
+    }
 
+    // === NEW: UNIT MANAGEMENT ===
+const LS_UNITS_KEY = "hsUnits";
+let units = {};
+
+function loadUnits() {
+  const raw = localStorage.getItem(LS_UNITS_KEY);
+  if (raw) units = JSON.parse(raw);
+}
+
+function saveUnits() {
+  localStorage.setItem(LS_UNITS_KEY, JSON.stringify(units));
+}
+
+function getUnitsForPeriod(period) {
+  if (!units[period]) units[period] = [];
+  return units[period];
+}
+
+function renderUnits() {
+  const container = document.getElementById("unitsContainer");
+  container.innerHTML = "";
+
+  for (let p = 1; p <= 7; p++) {
+    const periodUnits = getUnitsForPeriod(p);
+    const courseName = teacherSchedule[p] || `Period ${p}`;
+
+    const div = document.createElement("div");
+    div.innerHTML = `<strong>Period ${p} – ${courseName}</strong><div id="units-list-${p}"></div>`;
+    container.appendChild(div);
+
+    const list = document.getElementById(`units-list-${p}`);
+    periodUnits.forEach((unit, i) => {
+      const row = document.createElement("div");
+      row.className = "unit-row";
+      row.innerHTML = `
+        <input type="text" value="${unit.name || 'Unit ' + (i+1)}" style="flex:1" onchange="updateUnitName(${p},${i}, this.value)">
+        <input type="number" value="${unit.length || 10}" style="width:70px" onchange="updateUnitLength(${p},${i}, this.value)">
+        <button onclick="removeUnit(${p},${i})" class="secondary">×</button>
+      `;
+      list.appendChild(row);
+    });
+  }
+}
+
+window.addUnit = function(period) {
+  if (!units[period]) units[period] = [];
+  units[period].push({ name: `Unit ${units[period].length + 1}`, length: 10 });
+  saveUnits();
+  renderUnits();
+};
+
+window.updateUnitName = function(period, index, name) {
+  units[period][index].name = name;
+  saveUnits();
+};
+
+window.updateUnitLength = function(period, index, length) {
+  units[period][index].length = parseInt(length) || 10;
+  saveUnits();
+};
+
+window.removeUnit = function(period, index) {
+  units[period].splice(index, 1);
+  saveUnits();
+  renderUnits();
+};
+
+function renderSummary() {
+  const total = Object.values(units).flat().length;
+  document.getElementById("summaryStats").innerHTML = `<p><strong>Total Units:</strong> ${total}</p>`;
+}
+
+// --- Init ---
+function init() {
+  loadUnits();
+  renderUnits();
+  renderSummary();
+  loadScheduleFromStorage();
+  hydrateScheduleForm();
+  renderCalendar();
+
+  document.getElementById("addUnitBtn").addEventListener("click", () => addUnit(1));
+
+  document.getElementById("darkModeToggle")
+  .addEventListener("click", () => {
+    document.body.classList.toggle("dark");
+    localStorage.setItem("hsDarkMode", document.body.classList.contains("dark"));
+  });
+
+  if (localStorage.getItem("hsDarkMode") === "true") {
+  document.body.classList.add("dark");
+}
+
+  document.getElementById("scheduleForm")
+    .addEventListener("submit", handleScheduleSubmit);
+
+  document.getElementById("closeModalBtn")
+    .addEventListener("click", closeDayModal);
+
+  document.getElementById("saveNotesBtn")
+    .addEventListener("click", handleSaveNotes);
+
+  document.getElementById("clearNotesBtn")
+    .addEventListener("click", handleClearNotes);
+
+  document.getElementById("prevMonthBtn")
+    .addEventListener("click", () => {
+      currentMonthIndex = Math.max(0, currentMonthIndex - 1);
+      renderCalendar();
+    });
+
+  document.getElementById("nextMonthBtn")
+    .addEventListener("click", () => {
+      currentMonthIndex = Math.min(MONTHS.length - 1, currentMonthIndex + 1);
+      renderCalendar();
+    });
+
+  document.getElementById("jumpTodayBtn").addEventListener("click", () => {
+  const today = new Date();
+  const todayISO = today.toISOString().split("T")[0];
+
+  const cells = document.querySelectorAll(".day-cell");
+  cells.forEach(cell => {
+    if (cell.dataset.date === todayISO) {
+      cell.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  });
+});
+
+}
+
+// Run init ONLY once, AFTER DOM is ready
+document.addEventListener("DOMContentLoaded", init);
+  </script>
 
   <!-- Modal for per-day, per-class notes -->
   <div class="modal-backdrop" id="modalBackdrop">
@@ -806,3 +1078,5 @@ body.print-compact #printArea .print-note-line {
 
 </body>
 </html>
+
+
