@@ -1109,7 +1109,8 @@ const HS_ROTATION_2026 = [
   { date: "2026-12-08", letter: "C" },
   { date: "2026-12-09", letter: "D" },
   { date: "2026-12-10", letter: "Reading Day"},
-  { date: "2026-12-11", letter: "Reading Day & Statistics/Computer Science Exams" },
+  { date: "2026-12-11", letter: "Reading Day" },
+  { date: "2026-12-11", letter: "Statistics/Computer Science Exams" },
 
   { date: "2026-12-14", letter: "Science Exam" },
   { date: "2026-12-15", letter: "English Exam" },
@@ -1174,7 +1175,7 @@ const HARD_CODED_PERIOD_OVERRIDES = {
 
 const HARD_CODED_DAY_TAGS = {
   "2026-12-10": ["READING DAY"],
-  "2026-12-11": ["READING DAY", "Statistics/Computer Science Exam"],
+  "2026-12-11": ["READING DAY", "Statistics/Computer Science Exams"],
   "2026-12-14": ["Science Exam"],
   "2026-12-15": ["English Exam"],
   "2026-12-16": ["Social Science Exam"],
@@ -3004,10 +3005,18 @@ document.getElementById("printCalendarBtn").addEventListener("click", () => {
 function populatePrintFilters() {
   const unitFilter = document.getElementById("printUnitFilter");
   const periodFilters = document.getElementById("printPeriodFilters");
+  const monthFilters = document.getElementById("printMonthFilters");
   const selectedUnit = unitFilter.value;
   const selectedPeriods = new Set(
     Array.from(periodFilters.querySelectorAll('input[type="checkbox"]:checked')).map(input => input.value)
   );
+  const selectedMonths = new Set(
+    Array.from(monthFilters.querySelectorAll('input[type="checkbox"]:checked')).map(input => input.value)
+  );
+
+  const currentMonthKey = MONTHS[currentMonthIndex]
+    ? `${MONTHS[currentMonthIndex].year}-${String(MONTHS[currentMonthIndex].month).padStart(2, "0")}`
+    : "";
 
   const unitNames = Array.from(new Set(
     Object.values(units)
@@ -3022,6 +3031,16 @@ function populatePrintFilters() {
   periodFilters.innerHTML = Array.from({ length: 7 }, (_, idx) => {
     const periodNum = idx + 1;
     return `<label class="check-row"><input type="checkbox" value="${periodNum}" ${selectedPeriods.size === 0 || selectedPeriods.has(String(periodNum)) ? "checked" : ""}> Period ${periodNum}</label>`;
+  }).join("");
+
+  monthFilters.innerHTML = MONTHS.map(monthObj => {
+    const monthKey = `${monthObj.year}-${String(monthObj.month).padStart(2, "0")}`;
+    const monthLabel = new Date(monthObj.year, monthObj.month - 1, 1)
+      .toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    const shouldCheck = selectedMonths.size
+      ? selectedMonths.has(monthKey)
+      : monthKey === currentMonthKey;
+    return `<label class="check-row"><input type="checkbox" value="${monthKey}" ${shouldCheck ? "checked" : ""}> ${monthLabel}</label>`;
   }).join("");
 }
 
@@ -3098,39 +3117,96 @@ function initCollapsibleSections() {
 function applyPrintFilters() {
   const selectedUnit = document.getElementById("printUnitFilter").value.toLowerCase();
   const selectedPeriods = Array.from(document.querySelectorAll('#printPeriodFilters input[type="checkbox"]:checked')).map(input => input.value);
+  const selectedMonths = Array.from(document.querySelectorAll('#printMonthFilters input[type="checkbox"]:checked')).map(input => input.value);
+  const selectedPeriodSet = new Set(selectedPeriods);
 
-  let html = `<h1>${document.getElementById("monthTitle").textContent}</h1>`;
+  const activeMonths = MONTHS.filter(monthObj => {
+    const key = `${monthObj.year}-${String(monthObj.month).padStart(2, "0")}`;
+    if (!selectedMonths.length) {
+      return key === `${MONTHS[currentMonthIndex].year}-${String(MONTHS[currentMonthIndex].month).padStart(2, "0")}`;
+    }
+    return selectedMonths.includes(key);
+  });
+
+  const monthDisplay = activeMonths.map(monthObj =>
+    new Date(monthObj.year, monthObj.month - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" })
+  );
+
+  let html = `<h1>Planner Print</h1>`;
+  html += `<p><strong>Months:</strong> ${monthDisplay.join(", ") || "Current month"}</p>`;
   if (selectedPeriods.length && selectedPeriods.length < 7) {
     html += `<p><strong>Periods:</strong> ${selectedPeriods.join(", ")}</p>`;
   }
   if (selectedUnit) {
     html += `<p><strong>Unit:</strong> ${selectedUnit}</p>`;
   }
-  html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;">`;
 
-  document.querySelectorAll("#calendarGrid .day-cell").forEach(cell => {
-    const clone = cell.cloneNode(true);
-    const items = Array.from(clone.querySelectorAll("li"));
+  activeMonths.forEach(monthObj => {
+    const monthLabel = new Date(monthObj.year, monthObj.month - 1, 1)
+      .toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    const monthMap = {};
+    monthObj.days.forEach(day => {
+      monthMap[day.date] = day;
+    });
+    const last = new Date(monthObj.year, monthObj.month, 0);
+    const totalDays = last.getDate();
+    const firstDay = new Date(monthObj.year, monthObj.month - 1, 1).getDay();
 
-    if (items.length) {
-      items.forEach(item => {
-        const matchesPeriod = !selectedPeriods.length || selectedPeriods.includes(item.dataset.period || "");
-        const matchesUnit = !selectedUnit || (item.dataset.unitName || "").includes(selectedUnit);
-        if (!matchesPeriod || !matchesUnit) {
-          item.remove();
-        }
-      });
+    html += `<h2 style="margin-top:1rem;">${monthLabel}</h2>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);font-weight:700;margin-bottom:6px;">`;
+    html += ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(dayName => `<div>${dayName}</div>`).join("");
+    html += `</div>`;
+    html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;">`;
 
-      const remaining = clone.querySelectorAll("li").length;
-      if (!remaining && (selectedPeriods.length || selectedUnit)) {
-        return;
-      }
+    for (let i = 0; i < firstDay; i++) {
+      html += `<div class="day-cell empty"></div>`;
     }
 
-    html += clone.outerHTML;
-  });
+    for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
+      const iso = `${monthObj.year}-${String(monthObj.month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+      const schoolDay = monthMap[iso] || null;
+      const periodsForDay = schoolDay ? getPeriodsForDate(iso, schoolDay.letter) : [];
+      const dayCounts = getDayCountsForDate(iso, periodsForDay);
+      const monthAbbrev = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][monthObj.month - 1];
+      let dayHtml = `<div class="day-cell${!schoolDay ? " empty" : ""}">`;
 
-  html += `</div>`;
+      const codedLabel = schoolDay?.letter ? ` - ${schoolDay.letter}` : "";
+      dayHtml += `<div class="day-cell-header">${monthAbbrev}. ${dayNum}${codedLabel}</div>`;
+
+      if (periodsForDay.length) {
+        let listItems = "";
+        periodsForDay.forEach(periodNum => {
+          const periodKey = String(periodNum);
+          const unitInfo = getUnitProgress(periodNum, dayCounts[periodNum], iso);
+          const unitNameLower = (unitInfo.unitName || "").toLowerCase();
+          const matchesPeriod = !selectedPeriodSet.size || selectedPeriodSet.has(periodKey);
+          const matchesUnit = !selectedUnit || unitNameLower.includes(selectedUnit);
+          if (!matchesPeriod || !matchesUnit) return;
+
+          const classPrefix = `${periodNum}: ${unitInfo.courseName} (${dayCounts[periodNum]})`;
+          let classLine = classPrefix;
+          if (unitInfo.unitIndex !== null) {
+            const unitLabel = unitInfo.unitName || `Unit ${unitInfo.unitIndex + 1}`;
+            const topicSuffix = unitInfo.topicName ? `: ${unitInfo.topicName}` : "";
+            const dayCounter = (unitInfo.dayInUnit && unitInfo.unitLength)
+              ? ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})`
+              : "";
+            classLine = `${classPrefix} • ${unitLabel}${topicSuffix}${dayCounter}`;
+          }
+          listItems += `<li>${classLine}</li>`;
+        });
+
+        if (listItems) {
+          dayHtml += `<ul class="classes-list">${listItems}</ul>`;
+        }
+      }
+
+      dayHtml += `</div>`;
+      html += dayHtml;
+    }
+
+    html += `</div>`;
+  });
 
   const printWindow = window.open('', '_blank');
   printWindow.document.write(`
@@ -3270,6 +3346,12 @@ function init() {
       document.querySelectorAll('#printPeriodFilters input[type="checkbox"]').forEach(input => {
         input.checked = true;
       });
+      const currentMonthKey = MONTHS[currentMonthIndex]
+        ? `${MONTHS[currentMonthIndex].year}-${String(MONTHS[currentMonthIndex].month).padStart(2, "0")}`
+        : "";
+      document.querySelectorAll('#printMonthFilters input[type="checkbox"]').forEach(input => {
+        input.checked = input.value === currentMonthKey;
+      });
     });
 
   document.getElementById("applyPrintFiltersBtn")
@@ -3367,6 +3449,10 @@ document.addEventListener("DOMContentLoaded", init);
       </div>
       <div class="modal-body">
         <div class="print-filter-grid">
+          <div>
+            <label>Months</label>
+            <div id="printMonthFilters" class="print-filter-checkboxes"></div>
+          </div>
           <div>
             <label for="printUnitFilter">Unit filter</label>
             <select id="printUnitFilter">
