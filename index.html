@@ -910,6 +910,7 @@ function openDayModal(day) {
         }
       });
 
+      // New radio button handling
       const testStatus = document.querySelector('input[name="testStatus"]:checked')?.value || "normal";
       notesObj.isTestDay = testStatus === "test";
       notesObj.noTest = testStatus === "noTest";
@@ -1088,6 +1089,8 @@ document.getElementById("printCalendarBtn").addEventListener("click", () => {
   printWindow.document.close();
   setTimeout(() => printWindow.print(), 500);
 });
+
+
 // --- Init ---
 function init() {
   loadUnits();
