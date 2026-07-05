@@ -750,8 +750,9 @@ function renderCalendar() {
 
   calendarRoot.appendChild(monthGrid);
   localStorage.setItem(LS_CLASS_COUNT_KEY, JSON.stringify(classCounts));
-}
-    function closeDayModal() {
+}    
+
+function closeDayModal() {
       const backdrop = document.getElementById("modalBackdrop");
       backdrop.style.display = "none";
       currentModalDay = null;
