@@ -137,7 +137,7 @@
 
 .calendar-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   gap: 0.75rem;
   justify-items: stretch;
   align-items: stretch;
@@ -145,9 +145,17 @@
 
 .calendar-weekdays {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   font-weight: 600;
   margin-bottom: 0.5rem;
+}
+
+.day-cell.weekend {
+  opacity: 0.75;
+  background: #f8fafc;
+}
+body.dark .day-cell.weekend {
+  background: #25282d;
 }
 
 
@@ -478,6 +486,22 @@ body.print-compact #printArea .print-note-line {
       F: 5,6,7,1,2<br/>
       G: 3,4,5,6,7
     </div>
+
+    <hr style="margin:1rem 0;" />
+
+    <h2>Units per Class</h2>
+    <div id="unitsContainer"></div>
+    <button id="addUnitBtn">+ Add New Unit</button>
+
+    <hr style="margin:1rem 0;" />
+
+    <h2>Summary</h2>
+    <div id="summaryStats" class="small"></div>
+
+    <hr style="margin:1rem 0;" />
+
+    <button id="exportTestsBtn">Copy Test Days</button>
+    <button id="printMonthBtn" class="secondary">Print Current Month</button>
     <p class="small" style="margin-top:0.5rem;">
       These are hard‑coded in JS but you can adjust them if your school changes rotation.
     </p>
@@ -657,6 +681,16 @@ function groupByMonth() {
 
 const MONTHS = groupByMonth();
 
+// --- LocalStorage keys ---
+const LS_SCHEDULE_KEY = "hsSchedule";
+const LS_NOTES_KEY_PREFIX = "hsNotes";
+const LS_CLASS_COUNT_KEY = "hsClassCounts";
+let classCounts = {};
+
+// New for Quick Wins
+const LS_UNITS_KEY = "hsUnits";
+let units = {}; // e.g. { "1": [{name: "Unit 1", length: 12}, ...] }
+
 
 
     // --- LocalStorage keys ---
@@ -703,6 +737,21 @@ const MONTHS = groupByMonth();
       localStorage.setItem(getNotesKey(date), JSON.stringify(notesObj));
     }
 
+    // === UNIT MANAGEMENT ===
+function loadUnits() {
+  const raw = localStorage.getItem(LS_UNITS_KEY);
+  if (raw) units = JSON.parse(raw);
+}
+
+function saveUnits() {
+  localStorage.setItem(LS_UNITS_KEY, JSON.stringify(units));
+}
+
+function getUnitsForPeriod(period) {
+  if (!units[period]) units[period] = [];
+  return units[period];
+}
+
     function hasNotesForDate(date) {
       return !!localStorage.getItem(getNotesKey(date));
     }
@@ -748,6 +797,65 @@ function countScheduledClassesBefore(dateLimit) {
         input.value = teacherSchedule[p] || "";
       }
     }
+
+    function renderUnits() {
+  const container = document.getElementById("unitsContainer");
+  container.innerHTML = "";
+
+  for (let p = 1; p <= 7; p++) {
+    const periodUnits = getUnitsForPeriod(p);
+    const courseName = teacherSchedule[p] || `Period ${p}`;
+
+    const div = document.createElement("div");
+    div.innerHTML = `
+      <strong>Period ${p} – ${courseName}</strong>
+      <div id="units-${p}"></div>
+      <button onclick="addUnit(${p})">+ Add Unit</button>
+    `;
+    container.appendChild(div);
+
+    const unitList = document.getElementById(`units-${p}`);
+    periodUnits.forEach((unit, i) => {
+      const row = document.createElement("div");
+      row.className = "unit-row";
+      row.innerHTML = `
+        <input type="text" value="${unit.name}" style="width:60%" 
+               onchange="updateUnitName(${p},${i}, this.value)">
+        <input type="number" value="${unit.length}" style="width:20%" 
+               onchange="updateUnitLength(${p},${i}, this.value)">
+        <button onclick="removeUnit(${p},${i})" class="secondary">×</button>
+      `;
+      unitList.appendChild(row);
+    });
+  }
+}
+
+window.addUnit = function(period) {
+  if (!units[period]) units[period] = [];
+  units[period].push({ name: `Unit ${units[period].length + 1}`, length: 10 });
+  saveUnits();
+  renderUnits();
+  renderCalendar();
+};
+
+window.updateUnitName = function(period, index, name) {
+  units[period][index].name = name;
+  saveUnits();
+  renderCalendar();
+};
+
+window.updateUnitLength = function(period, index, length) {
+  units[period][index].length = parseInt(length) || 10;
+  saveUnits();
+  renderCalendar();
+};
+
+window.removeUnit = function(period, index) {
+  units[period].splice(index, 1);
+  saveUnits();
+  renderUnits();
+  renderCalendar();
+};
 
     function handleScheduleSubmit(event) {
       event.preventDefault();
@@ -1121,11 +1229,30 @@ function openDayModal(day) {
       renderCalendar();
     }
 
+    function renderSummary() {
+  // Simple summary for now
+  document.getElementById("summaryStats").innerHTML = `
+    <p><strong>Total Units Defined:</strong> ${Object.values(units).flat().length}</p>
+    <p>Click "Copy Test Days" for full list</p>
+  `;
+}
+
+document.getElementById("exportTestsBtn").addEventListener("click", () => {
+  alert("Test days export coming in next update");
+});
+
+document.getElementById("printMonthBtn").addEventListener("click", () => {
+  window.print();
+});
+
 // --- Init ---
 function init() {
-  loadScheduleFromStorage();
+loadScheduleFromStorage();
+  loadUnits();                    // ← new
   hydrateScheduleForm();
   renderCalendar();
+  renderUnits();                  // ← new
+  renderSummary();                // ← new
 
   document.getElementById("printNotesBtn").addEventListener("click", () => {
   const printRoot = document.getElementById("printArea");
