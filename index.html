@@ -690,204 +690,67 @@ function renderCalendar() {
   const last = new Date(year, month, 0);
   const totalDays = last.getDate();
 
-  // Weekday header row (Mon–Fri)
+  // Weekday headers - Sunday first
   const weekdayHeaderRow = document.createElement("div");
   weekdayHeaderRow.className = "calendar-weekdays";
-  ["Sun", "Mon","Tue","Wed","Thu","Fri", "Sat"].forEach(w => {
+  ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach(w => {
     const wd = document.createElement("div");
     wd.textContent = w;
     weekdayHeaderRow.appendChild(wd);
   });
   calendarRoot.appendChild(weekdayHeaderRow);
 
-  // Actual grid
   const monthGrid = document.createElement("div");
   monthGrid.className = "calendar-grid";
 
-  // Determine weekday of the 1st day of the month
-const firstDay = new Date(year, month - 1, 1).getDay();
-const weekdayIndex = [1, 2, 3, 4, 5, 6, 0]; // Mon=1, Tue=2, ..., Sun=0
-const firstIndex = weekdayIndex.indexOf(firstDay);
-const leadingBlanks = firstIndex === -1 ? 0 : firstIndex;
+  // Leading blanks for Sunday start
+  const firstDay = new Date(year, month - 1, 1).getDay(); // 0 = Sunday
+  const leadingBlanks = firstDay;
 
-for (let i = 0; i < leadingBlanks; i++) {
-  const empty = document.createElement("div");
-  empty.className = "day-cell empty";
-  monthGrid.appendChild(empty);
-}
+  for (let i = 0; i < leadingBlanks; i++) {
+    const empty = document.createElement("div");
+    empty.className = "day-cell empty";
+    monthGrid.appendChild(empty);
+  }
 
-  const weekdays = [];
   for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
     const iso = `${year}-${String(month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
     const dateObj = new Date(year, month - 1, dayNum);
+    const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
     const schoolDay = dayMap[iso] || null;
 
-    weekdays.push({
-      date: iso,
-      schoolDay: schoolDay,
-      isWeekend: dateObj.getDay() === 0 || dateObj.getDay() === 6
-    });
-  }
-
-  weekdays.forEach(weekdayCell => {
-    const [cellYear, cellMonth, cellDay] = weekdayCell.date.split("-").map(Number);
-    const dateObj = new Date(cellYear, cellMonth - 1, cellDay);
-    const weekdayName = dateObj.toLocaleDateString(undefined, { weekday: "short" });
-    const notes = loadNotesForDate(weekdayCell.date);
-    const hasNotes = Object.keys(notes).length > 0;
-
     const cell = document.createElement("div");
-    cell.className = `day-cell ${weekdayCell.isWeekend ? 'weekend' : ''}`;
-    cell.dataset.date = weekdayCell.date;
+    cell.className = `day-cell ${isWeekend ? 'weekend' : ''}`;
+    cell.dataset.date = iso;
 
-    if (weekdayCell.date === todayISO) {
-      cell.classList.add("today");
-    }
+    if (iso === todayISO) cell.classList.add("today");
 
     const header = document.createElement("div");
     header.className = "day-cell-header";
+    const cleanDate = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    header.textContent = cleanDate;
+    cell.appendChild(header);
 
-    if (weekdayCell.schoolDay) {
-      const day = weekdayCell.schoolDay;
-
-      const rotationLetter = day.letter ? normalizeLetter(day.letter) : "";
-      const cleanDate = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-
-      header.innerHTML = `${cleanDate} <span class="rotation-${rotationLetter}">${rotationLetter}</span>`;
-
-      cell.appendChild(header);
-
-      if (notes.isTestDay) {
-        cell.classList.add("test-day");
+    if (schoolDay) {
+      const rotationLetter = normalizeLetter(schoolDay.letter) || "";
+      if (rotationLetter) {
+        const rotSpan = document.createElement("span");
+        rotSpan.className = `rotation-${rotationLetter}`;
+        rotSpan.textContent = ` ${rotationLetter}`;
+        header.appendChild(rotSpan);
       }
-
-      const letter = normalizeLetter(day.letter);
-      if (!letter || !ROTATION_RULES[letter]) {
-        cell.appendChild(document.createTextNode(day.letter || "No HS classes"));
-      } else {
-        const ul = document.createElement("ul");
-        ul.className = "classes-list";
-        ROTATION_RULES[letter].forEach(periodNum => {
-          classCounts[periodNum] = (classCounts[periodNum] || 0) + 1;
-          const li = document.createElement("li");
-          const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
-          const dayCount = classCounts[periodNum] || 0;
-          li.textContent = `${periodNum}: ${courseName} (Day ${dayCount})`;
-
-          li.classList.add(`period-${periodNum}`);
-          ul.appendChild(li);
-        });
-        cell.appendChild(ul);
-      }
-
-      cell.addEventListener("click", () => openDayModal(day));
     } else {
-      const cleanDate = dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-      header.textContent = `${cleanDate} — No HS classes`;
-      cell.appendChild(header);
       cell.classList.add("empty");
-
-      if (notes.isTestDay) {
-        cell.classList.add("test-day");
-      }
-
-      cell.addEventListener("click", () => openDayModal({
-        date: weekdayCell.date,
-        letter: "No HS classes"
-      }));
     }
 
-    if (hasNotes) {
-      cell.classList.add("has-notes");
-
-      const preview = document.createElement("div");
-      preview.className = "tooltip";
-
-      const firstNote = Object.values(notes)
-        .find(value => typeof value === "string" && value.trim() !== "");
-
-      preview.textContent = firstNote
-        ? firstNote.slice(0, 60) + "…"
-        : "Notes added";
-
-      cell.appendChild(preview);
-    }
+    cell.addEventListener("click", () => openDayModal({ date: iso, letter: schoolDay ? schoolDay.letter : "No HS classes" }));
 
     monthGrid.appendChild(cell);
-  });
+  }
 
   calendarRoot.appendChild(monthGrid);
   localStorage.setItem(LS_CLASS_COUNT_KEY, JSON.stringify(classCounts));
 }
-    // --- UI: modal for notes ---
-function openDayModal(day) {
-  currentModalDay = day;
-
-  const backdrop = document.getElementById("modalBackdrop");
-  const dateLabel = document.getElementById("modalDateLabel");
-  const letterLabel = document.getElementById("modalLetterLabel");
-  const body = document.getElementById("modalBody");
-
-  dateLabel.textContent = formatDateLabel(day.date);
-  letterLabel.textContent = ROTATION_RULES[normalizeLetter(day.letter)]
-    ? `HS letter: ${normalizeLetter(day.letter)}`
-    : (day.letter || "No HS classes");
-
-  body.innerHTML = "";
-
-  const existingNotes = loadNotesForDate(day.date);   // <-- FIXED: moved up
-
-  const periods = ROTATION_RULES[normalizeLetter(day.letter)] || [];
-
-  if (periods.length === 0) {
-    const block = document.createElement("div");
-    block.className = "note-block";
-
-    const label = document.createElement("label");
-    label.textContent = "General Notes";
-    block.appendChild(label);
-
-    const textarea = document.createElement("textarea");
-    textarea.value = existingNotes.general || "";
-    textarea.dataset.period = "general";
-    block.appendChild(textarea);
-
-    body.appendChild(block);
-  }
-
-  periods.forEach(periodNum => {
-    const courseName = teacherSchedule[periodNum] || `Period ${periodNum}`;
-    const block = document.createElement("div");
-    block.className = "note-block";
-
-    const label = document.createElement("label");
-    label.textContent = `Period ${periodNum} – ${courseName}`;
-    block.appendChild(label);
-
-    const textarea = document.createElement("textarea");
-    textarea.value = existingNotes[periodNum] || "";
-    textarea.dataset.period = periodNum;
-    block.appendChild(textarea);
-
-    body.appendChild(block);
-  });
-
-  // Test day checkbox
-  // Test day options
-  const testBlock = document.createElement("div");
-  testBlock.className = "note-block";
-  testBlock.innerHTML = `
-    <label>Test Day Status</label><br/>
-    <label><input type="radio" name="testStatus" value="test" ${existingNotes.isTestDay ? 'checked' : ''}> Test Day</label><br/>
-    <label><input type="radio" name="testStatus" value="noTest" ${existingNotes.noTest ? 'checked' : ''}> No Test Today</label><br/>
-    <label><input type="radio" name="testStatus" value="normal" ${!existingNotes.isTestDay && !existingNotes.noTest ? 'checked' : ''}> Normal Day</label>
-  `;
-  body.appendChild(testBlock);
-
-  backdrop.style.display = "flex";
-
-}
-
     function closeDayModal() {
       const backdrop = document.getElementById("modalBackdrop");
       backdrop.style.display = "none";
