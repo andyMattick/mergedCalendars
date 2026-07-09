@@ -646,6 +646,39 @@ body.dark .day-cell.today.cycle-G { background: #3a4657; }
   font-weight: 700;
 }
 
+.snow-day-select {
+  min-height: 220px;
+}
+
+.shift-unit-tag {
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 0.08rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid #f59e0b;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.shift-summary-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.shift-summary-list li {
+  font-size: 0.84rem;
+  line-height: 1.28;
+}
+
+.shift-summary-empty {
+  font-size: 0.84rem;
+  color: #6b7280;
+}
+
 .unit-days-table input[type="text"] {
   margin-bottom: 0;
 }
@@ -1212,7 +1245,8 @@ function normalizeUnit(unit, index) {
     days.push({
       topic: (raw.topic || "").trim(),
       quiz: !!raw.quiz,
-      test: !!raw.test
+      test: !!raw.test,
+      shiftDay: !!raw.shiftDay
     });
   }
 
@@ -1231,8 +1265,64 @@ function normalizeUnit(unit, index) {
     name: (unit?.name || `Unit ${index + 1}`).trim(),
     length,
     startDate: unit?.startDate || "",
-    days
+    days,
+    shiftedUnit: !!unit?.shiftedUnit
   };
+}
+
+function isShiftDayPlan(dayPlan) {
+  return !!dayPlan?.shiftDay;
+}
+
+function getInstructionalDayCount(days) {
+  return (Array.isArray(days) ? days : []).reduce((count, dayPlan) => count + (isShiftDayPlan(dayPlan) ? 0 : 1), 0);
+}
+
+function getInstructionalDayNumberAtIndex(days, index) {
+  if (!Array.isArray(days) || !days.length) return 0;
+  const capped = Math.max(0, Math.min(index, days.length - 1));
+  let count = 0;
+  for (let i = 0; i <= capped; i++) {
+    if (!isShiftDayPlan(days[i])) count += 1;
+  }
+  return count;
+}
+
+function createShiftDayPlan() {
+  return {
+    topic: "SHIFT UNIT",
+    quiz: false,
+    test: false,
+    shiftDay: true
+  };
+}
+
+function insertShiftDaysByInstructionalNumber(days, selectedInstructionalDays) {
+  const updated = (Array.isArray(days) ? days : []).map(dayPlan => ({ ...dayPlan }));
+  const targets = Array.from(new Set(
+    (Array.isArray(selectedInstructionalDays) ? selectedInstructionalDays : [])
+      .map(Number)
+      .filter(dayNum => Number.isInteger(dayNum) && dayNum >= 1)
+  )).sort((a, b) => a - b);
+
+  targets.forEach(targetDay => {
+    let instructionalSeen = 0;
+    let insertAt = updated.length;
+
+    for (let i = 0; i < updated.length; i++) {
+      if (!isShiftDayPlan(updated[i])) {
+        instructionalSeen += 1;
+        if (instructionalSeen === targetDay) {
+          insertAt = i;
+          break;
+        }
+      }
+    }
+
+    updated.splice(insertAt, 0, createShiftDayPlan());
+  });
+
+  return updated;
 }
 
 function normalizeSpecialDay(day) {
@@ -1519,19 +1609,25 @@ function getUnitProgress(periodNum, dayCount, classDate) {
 
   const activeIndex = window.unitIndex;
   const activeUnit = window.unit;
-  const activeLength = activeUnit.length;
-  const dayInUnit = currentIndex - window.startIndex + 1;
+  const dayArray = Array.isArray(activeUnit.days) ? activeUnit.days : [];
+  const planIndex = Math.max(0, Math.min(currentIndex - window.startIndex, Math.max(0, dayArray.length - 1)));
+  const activeLength = getInstructionalDayCount(dayArray);
 
   const unitName = (activeUnit.name || "").trim();
-  const safeDay = Math.max(1, Math.min(dayInUnit, activeLength));
-  const dayPlan = activeUnit.days?.[safeDay - 1] || { topic: "", quiz: false, test: false };
+  const dayPlan = dayArray[planIndex] || { topic: "", quiz: false, test: false, shiftDay: false };
   const topicName = (dayPlan.topic || "").trim();
+  const isShiftDay = isShiftDayPlan(dayPlan);
+  const instructionalDay = isShiftDay ? null : getInstructionalDayNumberAtIndex(dayArray, planIndex);
+  const displayedInstructionalLength = Math.max(1, activeLength);
+  const unitLabel = unitName || `Unit ${activeIndex + 1}`;
 
   let displayText;
-  if (topicName) {
-    displayText = `${courseName} • Unit ${activeIndex + 1}: ${topicName} (Day ${safeDay}/${activeLength})`;
+  if (isShiftDay) {
+    displayText = `${courseName} • ${unitLabel}: SHIFT UNIT`;
+  } else if (topicName) {
+    displayText = `${courseName} • ${unitLabel}: ${topicName} (Day ${instructionalDay}/${displayedInstructionalLength})`;
   } else {
-    displayText = `${courseName} • Unit ${activeIndex + 1} (Day ${safeDay}/${activeLength})`;
+    displayText = `${courseName} • ${unitLabel} (Day ${instructionalDay}/${displayedInstructionalLength})`;
   }
 
   return {
@@ -1542,10 +1638,10 @@ function getUnitProgress(periodNum, dayCount, classDate) {
     unitIndex: activeIndex,
     unitName: unitName || `Unit ${activeIndex + 1}`,
     topicName,
-    dayInUnit: safeDay,
-    unitLength: activeLength,
-    hasQuizToday: !!dayPlan.quiz,
-    hasTestToday: !!dayPlan.test
+    dayInUnit: instructionalDay,
+    unitLength: displayedInstructionalLength,
+    hasQuizToday: !isShiftDay && !!dayPlan.quiz,
+    hasTestToday: !isShiftDay && !!dayPlan.test
   };
 }
 
@@ -2201,6 +2297,10 @@ function openDayModal(day) {
 
   const periods = getPeriodsForDate(day.date, day.letter);
   const dayCounts = getDayCountsForDate(day.date, periods);
+  const shiftAllBtn = document.getElementById("shiftAllUnitsBtn");
+  if (shiftAllBtn) {
+    shiftAllBtn.style.display = periods.length ? "inline-block" : "none";
+  }
 
   if (periods.length === 0) {
     const block = document.createElement("div");
@@ -2448,12 +2548,22 @@ function getUnitsForPeriod(period) {
   return units[period];
 }
 
+function shiftISODate(isoDate, daysToShift) {
+  if (!isoDate) return "";
+  const [year, month, day] = String(isoDate).split("-").map(Number);
+  const date = new Date(year, (month || 1) - 1, day || 1);
+  if (isNaN(date)) return "";
+  date.setDate(date.getDate() + daysToShift);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 function renderUnits() {
   const container = document.getElementById("unitsContainer");
   container.innerHTML = "";
 
   for (let p = 1; p <= 7; p++) {
     const periodUnits = getUnitsForPeriod(p);
+    const schedule = applyUnitSchedule(p, periodUnits, false);
     const courseName = teacherSchedule[p] || `Period ${p}`;
 
     const div = document.createElement("div");
@@ -2480,6 +2590,10 @@ function renderUnits() {
     const list = document.getElementById(`units-list-${p}`);
     periodUnits.forEach((unit, i) => {
       const normalized = normalizeUnit(unit, i);
+      const window = schedule.windows.find(w => w.unitIndex === i);
+      const dateRangeText = window
+        ? `${formatDateLabel(window.startDate)} - ${formatDateLabel(window.endDate)}`
+        : "Date range unavailable";
       const row = document.createElement("div");
       row.className = "unit-row unit-card";
       row.innerHTML = `
@@ -2497,9 +2611,15 @@ function renderUnits() {
             <input id="unitStart-${p}-${i}" type="date" value="${normalized.startDate || ""}">
           </div>
         </div>
+        <div class="small">Scheduled dates: ${dateRangeText}</div>
+        ${normalized.shiftedUnit ? `<span class="shift-unit-tag">SHIFT UNIT</span>` : ""}
         <div class="unit-actions">
           <button onclick="saveUnitInfo(${p}, ${i})">Save Info</button>
           <button onclick="openUnitDaysEditor(${p}, ${i})">Edit Days</button>
+          <button onclick="shiftUnit(${p}, ${i}, 1)">+1 Day (Snow)</button>
+          <button onclick="shiftUnit(${p}, ${i}, -1)">-1 Day</button>
+          <button onclick="shiftUnit(${p}, ${i}, 1, true)" class="secondary">Shift This Unit</button>
+          <button onclick="shiftUnit(${p}, ${i}, 1, false)" class="secondary">Shift This + Following</button>
           <button onclick="removeUnit(${p},${i})" class="secondary">Remove Unit</button>
         </div>
       `;
@@ -2736,6 +2856,7 @@ window.choosePeriodForNewUnit = function() {
 };
 
 let currentUnitEditor = null;
+let pendingSnowDaySelectionResolver = null;
 
 window.openUnitDaysEditor = function(period, index) {
   const unit = getUnitsForPeriod(period)[index];
@@ -2751,18 +2872,367 @@ window.openUnitDaysEditor = function(period, index) {
   tbody.innerHTML = "";
 
   normalized.days.forEach((dayPlan, dayIndex) => {
+    const isShiftRow = isShiftDayPlan(dayPlan);
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${dayIndex + 1}</td>
-      <td><input type="text" data-day-index="${dayIndex}" class="unit-day-topic" value="${dayPlan.topic || ""}" placeholder="Optional lesson/topic"></td>
-      <td style="text-align:center;"><input type="checkbox" data-day-index="${dayIndex}" class="unit-day-quiz" ${dayPlan.quiz ? "checked" : ""}></td>
-      <td style="text-align:center;"><input type="checkbox" data-day-index="${dayIndex}" class="unit-day-test" ${dayPlan.test ? "checked" : ""}></td>
+      <td><input type="text" data-day-index="${dayIndex}" class="unit-day-topic" value="${dayPlan.topic || ""}" placeholder="Optional lesson/topic" ${isShiftRow ? "disabled" : ""}></td>
+      <td style="text-align:center;"><input type="checkbox" data-day-index="${dayIndex}" class="unit-day-quiz" ${dayPlan.quiz ? "checked" : ""} ${isShiftRow ? "disabled" : ""}></td>
+      <td style="text-align:center;"><input type="checkbox" data-day-index="${dayIndex}" class="unit-day-test" ${dayPlan.test ? "checked" : ""} ${isShiftRow ? "disabled" : ""}></td>
     `;
     tbody.appendChild(row);
   });
 
   backdrop.style.display = "flex";
 };
+
+window.openUnitDayPlanner = function(period, index) {
+  openUnitDaysEditor(period, index);
+};
+
+function closeSnowDayPicker(selection) {
+  const backdrop = document.getElementById("snowDayBackdrop");
+  if (backdrop) backdrop.style.display = "none";
+  const resolver = pendingSnowDaySelectionResolver;
+  pendingSnowDaySelectionResolver = null;
+  if (resolver) resolver(selection);
+}
+
+function openSnowDayPicker(unit) {
+  return new Promise(resolve => {
+    const normalized = normalizeUnit(unit, 0);
+    const instructionalLength = getInstructionalDayCount(normalized.days);
+    const title = document.getElementById("snowDayTitle");
+    const hint = document.getElementById("snowDayHint");
+    const select = document.getElementById("snowDaySelect");
+    const backdrop = document.getElementById("snowDayBackdrop");
+
+    if (!title || !hint || !select || !backdrop) {
+      resolve(null);
+      return;
+    }
+
+    title.textContent = `Snow Day Selection: ${normalized.name}`;
+    hint.textContent = `Select one or more missed instructional day numbers (1-${instructionalLength}).`;
+    select.innerHTML = "";
+
+    let dayNum = 0;
+    normalized.days.forEach(dayPlan => {
+      if (isShiftDayPlan(dayPlan)) return;
+      dayNum += 1;
+      const topic = (dayPlan.topic || "").trim();
+      const option = document.createElement("option");
+      option.value = String(dayNum);
+      option.textContent = topic ? `Day ${dayNum}: ${topic}` : `Day ${dayNum}`;
+      select.appendChild(option);
+    });
+
+    pendingSnowDaySelectionResolver = resolve;
+    backdrop.style.display = "flex";
+  });
+}
+
+function buildShiftedUnits(periodUnits, unitIndex, daysToShift, shiftOnlyCurrent, snowDayNumbers = [1]) {
+  const normalizedSnowDays = Array.from(new Set(
+    (Array.isArray(snowDayNumbers) ? snowDayNumbers : [1])
+      .map(Number)
+      .filter(dayNum => Number.isInteger(dayNum) && dayNum >= 1)
+  )).sort((a, b) => a - b);
+
+  const effectiveSnowDays = normalizedSnowDays.length ? normalizedSnowDays : [1];
+  const addedDays = daysToShift > 0 ? effectiveSnowDays.length : Math.max(1, Math.abs(daysToShift));
+  const insertShiftDays = daysToShift > 0 && effectiveSnowDays.length > 0;
+  const midUnitSnow = daysToShift > 0 && effectiveSnowDays.some(dayNum => dayNum > 1);
+
+  return {
+    addedDays,
+    insertShiftDays,
+    midUnitSnow,
+    snowDays: effectiveSnowDays
+  };
+}
+
+function executeUnitShift(period, periodUnits, unitIndex, daysToShift, shiftOnlyCurrent, snowDayNumbers) {
+  const transformed = buildShiftedUnits(periodUnits, unitIndex, daysToShift, shiftOnlyCurrent, snowDayNumbers);
+  const baseline = applyUnitSchedule(period, periodUnits, false);
+  if (!baseline.valid) {
+    return {
+      ...transformed,
+      shifted: periodUnits.map((unit, index) => normalizeUnit(unit, index)),
+      validated: baseline
+    };
+  }
+
+  const windowsByIndex = new Map(baseline.windows.map(window => [window.unitIndex, window]));
+  const dates = baseline.occurrenceDates;
+
+  const shifted = periodUnits.map((candidate, i) => {
+    const normalized = normalizeUnit(candidate, i);
+    if (i < unitIndex) return normalized;
+    if (shiftOnlyCurrent && i !== unitIndex) return normalized;
+
+    const baseWindow = windowsByIndex.get(i);
+    if (!baseWindow) return normalized;
+
+    if (transformed.insertShiftDays) {
+      if (i === unitIndex) {
+        const updatedDays = insertShiftDaysByInstructionalNumber(normalized.days, transformed.snowDays);
+        return normalizeUnit({
+          ...normalized,
+          days: updatedDays,
+          length: Math.max(1, updatedDays.length),
+          shiftedUnit: true
+        }, i);
+      }
+
+      const targetStartIndex = baseWindow.startIndex + transformed.addedDays;
+      return normalizeUnit({
+        ...normalized,
+        startDate: dates[targetStartIndex] || "INVALID_SHIFT_DATE",
+        shiftedUnit: true
+      }, i);
+    }
+
+    const targetStartIndex = baseWindow.startIndex + daysToShift;
+    return normalizeUnit({
+      ...normalized,
+      startDate: dates[targetStartIndex] || "INVALID_SHIFT_DATE",
+      shiftedUnit: true
+    }, i);
+  });
+
+  const validated = applyUnitSchedule(period, shifted, false);
+  return {
+    ...transformed,
+    shifted,
+    validated
+  };
+}
+
+function summarizeUnitChangesForPeriod(period, beforeUnits, afterUnits) {
+  const before = (beforeUnits || []).map((unit, index) => normalizeUnit(unit, index));
+  const after = (afterUnits || []).map((unit, index) => normalizeUnit(unit, index));
+  const max = Math.max(before.length, after.length);
+  const lines = [];
+
+  for (let i = 0; i < max; i++) {
+    const prev = before[i];
+    const next = after[i];
+    if (!prev || !next) continue;
+
+    const startChanged = (prev.startDate || "") !== (next.startDate || "");
+    const lengthChanged = Number(prev.length || 0) !== Number(next.length || 0);
+    const shiftedChanged = !!prev.shiftedUnit !== !!next.shiftedUnit;
+    if (!startChanged && !lengthChanged && !shiftedChanged) continue;
+
+    const unitLabel = next.name || prev.name || `Unit ${i + 1}`;
+    const startPart = startChanged
+      ? `start ${prev.startDate || "(auto)"} -> ${next.startDate || "(auto)"}`
+      : `start ${next.startDate || "(auto)"}`;
+    const lengthPart = lengthChanged
+      ? `, length ${prev.length} -> ${next.length}`
+      : `, length ${next.length}`;
+    lines.push(`P${period} • Unit ${i + 1} (${unitLabel}): ${startPart}${lengthPart}`);
+  }
+
+  return lines;
+}
+
+function buildShiftSummaryMessage(title, changeLines) {
+  if (!changeLines.length) {
+    return {
+      title,
+      lines: [],
+      remaining: 0
+    };
+  }
+
+  const maxLines = 14;
+  const visible = changeLines.slice(0, maxLines);
+  const remaining = changeLines.length - visible.length;
+  return {
+    title,
+    lines: visible,
+    remaining
+  };
+}
+
+function openShiftSummaryPanel(summary) {
+  const backdrop = document.getElementById("shiftSummaryBackdrop");
+  const title = document.getElementById("shiftSummaryTitle");
+  const list = document.getElementById("shiftSummaryList");
+  const empty = document.getElementById("shiftSummaryEmpty");
+  const more = document.getElementById("shiftSummaryMore");
+  if (!backdrop || !title || !list || !empty || !more) return;
+
+  title.textContent = summary.title || "Shift Summary";
+  list.innerHTML = "";
+
+  if (!summary.lines?.length) {
+    empty.style.display = "block";
+    empty.textContent = "No unit changes were detected.";
+  } else {
+    empty.style.display = "none";
+    summary.lines.forEach(line => {
+      const li = document.createElement("li");
+      li.textContent = line;
+      list.appendChild(li);
+    });
+  }
+
+  if (summary.remaining > 0) {
+    more.style.display = "block";
+    more.textContent = `...and ${summary.remaining} more change(s).`;
+  } else {
+    more.style.display = "none";
+    more.textContent = "";
+  }
+
+  backdrop.style.display = "flex";
+}
+
+function closeShiftSummaryPanel() {
+  const backdrop = document.getElementById("shiftSummaryBackdrop");
+  if (backdrop) backdrop.style.display = "none";
+}
+
+function shiftAllUnitsForDate(date) {
+  const schoolDay = getRotationDayByDate(date);
+  const periods = schoolDay ? getPeriodsForDate(date, schoolDay.letter) : [];
+  if (!periods.length) {
+    alert("No scheduled class periods on this date.");
+    return;
+  }
+
+  const updates = {};
+  const previousByPeriod = {};
+  for (const period of periods) {
+    const schedule = getUnitScheduleForPeriod(period);
+    const currentIndex = schedule.occurrenceDates.indexOf(date);
+    if (currentIndex < 0) continue;
+
+    const activeWindow = schedule.windows.find(window => currentIndex >= window.startIndex && currentIndex <= window.endIndex);
+    if (!activeWindow) continue;
+
+    const relativeIndex = currentIndex - activeWindow.startIndex;
+    const activeDays = Array.isArray(activeWindow.unit?.days) ? activeWindow.unit.days : [];
+    const dayInUnit = Math.max(1, getInstructionalDayNumberAtIndex(activeDays, relativeIndex));
+    const sourceUnits = [...getUnitsForPeriod(period)];
+    previousByPeriod[period] = sourceUnits.map((unit, index) => normalizeUnit(unit, index));
+    const result = executeUnitShift(period, sourceUnits, activeWindow.unitIndex, 1, false, [dayInUnit]);
+
+    if (!result.validated.valid) {
+      alert(`Shift blocked for Period ${period}:\n${result.validated.errors.join("\n")}`);
+      return;
+    }
+
+    updates[period] = result.validated.units;
+  }
+
+  const periodsToUpdate = Object.keys(updates);
+  if (!periodsToUpdate.length) {
+    alert("No units were active on this date to shift.");
+    return;
+  }
+
+  periodsToUpdate.forEach(period => {
+    units[period] = updates[period];
+  });
+
+  saveUnits();
+  renderUnits();
+  renderCalendar();
+  renderSummary();
+  alertAssessmentWarnings();
+
+  const changeLines = [];
+  periodsToUpdate.forEach(period => {
+    changeLines.push(...summarizeUnitChangesForPeriod(period, previousByPeriod[period], updates[period]));
+  });
+  openShiftSummaryPanel(buildShiftSummaryMessage(`Shifted units for ${periodsToUpdate.length} period(s) on ${date}.`, changeLines));
+}
+
+window.shiftUnit = async function(period, unitIndex, direction, shiftOnlyCurrentOverride) {
+  const periodUnits = [...getUnitsForPeriod(period)];
+  if (!periodUnits[unitIndex]) {
+    alert("Unit not found.");
+    return;
+  }
+
+  const daysToShift = direction === -1 ? -1 : 1;
+  const unit = normalizeUnit(periodUnits[unitIndex], unitIndex);
+  const instructionalLength = getInstructionalDayCount(unit.days);
+  let snowDayNumbers = [1];
+
+  if (daysToShift === 1) {
+    if (instructionalLength <= 0) {
+      alert("This unit has no instructional days available to shift.");
+      return;
+    }
+
+    const selectedDays = await openSnowDayPicker(unit);
+    if (!selectedDays || !selectedDays.length) {
+      return;
+    }
+
+    const parsedDays = selectedDays
+      .map(value => parseInt(value, 10))
+      .filter(dayNum => Number.isInteger(dayNum) && dayNum >= 1 && dayNum <= instructionalLength)
+      .sort((a, b) => a - b);
+
+    if (!parsedDays.length) {
+      alert(`Select at least one day between 1 and ${instructionalLength}.`);
+      return;
+    }
+
+    snowDayNumbers = Array.from(new Set(parsedDays));
+  }
+
+  const shiftOnlyCurrent = typeof shiftOnlyCurrentOverride === "boolean"
+    ? shiftOnlyCurrentOverride
+    : confirm(
+      `Shift only "${unit.name}"?\n\nSelect OK to shift only this unit.\nSelect Cancel to shift this unit and all following units.`
+    );
+
+  const targetEndIndex = shiftOnlyCurrent ? unitIndex : periodUnits.length - 1;
+  const startLabel = shiftOnlyCurrent ? `"${unit.name}" only` : `"${unit.name}" and all following units`;
+  const isSnowInsertion = daysToShift === 1;
+  const selectedDaysLabel = snowDayNumbers.length === 1
+    ? `Day ${snowDayNumbers[0]}`
+    : `Days ${snowDayNumbers.join(", ")}`;
+  const addedDays = snowDayNumbers.length;
+  const confirmMsg = isSnowInsertion
+    ? `Snow closure on ${selectedDaysLabel}: insert SHIFT UNIT and extend ${startLabel} by +${addedDays} class day(s)?`
+    : `Shift ${startLabel} by ${daysToShift > 0 ? "+" : ""}${daysToShift} day(s)?`;
+  if (!confirm(confirmMsg)) return;
+
+  const result = executeUnitShift(period, periodUnits, unitIndex, daysToShift, shiftOnlyCurrent, snowDayNumbers);
+  const validated = result.validated;
+  if (!validated.valid) {
+    alert(`Shift blocked:\n${validated.errors.join("\n")}`);
+    return;
+  }
+
+  units[period] = validated.units;
+  saveUnits();
+  renderUnits();
+  renderCalendar();
+  renderSummary();
+  alertAssessmentWarnings(period);
+
+  const changeLines = summarizeUnitChangesForPeriod(period, periodUnits, validated.units);
+  openShiftSummaryPanel(buildShiftSummaryMessage("Shift complete. Opening last adjusted unit for review.", changeLines));
+  openUnitDayPlanner(period, targetEndIndex);
+};
+
+function handleShiftAllUnitsForCurrentDay() {
+  if (!currentModalDay?.date) return;
+  const modalDate = currentModalDay.date;
+  const proceed = confirm(`Shift all active units for ${modalDate} by one snow day?`);
+  if (!proceed) return;
+  closeDayModal();
+  shiftAllUnitsForDate(modalDate);
+}
 
 function closeUnitDaysEditor() {
   document.getElementById("unitDaysBackdrop").style.display = "none";
@@ -2782,9 +3252,10 @@ function saveUnitDaysEditor() {
 
   normalized.days = normalized.days.map((dayPlan, dayIndex) => ({
     ...dayPlan,
-    topic: (topics[dayIndex]?.value || "").trim(),
-    quiz: !!quizChecks[dayIndex]?.checked,
-    test: !!testChecks[dayIndex]?.checked
+    topic: isShiftDayPlan(dayPlan) ? "SHIFT UNIT" : (topics[dayIndex]?.value || "").trim(),
+    quiz: isShiftDayPlan(dayPlan) ? false : !!quizChecks[dayIndex]?.checked,
+    test: isShiftDayPlan(dayPlan) ? false : !!testChecks[dayIndex]?.checked,
+    shiftDay: isShiftDayPlan(dayPlan)
   }));
 
   const previousUnit = units[period][index];
@@ -3327,6 +3798,9 @@ function init() {
   document.getElementById("clearNotesBtn")
     .addEventListener("click", handleClearNotes);
 
+  document.getElementById("shiftAllUnitsBtn")
+    .addEventListener("click", handleShiftAllUnitsForCurrentDay);
+
   document.getElementById("closeTodayAgendaBtn")
     .addEventListener("click", closeTodayAgendaModal);
 
@@ -3379,6 +3853,43 @@ function init() {
   document.getElementById("saveUnitDaysBtn")
     .addEventListener("click", saveUnitDaysEditor);
 
+  document.getElementById("closeSnowDayBtn")
+    .addEventListener("click", () => closeSnowDayPicker(null));
+
+  document.getElementById("cancelSnowDayBtn")
+    .addEventListener("click", () => closeSnowDayPicker(null));
+
+  document.getElementById("applySnowDayBtn")
+    .addEventListener("click", () => {
+      const select = document.getElementById("snowDaySelect");
+      const selected = Array.from(select?.selectedOptions || []).map(option => option.value);
+      if (!selected.length) {
+        alert("Select at least one missed day.");
+        return;
+      }
+      closeSnowDayPicker(selected);
+    });
+
+  document.getElementById("snowDayBackdrop")
+    .addEventListener("click", event => {
+      if (event.target.id === "snowDayBackdrop") {
+        closeSnowDayPicker(null);
+      }
+    });
+
+  document.getElementById("closeShiftSummaryBtn")
+    .addEventListener("click", closeShiftSummaryPanel);
+
+  document.getElementById("doneShiftSummaryBtn")
+    .addEventListener("click", closeShiftSummaryPanel);
+
+  document.getElementById("shiftSummaryBackdrop")
+    .addEventListener("click", event => {
+      if (event.target.id === "shiftSummaryBackdrop") {
+        closeShiftSummaryPanel();
+      }
+    });
+
   document.getElementById("prevMonthBtn")
     .addEventListener("click", () => {
       currentMonthIndex = Math.max(0, currentMonthIndex - 1);
@@ -3416,6 +3927,7 @@ document.addEventListener("DOMContentLoaded", init);
       </div>
       <div class="modal-body" id="modalBody"></div>
       <div class="modal-footer">
+        <button class="secondary" id="shiftAllUnitsBtn">Shift All Units</button>
         <button class="secondary" id="clearNotesBtn">Clear notes</button>
         <button id="saveNotesBtn">Save notes</button>
       </div>
@@ -3501,6 +4013,47 @@ document.addEventListener("DOMContentLoaded", init);
     </div>
   </div>
 
+  <div class="modal-backdrop" id="snowDayBackdrop">
+    <div class="modal" style="width:520px; max-width:95vw;">
+      <div class="modal-header">
+        <div>
+          <div id="snowDayTitle">Snow Day Selection</div>
+          <div class="small" id="snowDayHint">Select missed day numbers in this unit.</div>
+        </div>
+        <button class="secondary" id="closeSnowDayBtn">Close</button>
+      </div>
+      <div class="modal-body">
+        <label for="snowDaySelect">Missed Unit Days (multi-select)</label>
+        <select id="snowDaySelect" class="snow-day-select" multiple></select>
+        <div class="small" style="margin-top:0.4rem;">Tip: hold Ctrl (Windows) or Cmd (Mac) to select multiple days.</div>
+      </div>
+      <div class="modal-footer">
+        <button class="secondary" id="cancelSnowDayBtn">Cancel</button>
+        <button id="applySnowDayBtn">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="shiftSummaryBackdrop">
+    <div class="modal" style="width:640px; max-width:95vw;">
+      <div class="modal-header">
+        <div>
+          <div id="shiftSummaryTitle">Shift Summary</div>
+          <div class="small">Review the changes made to units.</div>
+        </div>
+        <button class="secondary" id="closeShiftSummaryBtn">Close</button>
+      </div>
+      <div class="modal-body">
+        <p id="shiftSummaryEmpty" class="shift-summary-empty">No unit changes were detected.</p>
+        <ul id="shiftSummaryList" class="shift-summary-list"></ul>
+        <div id="shiftSummaryMore" class="small" style="margin-top:0.45rem;"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="doneShiftSummaryBtn">Done</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="helpBackdrop">
     <div class="modal" style="width:680px; max-width:96vw;">
       <div class="modal-header">
@@ -3514,6 +4067,7 @@ document.addEventListener("DOMContentLoaded", init);
         <div class="help-tabs" id="helpTabs">
           <button class="help-tab-btn active" data-help-section="welcome">Welcome</button>
           <button class="help-tab-btn" data-help-section="units">Units</button>
+          <button class="help-tab-btn" data-help-section="snow">Snow Days</button>
           <button class="help-tab-btn" data-help-section="special">Special Days</button>
           <button class="help-tab-btn" data-help-section="notes">Notes & Assessments</button>
           <button class="help-tab-btn" data-help-section="printing">Printing & Backup</button>
@@ -3540,6 +4094,19 @@ document.addEventListener("DOMContentLoaded", init);
             <li>Click Edit Days to set topics and mark quizzes/tests per day</li>
             <li>Calendar will show: AP Stats - Unit 1: Exploring Data (Day 4/10)</li>
           </ul>
+        </section>
+
+        <section class="help-section" data-help-section="snow">
+          <h2>Snow Day & Unit Shifting</h2>
+          <p>If you have a snow day or need to adjust pacing:</p>
+          <ul>
+            <li>Go to the unit in the left panel and click <strong>"+1 Day (Snow)"</strong> or <strong>"-1 Day"</strong>.</li>
+            <li>This shifts the selected unit and all following units.</li>
+            <li>You can also shift from the notes modal by clicking on any day inside a unit.</li>
+            <li>The app will warn you if any tests would land on a No Test day after shifting.</li>
+            <li>Notes automatically move with the days.</li>
+          </ul>
+          <p><strong>Tip:</strong> After shifting, the last affected unit opens automatically so you can review/adjust topics and assessments.</p>
         </section>
 
         <section class="help-section" data-help-section="special">
