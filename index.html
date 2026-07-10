@@ -4,6 +4,54 @@
   <meta charset="UTF-8" />
   <title>HS Faculty Planner</title>
   <style>
+
+  .mobile-view #config {
+  display: none;
+}
+
+.mobile-view #calendar {
+  flex: 1;
+  padding: 0.5rem;
+}
+
+.mobile-view .day-cell {
+  min-height: 120px;
+  font-size: 0.85rem;
+}
+
+.mobile-view .classes-list li {
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
+    .day-cell {
+  position: relative;
+}
+
+.hover-agenda {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--card-bg);
+  color: var(--fg);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 16px;
+  width: 320px;
+  max-height: 60vh;
+  overflow-y: auto;
+  z-index: 200;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+  font-size: 0.9rem;
+  pointer-events: none; /* so it doesn't block clicks */
+}
+
+.day-cell:hover .hover-agenda {
+  display: block;
+  pointer-events: auto;
+}
         :root {
       --bg: #f5f5f7;
       --fg: #222;
@@ -866,6 +914,37 @@ body.dark .agenda-note.empty {
   color: #9ca3af;
 }
 
+#divisionSelector, #semesterSelector {
+  display: none;
+}
+   
+/* Hide specific buttons for cleaner header */
+#backupBtn, #restoreBtn, #printCalendarBtn, #exportTestsByClassBtn, #darkModeToggle, #mobileViewBtn, #toggleSpecialTagsBtn {
+  display: none;
+}
+
+/* Make side panels smaller, middle larger */
+#config {
+  width: 280px !important;
+}
+
+#calendar {
+  flex: 2 !important;
+}
+
+/* Radio buttons side by side */
+.selector-group {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.selector-group > div {
+  display: flex;
+  gap: 1rem;
+}
+
 
   </style>
 </head>
@@ -876,13 +955,27 @@ body.dark .agenda-note.empty {
         <button id="backupBtn" class="secondary">Backup Data</button>
         <button id="restoreBtn" class="secondary">Restore Data</button>
         <input id="restoreInput" type="file" accept=".json" style="display:none;">
-        <button id="jumpTodayBtn" class="secondary">Jump To Today</button>
-        <button class="secondary" id="toggleSpecialTagsBtn">Toggle All Special Tags</button>
+        <select id="leftActions1" class="header-select">
+        <option value="">Save / Restore / Print</option>
+        <option value="backup">Backup Data</option>
+        <option value="restore">Restore Data</option>
+        <option value="print">Print with Filters</option>
+        <option value="export">Export Tests/Quizzes</option>
+      </select>
+
+         <select id="leftActions2" class="header-select">
+        <option value="">Change Calendar Views</option>
+        <option value="mobile">Toggle Desktop / Mobile View</option>
+        <option value="special">Toggle Special Tags On / Off</option>
+        <option value="dark">Switch to Dark Mode</option>
+      </select>
+      
+      </select>
 
       </div>
 
       <div class="header-center">
-        <h1 id="mainTitle">HS Rotation Planner</h1>
+                <h1 id="mainTitle">Wesleyan HS 26-27 Planner</h1>
                 <select id="divisionSelector" aria-label="Division selector">
           <option value="hs">High School</option>
           <option value="ms">Middle School</option>
@@ -893,14 +986,31 @@ body.dark .agenda-note.empty {
           <option value="sem2">2nd Semester</option>
         </select>
 
+        <div class="selector-group">
+          <div>
+            <strong>Division:</strong>
+            <label><input type="radio" name="division" value="hs" checked> HS</label>
+            <label><input type="radio" name="division" value="ms"> MS</label>
+            <label><input type="radio" name="division" value="ls"> LS</label>
+          </div>
+          <div>
+            <strong>Semester:</strong>
+            <label><input type="radio" name="semester" value="sem1" checked> 1st</label>
+            <label><input type="radio" name="semester" value="sem2"> 2nd</label>
+          </div>
+        </div>
+
       </div>
 
       <div class="header-right">
-        <button id="darkModeToggle" class="secondary">Dark Mode</button>
-        <button id="helpBtn" class="secondary">? Help</button>
         <button id="printCalendarBtn" class="secondary">Print with Filters</button>
         <button id="exportTestsByClassBtn" class="secondary">Export Tests/Quizzes by Class</button>
-        
+      <button id="darkModeToggle" class="secondary">Dark Mode</button>
+      <button id="mobileViewBtn" class="secondary">Mobile View</button>
+      <button id="toggleSpecialTagsBtn" class="secondary">Remove Special Tags</button>
+      <button id="helpBtn" class="secondary">? Help</button>
+      <button id="jumpTodayBtn" class="secondary">Jump To Today</button>
+    </div>
       </div>
     </div>
   </header>
@@ -917,6 +1027,7 @@ body.dark .agenda-note.empty {
           <div id="scheduleFields"></div>
           <button type="submit">Save schedule</button>
         </form>
+        
       </div>
     </div>
 
@@ -1486,7 +1597,7 @@ const STATIC_SPECIAL_DAY_ROWS = [
   ["2026-08-18", ["ls"], "Picture Day"],
   ["2026-08-18", ["ls"], "Parent Night"],
   ["2026-08-19", ["all"], "Late Start"],
-  ["2026-08-20", ["all"], "Chapel"],
+  ["2026-08-20", ["all"], "All School Chapel"],
   ["2026-08-20", ["ms"], "Parent Night"],
   ["2026-08-25", ["hs"], "Parent Night"],
   ["2026-08-26", ["all"], "Late Start"],
@@ -2368,20 +2479,20 @@ if (dayNotes.noTest && !isAutoNoTestDay(iso)) {
     let currentModalDay = null; // { date, letter }
 
     // --- Helpers ---
-    function loadScheduleFromStorage() {
-      teacherSchedule = {};
-      const raw = localStorage.getItem(getStorageKey(LS_SCHEDULE_KEY));
-      if (!raw) return;
-      try {
-        teacherSchedule = JSON.parse(raw);
-      } catch (e) {
-        console.warn("Failed to parse stored schedule", e);
-      }
-    }
+function loadScheduleFromStorage() {
+  const key = getCurrentScheduleKey();
+  const fullKey = getStorageKey(key);
+  const saved = localStorage.getItem(fullKey);
+  teacherSchedule = saved ? JSON.parse(saved) : {};
+  console.log("Loaded from key:", fullKey, "Data:", Object.keys(teacherSchedule)); // debug
+}
 
-    function saveScheduleToStorage() {
-      localStorage.setItem(getStorageKey(LS_SCHEDULE_KEY), JSON.stringify(teacherSchedule));
-    }
+
+
+function saveScheduleToStorage() {
+  const key = getCurrentScheduleKey();
+  localStorage.setItem(getStorageKey(key), JSON.stringify(teacherSchedule));
+}
 
     function getNotesKey(date) {
       return `${getStorageKey(LS_NOTES_KEY_PREFIX)}-${date}`;
@@ -2512,8 +2623,46 @@ function getAssessmentSchedule() {
   return events;
 }
 
-function getAssessmentWarnings(periodFilter) {
-  return getAssessmentSchedule().filter(event => event.unitInfo.hasTestToday && event.isNoTestDay && (!periodFilter || event.periodNum === periodFilter));
+function getAssessmentWarnings() {
+  const warnings = [];
+
+  // Check unit-planned tests on No Test days
+  const unitTests = getAssessmentSchedule();
+  unitTests.forEach(event => {
+    const notes = loadNotesForDate(event.date);
+    if (notes.noTest || isAutoNoTestDay(event.date)) {
+      warnings.push({
+        date: event.date,
+        periodNum: event.periodNum,
+        courseName: event.courseName,
+        unitInfo: event.unitInfo,
+        type: "unit"
+      });
+    }
+  });
+
+  // Check modal tests on No Test days
+  Object.keys(localStorage).forEach(key => {
+    if (!key.startsWith(getStorageKey(LS_NOTES_KEY_PREFIX))) return;
+    const date = key.replace(getStorageKey(LS_NOTES_KEY_PREFIX) + "-", "");
+    const notes = loadNotesForDate(date);
+
+    if (notes.noTest || isAutoNoTestDay(date)) {
+      getPeriodsForDate(date, getRotationDayByDate(date)?.letter || "").forEach(periodNum => {
+        if (notes[`test-${periodNum}`] === true) {
+          warnings.push({
+            date,
+            periodNum,
+            courseName: teacherSchedule[periodNum] || `Period ${periodNum}`,
+            unitInfo: { hasTestToday: true },
+            type: "modal"
+          });
+        }
+      });
+    }
+  });
+
+  return warnings;
 }
 
 function alertAssessmentWarnings(periodFilter) {
@@ -2573,13 +2722,15 @@ function renderRotationLegend() {
 }
 
     // --- UI: schedule form ---
+
     function hydrateScheduleForm() {
-      for (let p = 1; p <= getCurrentPeriodCount(); p++) {
-        const input = document.getElementById(`p${p}`);
-        if (!input) continue;
-        input.value = teacherSchedule[p] || "";
-      }
+  for (let p = 1; p <= getCurrentPeriodCount(); p++) {
+    const input = document.getElementById(`p${p}`);
+    if (input) {
+      input.value = teacherSchedule[p] || `Period ${p}`;
     }
+  }
+}
 
     function handleScheduleSubmit(event) {
       event.preventDefault();
@@ -2590,7 +2741,12 @@ function renderRotationLegend() {
         newSchedule[p] = input.value.trim() || `Period ${p}`;
       }
       teacherSchedule = newSchedule;
+      console.log("Saving for semester:", currentSemester); // debug
       saveScheduleToStorage();
+
+      const semName = currentSemester === "sem1" ? "1st Semester" : "2nd Semester";
+      alert(`Schedule saved for ${semName}.`);
+
       renderCalendar();
     }
 
@@ -2664,31 +2820,82 @@ function renderCalendar() {
     }
     if (iso === todayISO) cell.classList.add("today");
 
-    // Selective day coloring - only for important test-related special tags
-    const hasTestSpecial = specialEntries.some(entry => 
-      entry.label.toLowerCase().includes("test") || 
-      entry.badgeText.toLowerCase().includes("test") ||
-      entry.label.toLowerCase().includes("exam")
-    );
+    // === Smart Hover Agenda ===
+    const hoverAgenda = document.createElement("div");
+    hoverAgenda.className = "hover-agenda";
 
-    if (hasTestSpecial) {
-      const testSpecial = specialEntries.find(entry => 
-        entry.label.toLowerCase().includes("test") || 
-        entry.badgeText.toLowerCase().includes("test") ||
-        entry.label.toLowerCase().includes("exam")
-      );
-      if (testSpecial) {
-        cell.style.background = hexToRgba(testSpecial.color, 0.35);
-        cell.style.borderColor = testSpecial.color;
-        cell.style.boxShadow = `inset 0 0 0 2px ${testSpecial.color}`;
+    const monthAbbrev = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][month - 1];
+    const cleanDate = `${monthAbbrev}. ${dayNum}`;
+    const codedLabel = schoolDay?.letter ? ` - ${schoolDay.letter}` : "";
+
+    const weekdayName = dateObj.toLocaleDateString('en-US', { weekday: "long" });
+    let hoverContent = `<strong>${cleanDate} — ${weekdayName}${codedLabel}</strong><br><br>`;
+
+    let hasContent = false;
+
+    if (dayNotes.noTest) {
+      hoverContent += `<span style="color:#166534; font-weight:600;">NO TEST TODAY</span><br>`;
+    }
+
+    if (specialEntries.length) {
+      hoverContent += `<span style="color:#7c3aed;">${specialEntries.map(e => e.label).join(", ")}</span><br><br>`;
+    }
+
+    if (schoolDay) {
+      const periodsForDay = getPeriodsForDate(iso, schoolDay.letter);
+      if (periodsForDay.length) {
+        periodsForDay.forEach(periodNum => {
+          const unitInfo = getUnitProgress(periodNum, classCounts[periodNum], iso);
+          if (unitInfo.unitName || dayNotes[periodNum] || unitInfo.hasTestToday || unitInfo.hasQuizToday || dayNotes[`test-${periodNum}`]) {
+            hasContent = true;
+            hoverContent += `<strong>${periodNum}: ${unitInfo.courseName}</strong>`;
+
+            if (unitInfo.unitName) hoverContent += ` — ${unitInfo.unitName}`;
+            if (unitInfo.topicName) hoverContent += ` (${unitInfo.topicName})`;
+            if (unitInfo.dayInUnit && unitInfo.unitLength) hoverContent += ` [Day ${unitInfo.dayInUnit}/${unitInfo.unitLength}]`;
+
+            if (dayNotes[periodNum]) {
+              hoverContent += `<br><span style="color:#555;">Note: ${dayNotes[periodNum]}</span>`;
+            }
+
+            if (unitInfo.hasTestToday || dayNotes[`test-${periodNum}`]) {
+              hoverContent += ` <span style="color:#b91c1c; font-weight:600;">(TEST)</span>`;
+            } else if (unitInfo.hasQuizToday) {
+              hoverContent += ` <span style="color:#1d4ed8; font-weight:600;">(QUIZ)</span>`;
+            }
+
+            hoverContent += `<br><br>`;
+          }
+        });
       }
     }
 
+if (hasContent || dayNotes.noTest || specialEntries.length) {
+      hoverAgenda.innerHTML = hoverContent;
+      cell.appendChild(hoverAgenda);
+    }
+
+
+
+    // Strong red for test on No Test day conflict
+    // Strong red for test on No Test day conflict
+    const hasConflict = (dayNotes.noTest || isAutoNoTestDay(iso)) && 
+                       Object.keys(dayNotes).some(k => k.startsWith('test-') && dayNotes[k] === true);
+
+    if (hasConflict) {
+      cell.style.background = '#000000';     // bright red
+      cell.style.color = '#ffffff';          // white text
+      cell.style.borderColor = '#991b1b';
+      cell.style.boxShadow = 'inset 0 0 0 3px #ef4444';
+      
+      // Force period text white
+      const periodLis = cell.querySelectorAll('.classes-list li');
+      periodLis.forEach(li => {
+        li.style.color = '#ffffff';
+      });
+    }
     const header = document.createElement("div");
     header.className = "day-cell-header";
-    const monthAbbrev = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][month - 1];
-    const cleanDate = `${monthAbbrev}. ${dayNum}`;
-    let codedLabel = schoolDay?.letter ? ` - ${schoolDay.letter}` : "";
     const dateLine = document.createElement("div");
     dateLine.className = "day-date-line";
     dateLine.textContent = `${cleanDate}${codedLabel}`;
@@ -2698,7 +2905,7 @@ function renderCalendar() {
     badgeRow.className = "day-badge-row";
 
     // Special tags
-if (!hideAllSpecialTags) {
+    if (!hideAllSpecialTags) {
       specialEntries.forEach(entry => {
         if (entry.appliesTo !== "day") return;
 
@@ -2709,7 +2916,7 @@ if (!hideAllSpecialTags) {
 
         const badge = document.createElement("span");
         badge.className = "special-day-badge";
-        badge.textContent = `${entry.badgeText}: ${entry.label}`;
+        badge.textContent = `${entry.label}`;
         badge.style.background = hexToRgba(entry.color, 0.45);
         badge.style.borderColor = entry.color;
 
@@ -2748,7 +2955,17 @@ if (!hideAllSpecialTags) {
           li.dataset.courseName = unitInfo.courseName.toLowerCase();
 
           const classPrefix = `${periodNum}: ${unitInfo.courseName} (${periodDayCount})`;
-          let classLine = classPrefix;
+          let classLine = `${periodNum}: ${unitInfo.courseName}`;
+
+          if (unitInfo.unitName) {
+            const unitLabel = unitInfo.unitName;
+            const topicSuffix = unitInfo.topicName ? `: ${unitInfo.topicName}` : "";
+            const dayCounter = (unitInfo.dayInUnit && unitInfo.unitLength) 
+              ? ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})` 
+              : "";
+            classLine = `${classLine} — ${unitLabel}${topicSuffix}${dayCounter}`;
+          }
+
 
           if (unitInfo.unitIndex !== null) {
             const unitLabel = unitInfo.unitName || `Unit ${unitInfo.unitIndex + 1}`;
@@ -2772,7 +2989,7 @@ if (!hideAllSpecialTags) {
             li.appendChild(specialBadge);
           }
 
-          // === Period-level Test / Quiz from Unit OR Modal ===
+          // Period-level Test / Quiz
           const hasModalTest = dayNotes[`test-${periodNum}`] === true;
 
           if (unitInfo.hasQuizToday) {
@@ -2975,21 +3192,7 @@ function openDayModal(day) {
   specialApplies.addEventListener("change", () => {
     specialPeriodsWrap.style.display = specialApplies.value === "periods" ? "block" : "none";
   });
-    // Copy Day
-  // Copy Day (full copy)
-  const copyBtn = document.createElement("button");
-  copyBtn.className = "secondary";
-  copyBtn.textContent = "Copy Day";
-  copyBtn.id = "copyDayBtn";
-  copyBtn.addEventListener("click", () => {
-    localStorage.setItem("copiedDayData", JSON.stringify({
-      date: currentModalDay.date,
-      notes: loadNotesForDate(currentModalDay.date),
-      specialEntries: getUnifiedSpecialDaysForDate(currentModalDay.date)
-    }));
-    alert(`✅ Copied ${formatDateLabel(currentModalDay.date)} (notes, tests, special tags)`);
-  });
-  document.querySelector(".modal-footer").appendChild(copyBtn);
+
   backdrop.style.display = "flex";
 }
 
@@ -3910,7 +4113,6 @@ window.removeSpecialDay = function(index) {
   renderSpecialDays();
   renderCalendar();
 };
-
 function renderSummary() {
   let totalUnits = Object.values(units).flat().length;
   const totalSchoolDays = new Set(
@@ -3921,14 +4123,13 @@ function renderSummary() {
 
   const todayISO = new Date().toISOString().split("T")[0];
 
-  // Get both unit tests + modal tests
   const unitEvents = getAssessmentSchedule();
   const modalTests = [];
 
   Object.keys(localStorage).forEach(key => {
     if (!key.startsWith(getStorageKey(LS_NOTES_KEY_PREFIX))) return;
     const date = key.replace(getStorageKey(LS_NOTES_KEY_PREFIX) + "-", "");
-    if (date < todayISO) return; // only upcoming
+    if (date < todayISO) return;
 
     const notes = loadNotesForDate(date);
     getPeriodsForDate(date, getRotationDayByDate(date)?.letter || "").forEach(periodNum => {
@@ -3955,13 +4156,13 @@ function renderSummary() {
     <hr>
     <p><strong>Upcoming Quizzes / Tests:</strong></p>
     <ul id="testDaysList" style="padding-left:1.2rem; font-size:0.85rem;"></ul>
-    <p><strong>Warnings:</strong></p>
+    <p><strong>Conflicts:</strong></p>
     <ul id="warningList" style="padding-left:1.2rem; font-size:0.85rem;"></ul>
   `;
 
   document.getElementById("summaryStats").innerHTML = html;
 
-  // Populate upcoming tests
+  // Upcoming assessments
   const testList = document.getElementById("testDaysList");
   testList.innerHTML = "";
 
@@ -3973,26 +4174,30 @@ function renderSummary() {
     upcomingAssessments.forEach(event => {
       const li = document.createElement("li");
       const type = event.unitInfo.hasTestToday ? "TEST" : "QUIZ";
-      const unitPart = (event.unitInfo.unitName && event.unitInfo.unitName !== "Modal Test") 
-        ? ` | ${event.unitInfo.unitName}` 
-        : "";
+      const unitPart = event.unitInfo.unitName ? ` — ${event.unitInfo.unitName}` : "";
       li.textContent = `${event.date} - P${event.periodNum} ${event.courseName}: ${type}${unitPart}`;
       testList.appendChild(li);
     });
   }
 
-  // Warnings
+  // Conflicts with action buttons
   const warningList = document.getElementById("warningList");
   warningList.innerHTML = "";
+
   if (!warnings.length) {
     const li = document.createElement("li");
-    li.textContent = "No test conflicts detected.";
+    li.textContent = "No conflicts detected.";
     warningList.appendChild(li);
   } else {
-    warnings.forEach(event => {
+    warnings.forEach((event, index) => {
       const li = document.createElement("li");
       li.className = "warning-text";
-      li.textContent = `${event.date} - P${event.periodNum} ${event.courseName} test falls on a No Test day.`;
+      li.innerHTML = `
+        ${event.date} - P${event.periodNum} ${event.courseName} test on No Test day.
+        <button onclick="resolveConflict(${index}, 'forward')" style="margin-left:8px; font-size:0.8rem;">Move Forward</button>
+        <button onclick="resolveConflict(${index}, 'backward')" style="margin-left:4px; font-size:0.8rem;">Move Back</button>
+        <button onclick="resolveConflict(${index}, 'ignore')" style="margin-left:4px; font-size:0.8rem;">I'll fix it</button>
+      `;
       warningList.appendChild(li);
     });
   }
@@ -4287,9 +4492,6 @@ function init() {
   });
 
   applyDarkModePreference();
-
-  // Export Tests/Quizzes by Class (includes modal + unit tests)
-    // Export Tests/Quizzes by Class → Nice view + Copy + PDF Export
   // Export Tests/Quizzes by Class → Nice view + Copy + PDF
   document.getElementById("exportTestsByClassBtn").addEventListener("click", () => {
     const allEvents = getAssessmentSchedule();
@@ -4391,7 +4593,7 @@ document.getElementById("divisionSelector")
     updateMaxDaysHints();           // ← Add this
   });
 
-  document.getElementById("semesterSelector")
+    document.getElementById("semesterSelector")
     .addEventListener("change", event => {
       currentSemester = event.target.value;
       localStorage.setItem("currentSemester", currentSemester);
@@ -4400,7 +4602,36 @@ document.getElementById("divisionSelector")
       refreshAllData();
       applyDarkModePreference();
       updateMaxDaysHints();
+      console.log("Switched to semester:", currentSemester, "Schedule loaded:", Object.keys(teacherSchedule));
     });
+
+      // Radio button listeners for division and semester
+  document.querySelectorAll('input[name="division"]').forEach(radio => {
+    radio.addEventListener("change", () => {
+      currentDivision = radio.value;
+      localStorage.setItem("currentDivision", currentDivision);
+      currentMonthIndex = 0;
+      renderScheduleFields();
+      renderRotationLegend();
+      initCollapsibleSections();
+      refreshAllData();
+      applyDarkModePreference();
+      updateAppTitle();
+      updateMaxDaysHints();
+    });
+  });
+
+  document.querySelectorAll('input[name="semester"]').forEach(radio => {
+    radio.addEventListener("change", () => {
+      currentSemester = radio.value;
+      localStorage.setItem("currentSemester", currentSemester);
+      currentMonthIndex = 0;
+      initCollapsibleSections();
+      refreshAllData();
+      applyDarkModePreference();
+      updateMaxDaysHints();
+    });
+  });
 
   document.getElementById("scheduleForm")
     .addEventListener("submit", handleScheduleSubmit);
@@ -4582,12 +4813,56 @@ document.getElementById("divisionSelector")
     renderSpecialDays();
   });
 
-  updateAppTitle();
+    let isMobileView = false;
 
+    // Dropdown listeners
+  document.getElementById("leftActions1").addEventListener("change", (e) => {
+    const value = e.target.value;
+    if (value === "backup") document.getElementById("backupBtn").click();
+    if (value === "restore") document.getElementById("restoreBtn").click();
+    if (value === "print") document.getElementById("printCalendarBtn").click();
+    if (value === "export") document.getElementById("exportTestsByClassBtn").click();
+    e.target.value = ""; // reset
+  });
+
+  document.getElementById("leftActions2").addEventListener("change", (e) => {
+    const value = e.target.value;
+    if (value === "mobile") document.getElementById("mobileViewBtn").click();
+    if (value === "special") document.getElementById("toggleSpecialTagsBtn").click();
+    if (value === "dark") document.getElementById("darkModeToggle").click();
+    e.target.value = ""; // reset
+  });
+
+  document.getElementById("mobileViewBtn").addEventListener("click", () => {
+    isMobileView = !isMobileView;
+    document.body.classList.toggle("mobile-view", isMobileView);
+    
+    const btn = document.getElementById("mobileViewBtn");
+    btn.textContent = isMobileView ? "Desktop View" : "Mobile View";
+
+    // Show notification
+    if (isMobileView) {
+      const notice = document.createElement("div");
+      notice.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1f2933; color:#fff; padding:10px 20px; border-radius:6px; z-index:300; font-size:0.9rem;";
+      notice.textContent = "Mobile View Enabled";
+      document.body.appendChild(notice);
+      
+      setTimeout(() => notice.remove(), 2000);
+    }
+  });
+  
+  updateAppTitle();
+  
+}
+
+function getCurrentScheduleKey() {
+  return currentSemester === "sem1" ? "teacherScheduleSem1" : "teacherScheduleSem2";
 }
 
 function refreshAllData() {
+  
   loadScheduleFromStorage();
+  console.log("Loaded schedule for", currentSemester, ":", Object.keys(teacherSchedule)); // debug
   loadUnits();
   loadHiddenSpecialEntries();
   loadSpecialDays();
@@ -4602,6 +4877,34 @@ function refreshAllData() {
 
 // Run init ONLY once, AFTER DOM is ready
 document.addEventListener("DOMContentLoaded", init);
+
+
+window.resolveConflict = function(index, action) {
+  const warnings = getAssessmentWarnings();
+  const conflict = warnings[index];
+  if (!conflict) return;
+
+  if (action === 'ignore') {
+    // Open the day modal for manual fix
+    openDayModal({ 
+      date: conflict.date, 
+      letter: getRotationDayByDate(conflict.date)?.letter || "" 
+    });
+    return;
+  }
+
+  const direction = action === 'forward' ? 1 : -1;
+  const success = shiftUnit(conflict.periodNum, conflict.unitInfo.unitIndex, direction, true);
+
+  if (success) {
+    alert(`Test moved ${action === 'forward' ? 'forward' : 'back'} 1 day.`);
+    renderCalendar();
+    renderSummary();
+  } else {
+    alert("Could not move test — check for other conflicts.");
+  }
+};
+
   </script>
 
   <!-- Modal for per-day, per-class notes -->
@@ -4620,6 +4923,7 @@ document.addEventListener("DOMContentLoaded", init);
         <button class="secondary" id="shiftAllUnitsBtn">Shift All Units</button>
         <button class="secondary" id="clearNotesBtn">Clear notes</button>
         <button id="saveNotesBtn">Save notes</button>
+        
       </div>
     </div>
   </div>
@@ -4763,14 +5067,15 @@ document.addEventListener("DOMContentLoaded", init);
     <button class="help-tab-btn" data-help-section="printing">Printing & Export</button>
   </div>
 
-  <section class="help-section active" data-help-section="welcome">
-    <h2>Welcome to HS Rotation Planner</h2>
+   <section class="help-section active" data-help-section="welcome">
+    <h2>Welcome to Wesleyan HS Planner</h2>
     <p>This tool helps you plan your classes with rotation days, units, notes, and test days — all saved locally in your browser.</p>
     <ul>
       <li>Enter your class names on the left</li>
       <li>Define units per period (with topics, quizzes, tests)</li>
       <li>Click any day to add notes or mark test days</li>
       <li>Use Backup/Restore to save your work</li>
+      <li>Switch between semesters using the selectors in the header</li>
     </ul>
     <p>Everything works offline.</p>
   </section>
