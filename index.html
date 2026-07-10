@@ -4182,128 +4182,91 @@ function initCollapsibleSections() {
 
   applyState();
 }
-
 function applyPrintFilters() {
   const selectedUnit = document.getElementById("printUnitFilter").value.toLowerCase();
-  const selectedPeriods = Array.from(document.querySelectorAll('#printPeriodFilters input[type="checkbox"]:checked')).map(input => input.value);
+  const selectedPeriods = Array.from(document.querySelectorAll('#printPeriodFilters input[type="checkbox"]:checked')).map(input => Number(input.value));
   const selectedMonths = Array.from(document.querySelectorAll('#printMonthFilters input[type="checkbox"]:checked')).map(input => input.value);
-  const selectedPeriodSet = new Set(selectedPeriods);
-  const months = getCurrentMonths();
 
+  let html = `
+    <html>
+    <head>
+      <title>${getCurrentConfig().name} Rotation Planner</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        h1 { text-align: center; color: #1e40af; }
+        h2 { margin-top: 40px; border-bottom: 3px solid #2563eb; padding-bottom: 10px; color: #1e40af; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .day { border: 1px solid #ddd; border-radius: 8px; padding: 14px; page-break-inside: avoid; }
+        .note { font-style: italic; color: #555; }
+        .special { color: #7c3aed; font-weight: 600; }
+      </style>
+    </head>
+    <body>
+      <h1>${getCurrentConfig().name} Rotation Planner</h1>
+      <p style="text-align:center; color:#666;">Generated on ${new Date().toLocaleDateString()}</p>
+  `;
+
+  const months = getCurrentMonths();
   const activeMonths = months.filter(monthObj => {
     const key = `${monthObj.year}-${String(monthObj.month).padStart(2, "0")}`;
-    if (!selectedMonths.length) {
-      return key === `${months[currentMonthIndex].year}-${String(months[currentMonthIndex].month).padStart(2, "0")}`;
-    }
-    return selectedMonths.includes(key);
+    return selectedMonths.length === 0 || selectedMonths.includes(key);
   });
-
-  const monthDisplay = activeMonths.map(monthObj =>
-    new Date(monthObj.year, monthObj.month - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" })
-  );
-
-  let html = `<h1>Planner Print</h1>`;
-  html += `<p><strong>Months:</strong> ${monthDisplay.join(", ") || "Current month"}</p>`;
-  if (selectedPeriods.length && selectedPeriods.length < getCurrentPeriodCount()) {
-    html += `<p><strong>Periods:</strong> ${selectedPeriods.join(", ")}</p>`;
-  }
-  if (selectedUnit) {
-    html += `<p><strong>Unit:</strong> ${selectedUnit}</p>`;
-  }
 
   activeMonths.forEach(monthObj => {
-    const monthLabel = new Date(monthObj.year, monthObj.month - 1, 1)
-      .toLocaleDateString(undefined, { month: "long", year: "numeric" });
-    const monthMap = {};
+    const monthLabel = new Date(monthObj.year, monthObj.month - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+    html += `<h2>${monthLabel}</h2>`;
+    html += `<div class="grid">`;
+
     monthObj.days.forEach(day => {
-      monthMap[day.date] = day;
-    });
-    const last = new Date(monthObj.year, monthObj.month, 0);
-    const totalDays = last.getDate();
-    const firstDay = new Date(monthObj.year, monthObj.month - 1, 1).getDay();
+      const dateObj = new Date(day.date + "T12:00:00");
+      const weekdayName = dateObj.toLocaleDateString('en-US', { weekday: "long" });
 
-    html += `<h2 style="margin-top:1rem;">${monthLabel}</h2>`;
-    html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);font-weight:700;margin-bottom:6px;">`;
-    html += ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(dayName => `<div>${dayName}</div>`).join("");
-    html += `</div>`;
-    html += `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;">`;
+      const periodsForDay = getPeriodsForDate(day.date, day.letter);
+      if (periodsForDay.length === 0) return;
 
-    for (let i = 0; i < firstDay; i++) {
-      html += `<div class="day-cell empty"></div>`;
-    }
+      const dayNotes = loadNotesForDate(day.date);
+      const specialEntries = getUnifiedSpecialDaysForDate(day.date);
 
-    for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
-      const iso = `${monthObj.year}-${String(monthObj.month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
-      const schoolDay = monthMap[iso] || null;
-      const periodsForDay = schoolDay ? getPeriodsForDate(iso, schoolDay.letter) : [];
-      const dayCounts = getDayCountsForDate(iso, periodsForDay);
-      const monthAbbrev = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][monthObj.month - 1];
-      let dayHtml = `<div class="day-cell${!schoolDay ? " empty" : ""}">`;
+      html += `<div class="day"><strong>${day.date} — ${weekdayName} (${day.letter || 'No classes'})</strong><br>`;
 
-      const codedLabel = schoolDay?.letter ? ` - ${schoolDay.letter}` : "";
-      dayHtml += `<div class="day-cell-header">${monthAbbrev}. ${dayNum}${codedLabel}</div>`;
-
-      if (periodsForDay.length) {
-        let listItems = "";
-        periodsForDay.forEach(periodNum => {
-          const periodKey = String(periodNum);
-          const unitInfo = getUnitProgress(periodNum, dayCounts[periodNum], iso);
-          const unitNameLower = (unitInfo.unitName || "").toLowerCase();
-          const matchesPeriod = !selectedPeriodSet.size || selectedPeriodSet.has(periodKey);
-          const matchesUnit = !selectedUnit || unitNameLower.includes(selectedUnit);
-          if (!matchesPeriod || !matchesUnit) return;
-
-          const classPrefix = `${periodNum}: ${unitInfo.courseName} (${dayCounts[periodNum]})`;
-          let classLine = classPrefix;
-          if (unitInfo.unitIndex !== null) {
-            const unitLabel = unitInfo.unitName || `Unit ${unitInfo.unitIndex + 1}`;
-            const topicSuffix = unitInfo.topicName ? `: ${unitInfo.topicName}` : "";
-            const dayCounter = (unitInfo.dayInUnit && unitInfo.unitLength)
-              ? ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})`
-              : "";
-            classLine = `${classPrefix} • ${unitLabel}${topicSuffix}${dayCounter}`;
-          }
-          listItems += `<li>${classLine}</li>`;
-        });
-
-        if (listItems) {
-          dayHtml += `<ul class="classes-list">${listItems}</ul>`;
-        }
+      if (specialEntries.length) {
+        html += `<div class="special">Special: ${specialEntries.map(e => e.label).join(", ")}</div>`;
       }
 
-      dayHtml += `</div>`;
-      html += dayHtml;
-    }
+      periodsForDay.forEach(periodNum => {
+        if (selectedPeriods.length > 0 && !selectedPeriods.includes(periodNum)) return;
+
+        const unitInfo = getUnitProgress(periodNum, getDayCountsForDate(day.date, periodsForDay)[periodNum], day.date);
+        let line = `${periodNum}: ${unitInfo.courseName}`;
+
+        if (unitInfo.unitName) line += ` — ${unitInfo.unitName}`;
+        if (unitInfo.dayInUnit && unitInfo.unitLength) line += ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})`;
+        if (dayNotes[periodNum]) line += `<br><span class="note">Note: ${dayNotes[periodNum]}</span>`;
+
+        html += `<div>${line}</div>`;
+      });
+
+      if (dayNotes.noTest) html += `<div style="color:#166534; font-weight:600;">NO TEST TODAY</div>`;
+
+      html += `</div>`;
+    });
 
     html += `</div>`;
   });
 
-  const printWindow = window.open('', '_blank');
-  printWindow.document.write(`
-    <html>
-    <head><title>Planner Print</title>
-    <style>
-      body { font-family: Arial, sans-serif; margin: 20px; }
-      .day-cell { border: 1px solid #ccc; padding: 8px; min-height: 140px; break-inside: avoid; }
-      .day-cell-header { font-weight: bold; margin-bottom: 6px; text-align: center; }
-    </style>
-    </head>
-    <body>${html}</body>
-    </html>
-  `);
-  printWindow.document.close();
-  closePrintFilterModal();
-  setTimeout(() => printWindow.print(), 500);
-}
-  // === Export Tests/Quizzes by Class ===
- 
-const printMonthBtn = document.getElementById("printMonthBtn");
-if (printMonthBtn) {
-  printMonthBtn.addEventListener("click", () => {
-    window.print();
-  });
-}
+  html += `</body></html>`;
 
+  const blob = new Blob([html], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `planner-${getCurrentConfig().name.toLowerCase()}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  closePrintFilterModal();
+  alert("✅ Exported with day count included!");
+}
 // --- Init ---
 function init() {
   document.getElementById("divisionSelector").value = currentDivision;
@@ -4413,7 +4376,7 @@ function init() {
     location.reload(); // safe restore
   };
 
-  
+
 document.getElementById("divisionSelector")
   .addEventListener("change", event => {
     currentDivision = event.target.value;
