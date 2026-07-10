@@ -876,8 +876,14 @@ body.dark .agenda-note.empty {
         <button id="backupBtn" class="secondary">Backup Data</button>
         <button id="restoreBtn" class="secondary">Restore Data</button>
         <input id="restoreInput" type="file" accept=".json" style="display:none;">
-        <button id="jumpTodayBtn" class="secondary">Today</button>
-        <select id="divisionSelector" aria-label="Division selector">
+        <button id="jumpTodayBtn" class="secondary">Jump To Today</button>
+        <button class="secondary" id="toggleSpecialTagsBtn">Toggle All Special Tags</button>
+
+      </div>
+
+      <div class="header-center">
+        <h1 id="mainTitle">HS Rotation Planner</h1>
+                <select id="divisionSelector" aria-label="Division selector">
           <option value="hs">High School</option>
           <option value="ms">Middle School</option>
           <option value="ls">Lower School</option>
@@ -886,11 +892,7 @@ body.dark .agenda-note.empty {
           <option value="sem1">1st Semester</option>
           <option value="sem2">2nd Semester</option>
         </select>
-      </div>
 
-      <div class="header-center">
-        <h1 id="mainTitle">HS Rotation Planner</h1>
-        <div class="small" id="subtitle">Static HTML + JS · LocalStorage · GitHub Pages–ready</div>
       </div>
 
       <div class="header-right">
@@ -898,6 +900,7 @@ body.dark .agenda-note.empty {
         <button id="helpBtn" class="secondary">? Help</button>
         <button id="printCalendarBtn" class="secondary">Print with Filters</button>
         <button id="exportTestsByClassBtn" class="secondary">Export Tests/Quizzes by Class</button>
+        
       </div>
     </div>
   </header>
@@ -953,6 +956,7 @@ body.dark .agenda-note.empty {
       </div>
     </div>
 
+    
     <div class="config-section" data-section-key="summary">
       <button class="config-section-toggle" type="button">
         <span class="config-chevron">▼</span>
@@ -1369,6 +1373,8 @@ const SEMESTERS = {
   sem2: { key: "sem2", name: "2nd Semester" }
 };
 
+let hideAllSpecialTags = false;
+
 // ====================== UNIT LENGTH HELPERS ======================
 
 function getLastInstructionalDateBeforeExams() {
@@ -1414,16 +1420,16 @@ function updateAppTitle() {
   
   switch(currentDivision) {
     case "hs":
-      titleText = "HS Rotation Planner";
+      titleText = "Wesleyan HS 26-27 Planner";
       break;
     case "ms":
-      titleText = "MS Rotation Planner";
+      titleText = "Wesleyan MS 26-27 Planner";
       break;
     case "ls":
-      titleText = "LS Rotation Planner";
+      titleText = "Wesleyan LS 26-27 Planner";
       break;
     default:
-      titleText = "Rotation Planner";
+      titleText = "Wesleyan 26-27 Planner";
   }
   
   titleEl.textContent = titleText;
@@ -2692,17 +2698,25 @@ function renderCalendar() {
     badgeRow.className = "day-badge-row";
 
     // Special tags
-    specialEntries.forEach(entry => {
-      if (entry.appliesTo !== "day") return;
-      const customBadge = document.createElement("span");
-      customBadge.className = "special-day-badge";
-      customBadge.textContent = `${entry.badgeText}: ${entry.label}`;
-      customBadge.title = entry.label;
-      customBadge.style.background = hexToRgba(entry.color, 0.45);
-      customBadge.style.color = "#1f2937";
-      customBadge.style.borderColor = entry.color;
-      badgeRow.appendChild(customBadge);
-    });
+if (!hideAllSpecialTags) {
+      specialEntries.forEach(entry => {
+        if (entry.appliesTo !== "day") return;
+
+        const wrapper = document.createElement("div");
+        wrapper.style.display = "inline-flex";
+        wrapper.style.alignItems = "center";
+        wrapper.style.gap = "4px";
+
+        const badge = document.createElement("span");
+        badge.className = "special-day-badge";
+        badge.textContent = `${entry.badgeText}: ${entry.label}`;
+        badge.style.background = hexToRgba(entry.color, 0.45);
+        badge.style.borderColor = entry.color;
+
+        wrapper.appendChild(badge);
+        badgeRow.appendChild(wrapper);
+      });
+    }
 
     // No Test Today (from modal toggle)
     if (dayNotes.noTest && !isAutoNoTestDay(iso)) {
@@ -2961,7 +2975,21 @@ function openDayModal(day) {
   specialApplies.addEventListener("change", () => {
     specialPeriodsWrap.style.display = specialApplies.value === "periods" ? "block" : "none";
   });
-
+    // Copy Day
+  // Copy Day (full copy)
+  const copyBtn = document.createElement("button");
+  copyBtn.className = "secondary";
+  copyBtn.textContent = "Copy Day";
+  copyBtn.id = "copyDayBtn";
+  copyBtn.addEventListener("click", () => {
+    localStorage.setItem("copiedDayData", JSON.stringify({
+      date: currentModalDay.date,
+      notes: loadNotesForDate(currentModalDay.date),
+      specialEntries: getUnifiedSpecialDaysForDate(currentModalDay.date)
+    }));
+    alert(`✅ Copied ${formatDateLabel(currentModalDay.date)} (notes, tests, special tags)`);
+  });
+  document.querySelector(".modal-footer").appendChild(copyBtn);
   backdrop.style.display = "flex";
 }
 
@@ -3172,6 +3200,14 @@ function renderUnits() {
 function renderSpecialDays() {
   const container = document.getElementById("specialDaysContainer");
   container.innerHTML = "";
+
+    if (hideAllSpecialTags) {
+    const hiddenMsg = document.createElement("div");
+    hiddenMsg.className = "small";
+    hiddenMsg.textContent = "All special tags are currently hidden.";
+    container.appendChild(hiddenMsg);
+    return;
+  }
 
   const unifiedEntries = [];
   const seen = new Set();
@@ -4500,6 +4536,62 @@ document.getElementById("divisionSelector")
     openHelp("welcome");
   }
 
+    // Paste Day (click any day after copying)
+  document.addEventListener("click", (e) => {
+    const cell = e.target.closest(".day-cell");
+    if (!cell) return;
+
+    const copied = localStorage.getItem("copiedDayData");
+    if (!copied) return;
+
+    const data = JSON.parse(copied);
+    const targetDate = cell.dataset.date;
+
+    if (confirm(`Paste from ${formatDateLabel(data.date)} to ${formatDateLabel(targetDate)}?\n\nThis will overwrite existing notes on the target day.`)) {
+      saveNotesForDate(targetDate, data.notes);
+      renderCalendar();
+      alert("✅ Day pasted successfully!");
+    }
+  });
+
+    // Keyboard Shortcuts
+  document.addEventListener("keydown", (e) => {
+    if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
+
+    switch (e.key.toLowerCase()) {
+      case "t":
+        openTodayAgendaModal();
+        break;
+      case "n":
+        // Open modal for today
+        const todayISO = getLocalTodayISO();
+        const todayDay = getRotationDayByDate(todayISO);
+        if (todayDay) openDayModal({ date: todayISO, letter: todayDay.letter });
+        break;
+      case "p":
+        document.getElementById("printCalendarBtn").click();
+        break;
+      case "b":
+        document.getElementById("backupBtn").click();
+        break;
+      case "?":
+        document.getElementById("helpBtn").click();
+        break;
+    }
+
+
+  });
+
+
+  document.getElementById("toggleSpecialTagsBtn").addEventListener("click", () => {
+    hideAllSpecialTags = !hideAllSpecialTags;
+    document.getElementById("toggleSpecialTagsBtn").textContent = hideAllSpecialTags 
+      ? "Show All Special Tags" 
+      : "Hide All Special Tags";
+    renderCalendar();
+    renderSpecialDays();
+  });
+
   updateAppTitle();
 
 }
@@ -4534,6 +4626,7 @@ document.addEventListener("DOMContentLoaded", init);
       </div>
       <div class="modal-body" id="modalBody"></div>
       <div class="modal-footer">
+        <button class="secondary" id="copyDayBtn">Copy Day</button>
         <button class="secondary" id="shiftAllUnitsBtn">Shift All Units</button>
         <button class="secondary" id="clearNotesBtn">Clear notes</button>
         <button id="saveNotesBtn">Save notes</button>
