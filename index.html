@@ -4326,11 +4326,12 @@ function init() {
   applyDarkModePreference();
 
   // Export Tests/Quizzes by Class (includes modal + unit tests)
+    // Export Tests/Quizzes by Class → Nice view + Copy + PDF Export
+  // Export Tests/Quizzes by Class → Nice view + Copy + PDF
   document.getElementById("exportTestsByClassBtn").addEventListener("click", () => {
     const allEvents = getAssessmentSchedule();
     const modalTests = [];
 
-    // Add modal-marked tests
     Object.keys(localStorage).forEach(key => {
       if (!key.startsWith(getStorageKey(LS_NOTES_KEY_PREFIX))) return;
       const date = key.replace(getStorageKey(LS_NOTES_KEY_PREFIX) + "-", "");
@@ -4343,7 +4344,6 @@ function init() {
             periodNum,
             courseName: teacherSchedule[periodNum] || `Period ${periodNum}`,
             isTest: true,
-            isQuiz: false,
             unitInfo: { hasTestToday: true }
           });
         }
@@ -4359,33 +4359,60 @@ function init() {
       return;
     }
 
-    let output = "=== TESTS & QUIZZES BY CLASS ===\n\n";
-    const byClass = {};
+    let html = `<h2>Assessments Overview</h2>`;
+    html += `<p><strong>Total Assessments:</strong> ${events.length}</p><hr>`;
 
+    const byClass = {};
     events.forEach(event => {
       const course = event.courseName || `Period ${event.periodNum}`;
       if (!byClass[course]) byClass[course] = [];
-      
       const type = event.isTest || event.unitInfo.hasTestToday ? "TEST" : "QUIZ";
-      const unitPart = event.unitInfo.unitName ? `${event.unitInfo.unitName}` : "";
-      const topicPart = event.unitInfo.topicName ? ` - ${event.unitInfo.topicName}` : "";
-      const dayPart = event.unitInfo.dayInUnit && event.unitInfo.unitLength 
-        ? ` (Day ${event.unitInfo.dayInUnit}/${event.unitInfo.unitLength})` 
-        : "";
-
-      byClass[course].push(`${event.date} | ${type}${unitPart ? ` | ${unitPart}` : ""}${topicPart}${dayPart}`);
+      const unitName = event.unitInfo.unitName ? ` — ${event.unitInfo.unitName}` : "";
+      const details = `${event.date} (P${event.periodNum})${unitName}`;
+      byClass[course].push({ type, details });
     });
 
     Object.keys(byClass).sort().forEach(course => {
-      output += `${course}\n`;
-      byClass[course].forEach(line => output += `  • ${line}\n`);
-      output += "\n";
+      html += `<h3>${course}</h3><ul>`;
+      byClass[course].forEach(item => {
+        html += `<li><strong>${item.type}</strong> — ${item.details}</li>`;
+      });
+      html += `</ul>`;
     });
 
-    navigator.clipboard.writeText(output).then(() => {
-      alert("✅ Tests & Quizzes by class copied to clipboard!\n\nPaste into email, notes, or spreadsheet.");
-    });
+    const modal = document.createElement("div");
+    modal.style.cssText = "position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; padding:2rem; border-radius:8px; max-width:90%; max-height:90vh; overflow:auto; z-index:100; box-shadow:0 10px 30px rgba(0,0,0,0.3); min-width:650px;";
+    modal.innerHTML = `
+      <div id="printableArea">
+        ${html}
+      </div>
+      <div style="margin-top:1.5rem; text-align:center;">
+        <button onclick="navigator.clipboard.writeText(document.getElementById('assessText').value).then(()=>alert('Copied!'))">Copy to Clipboard</button>
+        <button onclick="printModalContent()">Print / Save as PDF</button>
+        <button onclick="this.closest('div[style*=\"position:fixed\"]').remove()">Close</button>
+      </div>
+      <textarea id="assessText" style="display:none;">${Object.keys(byClass).sort().map(course => {
+        return course + "\n" + byClass[course].map(item => `  • ${item.type} — ${item.details}`).join("\n");
+      }).join("\n\n")}</textarea>
+    `;
+    document.body.appendChild(modal);
   });
+
+  // Helper to print only the modal content
+  window.printModalContent = function() {
+    const printable = document.getElementById("printableArea");
+    if (!printable) return;
+
+    const originalContent = document.body.innerHTML;
+    document.body.innerHTML = printable.outerHTML;
+
+    window.print();
+
+    // Restore original page
+    document.body.innerHTML = originalContent;
+    location.reload(); // safe restore
+  };
+
   
 document.getElementById("divisionSelector")
   .addEventListener("change", event => {
