@@ -1078,9 +1078,6 @@ body.dark .agenda-note.empty {
       </div>
     </div>
 
-    <p class="small" style="margin-top:0.5rem;">
-      These are hard coded in JS but you can adjust them if your school changes rotation.
-    </p>
   </section>
 
   <section id="calendar">
@@ -1485,6 +1482,8 @@ const SEMESTERS = {
 };
 
 let hideAllSpecialTags = false;
+let currentDivision = localStorage.getItem("currentDivision") || "hs";
+let currentSemester = localStorage.getItem("currentSemester") || "sem1";
 
 // ====================== UNIT LENGTH HELPERS ======================
 
@@ -1522,33 +1521,22 @@ function getMaxUnitLengthForPeriod(periodNum, afterDate = null) {
 
 function updateAppTitle() {
   const titleEl = document.getElementById("mainTitle");
-  const subtitleEl = document.getElementById("subtitle");
-  
-  const config = getCurrentConfig();
-  
-  let titleText = "";
-  let subtitleText = "Static HTML + JS · LocalStorage · GitHub Pages–ready";
-  
-  switch(currentDivision) {
-    case "hs":
-      titleText = "Wesleyan HS 26-27 Planner";
-      break;
-    case "ms":
-      titleText = "Wesleyan MS 26-27 Planner";
-      break;
-    case "ls":
-      titleText = "Wesleyan LS 26-27 Planner";
-      break;
-    default:
-      titleText = "Wesleyan 26-27 Planner";
+  if (!titleEl) return;
+
+  const savedTitle = localStorage.getItem("appTitle");
+  if (savedTitle) {
+    titleEl.textContent = savedTitle; // respect custom title
+  } else {
+    // fallback only if no custom title
+    let titleText = "Planner";
+    if (currentDivision === "hs") titleText = "Wesleyan HS 26-27 Planner";
+    else if (currentDivision === "ms") titleText = "Wesleyan MS 26-27 Planner";
+    else if (currentDivision === "ls") titleText = "Wesleyan LS 26-27 Planner";
+    else if (currentDivision === "other") titleText = "Custom Planner";
+    titleEl.textContent = titleText;
   }
-  
-  titleEl.textContent = titleText;
-  subtitleEl.textContent = subtitleText;
 }
 
-let currentDivision = localStorage.getItem("currentDivision") || "hs";
-let currentSemester = localStorage.getItem("currentSemester") || "sem1";
 
 function getStorageKey(base) {
   return `${currentDivision}-${currentSemester}${base}`;
@@ -2674,24 +2662,142 @@ function alertAssessmentWarnings(periodFilter) {
 }
 
 function renderScheduleFields() {
-  const scheduleFields = document.getElementById("scheduleFields");
-  if (!scheduleFields) return;
-  scheduleFields.innerHTML = "";
+  const container = document.getElementById("scheduleFields");
+  if (!container) return;
 
-  getPeriodNumbers().forEach(periodNum => {
-    const wrapper = document.createElement("div");
-    const label = document.createElement("label");
-    label.setAttribute("for", `p${periodNum}`);
-    label.textContent = `Period ${periodNum}`;
-    const input = document.createElement("input");
-    input.id = `p${periodNum}`;
-    input.name = `p${periodNum}`;
-    input.type = "text";
-    input.placeholder = `Period ${periodNum}`;
-    wrapper.appendChild(label);
-    wrapper.appendChild(input);
-    scheduleFields.appendChild(wrapper);
+  container.innerHTML = `
+    <div style="margin-bottom: 16px;">
+      <label><strong>My Known Classes</strong></label>
+      <div id="knownClassesList" style="min-height: 50px; border: 2px dashed #ccc; padding: 8px; margin-bottom: 10px; border-radius: 6px; display: flex; flex-wrap: wrap; gap: 6px;"></div>
+      
+      <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+        <input type="text" id="newClassName" placeholder="e.g. AP Stats" style="flex: 1;">
+        <button onclick="addKnownClass()" style="padding: 6px 12px;">+ Add</button>
+      </div>
+    </div>
+
+    <label><strong>Period Assignments (Drag classes here)</strong></label>
+    <div id="periodSlots"></div>
+  `;
+
+  renderKnownClasses();
+  renderPeriodSlots();
+}
+function renderKnownClasses() {
+  const list = document.getElementById("knownClassesList");
+  if (!list) return;
+
+  list.innerHTML = "";
+
+  let knownClasses = [];
+  try {
+    const saved = localStorage.getItem("knownClasses");
+    if (saved) knownClasses = JSON.parse(saved);
+  } catch (e) {}
+
+  knownClasses.forEach((className, index) => {
+    const pill = document.createElement("div");
+    pill.draggable = true;
+    pill.className = "known-class-pill";
+    pill.textContent = className;
+    pill.style.cssText = "background:#e0f2fe; padding:6px 12px; border-radius:999px; cursor:grab; user-select:none; font-size:0.9rem; margin:3px;";
+
+    pill.innerHTML = `
+      ${className}
+      <span onclick="removeKnownClass(${index}); event.stopImmediatePropagation();" 
+            style="cursor:pointer; font-weight:bold; color:#ef4444; font-size:1.1rem; line-height:1;">×</span>
+    `;
+
+    pill.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", className);
+    });
+
+    list.appendChild(pill);
   });
+}
+
+function renderPeriodSlots() {
+  const container = document.getElementById("periodSlots");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  for (let p = 1; p <= getCurrentPeriodCount(); p++) {
+    const currentClass = teacherSchedule[p] || `Period ${p}`;
+
+    const slot = document.createElement("div");
+    slot.style.cssText = "display:flex; align-items:center; gap:12px; margin-bottom:10px; padding:8px; border:1px solid #ddd; border-radius:8px;";
+
+    slot.innerHTML = `
+      <strong style="width:90px; flex-shrink:0;">Period ${p}</strong>
+      <div class="period-drop-zone" data-period="${p}" 
+           style="flex:1; min-height:42px; border:2px dashed #aaa; border-radius:8px; padding:8px; display:flex; align-items:center; background:#f9fafb;">
+        <span class="period-value" style="flex:1; font-weight:500;">${currentClass}</span>
+        ${currentClass !== `Period ${p}` ? `<button onclick="clearPeriod(${p})" style="font-size:0.8rem; padding:2px 8px;">×</button>` : ''}
+      </div>
+    `;
+
+    const dropZone = slot.querySelector(".period-drop-zone");
+
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropZone.style.borderColor = "#2563eb";
+      dropZone.style.background = "#dbeafe";
+    });
+
+    dropZone.addEventListener("dragleave", () => {
+      dropZone.style.borderColor = "#aaa";
+      dropZone.style.background = "#f9fafb";
+    });
+
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      const className = e.dataTransfer.getData("text/plain");
+      if (!className) return;
+
+      console.log(`Dropping "${className}" to Period ${p} (Semester: ${currentSemester})`); // debug
+
+      teacherSchedule[p] = className;
+      saveScheduleToStorage();
+
+      renderPeriodSlots();
+      renderKnownClasses();
+      renderCalendar();
+    });
+
+    container.appendChild(slot);
+  }
+}
+
+function clearPeriod(period) {
+  if (confirm(`Clear Period ${period}?`)) {
+    delete teacherSchedule[period];
+    saveScheduleToStorage();
+    renderPeriodSlots();
+    renderKnownClasses();
+    renderCalendar();
+  }
+}
+
+function addKnownClass() {
+  const input = document.getElementById("newClassName");
+  if (!input || !input.value.trim()) return;
+
+  const className = input.value.trim();
+
+  let knownClasses = [];
+  try {
+    const saved = localStorage.getItem("knownClasses");
+    if (saved) knownClasses = JSON.parse(saved);
+  } catch (e) {}
+
+  if (!knownClasses.includes(className)) {
+    knownClasses.push(className);
+    localStorage.setItem("knownClasses", JSON.stringify(knownClasses));
+  }
+
+  renderKnownClasses();
+  input.value = "";
 }
 
 function renderRotationLegend() {
@@ -2723,34 +2829,26 @@ function renderRotationLegend() {
 
     // --- UI: schedule form ---
 
-    function hydrateScheduleForm() {
-  for (let p = 1; p <= getCurrentPeriodCount(); p++) {
-    const input = document.getElementById(`p${p}`);
-    if (input) {
-      input.value = teacherSchedule[p] || `Period ${p}`;
-    }
-  }
+function hydrateScheduleForm() {
+  // No longer needed for inputs, but keep for compatibility
+  renderPeriodSlots();
 }
 
-    function handleScheduleSubmit(event) {
-      event.preventDefault();
-      const form = event.target;
-      const newSchedule = {};
-      for (let p = 1; p <= getCurrentPeriodCount(); p++) {
-        const input = form[`p${p}`];
-        newSchedule[p] = input.value.trim() || `Period ${p}`;
-      }
-      teacherSchedule = newSchedule;
-      console.log("Saving for semester:", currentSemester); // debug
-      saveScheduleToStorage();
+function handleScheduleSubmit(event) {
+  event.preventDefault();
 
-      const semName = currentSemester === "sem1" ? "1st Semester" : "2nd Semester";
-      alert(`Schedule saved for ${semName}.`);
+  // Since we're using drag-and-drop, the data is already in teacherSchedule
+  console.log(`Saving schedule for ${currentSemester}:`, teacherSchedule);
 
-      renderCalendar();
-    }
+  saveScheduleToStorage();
 
-    // --- UI: calendar ---
+  const semName = currentSemester === "sem1" ? "1st Semester" : "2nd Semester";
+  alert(`Schedule saved for ${semName}.`);
+
+  renderCalendar();
+  renderKnownClasses(); // refresh pool
+}
+// --- UI: calendar ---
 function renderCalendar() {
   const calendarRoot = document.getElementById("calendarGrid");
   const monthTitle = document.getElementById("monthTitle");
@@ -3385,6 +3483,7 @@ function renderUnits() {
         <div class="small">Scheduled dates: ${dateRangeText}</div>
         ${normalized.shiftedUnit ? `<span class="shift-unit-tag">SHIFT UNIT</span>` : ""}
         <div class="unit-actions">
+          <button onclick="copyUnitToPeriod(${p}, ${i})" class="secondary">Copy to another period</button>
           <button onclick="saveUnitInfo(${p}, ${i})">Save Info</button>
           <button onclick="openUnitDaysEditor(${p}, ${i})">Edit Days</button>
           <button onclick="shiftUnit(${p}, ${i}, 1)">+1 Day (Snow)</button>
@@ -3525,6 +3624,49 @@ function renderSpecialDays() {
       container.appendChild(row);
     });
 }
+
+window.removeKnownClass = function(index) {
+  let knownClasses = [];
+  try {
+    const saved = localStorage.getItem("knownClasses");
+    if (saved) knownClasses = JSON.parse(saved);
+  } catch (e) {}
+
+  knownClasses.splice(index, 1);
+  localStorage.setItem("knownClasses", JSON.stringify(knownClasses));
+
+  renderKnownClasses();
+};
+
+window.copyUnitToPeriod = function(fromPeriod, unitIndex) {
+  const sourceUnits = getUnitsForPeriod(fromPeriod);
+  const unitToCopy = sourceUnits[unitIndex];
+  if (!unitToCopy) return;
+
+  const maxPeriod = getCurrentPeriodCount();
+  const targetPeriod = prompt(`Copy this unit to which period? (1-${maxPeriod})`, fromPeriod);
+  if (!targetPeriod) return;
+
+  const target = parseInt(targetPeriod);
+  if (isNaN(target) || target < 1 || target > maxPeriod) {
+    alert("Invalid period number.");
+    return;
+  }
+
+  if (!units[target]) units[target] = [];
+
+  // Deep clone the unit
+  const copiedUnit = JSON.parse(JSON.stringify(unitToCopy));
+
+  units[target].push(copiedUnit);
+  saveUnits();
+
+  renderUnits();
+  renderCalendar();
+  renderSummary();
+
+  alert(`Unit copied from Period ${fromPeriod} to Period ${target}`);
+};
 
 window.addUnit = function(period) {
   if (!units[period]) units[period] = [];
@@ -4850,7 +4992,36 @@ document.getElementById("divisionSelector")
       setTimeout(() => notice.remove(), 2000);
     }
   });
-  
+
+  // App Settings listener
+  const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+  if (saveSettingsBtn) {
+    saveSettingsBtn.addEventListener("click", () => {
+      const newTitle = document.getElementById("appTitleInput").value.trim();
+      if (newTitle) {
+        localStorage.setItem("appTitle", newTitle);
+        updateAppTitle();
+      }
+
+      const newDivision = document.getElementById("defaultDivisionInput").value;
+      if (newDivision) {
+        currentDivision = newDivision;
+        localStorage.setItem("currentDivision", newDivision);
+      }
+
+      const newPeriodCount = parseInt(document.getElementById("periodCountInput").value);
+      if (newPeriodCount) {
+        localStorage.setItem("periodCount", newPeriodCount);
+      }
+
+      const rotationLabels = document.getElementById("rotationLabelsInput").value.trim();
+      if (rotationLabels) {
+        localStorage.setItem("rotationLabels", rotationLabels);
+      }
+
+      alert("✅ Settings saved! Refresh the page to see some changes.");
+    });
+  }
   updateAppTitle();
   
 }
