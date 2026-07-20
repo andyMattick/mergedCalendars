@@ -1546,6 +1546,10 @@ const SEMESTERS = {
 let hideAllSpecialTags = false;
 let currentDivision = localStorage.getItem("currentDivision") || "hs";
 let currentSemester = localStorage.getItem("currentSemester") || "sem1";
+let unitsSem1 = {};
+let unitsSem2 = {};
+let specialDaysSem1 = [];
+let specialDaysSem2 = [];
 
 // ====================== UNIT LENGTH HELPERS ======================
 
@@ -2548,19 +2552,24 @@ function saveScheduleToStorage() {
       return `${getStorageKey(LS_NOTES_KEY_PREFIX)}-${date}`;
     }
 
-    function loadNotesForDate(date) {
-      const raw = localStorage.getItem(getNotesKey(date));
-      if (!raw) return {};
-      try {
-        return JSON.parse(raw); // { periodNumber: "note text" }
-      } catch (e) {
-        console.warn("Failed to parse notes for", date, e);
-        return {};
+      function loadNotesForDate(date) {
+        const key = `notes_${date}`;
+        const saved = localStorage.getItem(key);
+        if (!saved) return { general: "" };
+
+        const notes = JSON.parse(saved);
+        return {
+          general: notes.general || "",
+          ...notes   // keep all other notes
+        };
       }
-    }
 
     function saveNotesForDate(date, notesObj) {
-      localStorage.setItem(getNotesKey(date), JSON.stringify(notesObj));
+      if (!date) return;
+      const key = `notes_${date}`;
+      localStorage.setItem(key, JSON.stringify(notesObj));
+
+      console.log("General notes saved for", date, notesObj.general); // debug
     }
 
     function hasNotesForDate(date) {
@@ -2979,6 +2988,11 @@ function renderCalendar() {
 
     let hasContent = false;
 
+        if (dayNotes.general && dayNotes.general.trim()) {
+      hasContent = true;
+      hoverContent += `<strong>📝 General Notes:</strong><br>${dayNotes.general}<br><br>`;
+    }
+
     if (dayNotes.noTest) {
       hoverContent += `<span style="color:#166534; font-weight:600;">NO TEST TODAY</span><br>`;
     }
@@ -3187,6 +3201,7 @@ function openDayModal(day) {
   body.innerHTML = "";
 
   const existingNotes = loadNotesForDate(day.date);
+  console.log("Loaded notes for", day.date, existingNotes);
   const autoNoTest = isAutoNoTestDay(day.date);
   const specialEntries = getUnifiedSpecialDaysForDate(day.date);
 
@@ -3205,11 +3220,11 @@ function openDayModal(day) {
   generalBlock.style.border = "1px solid #e2e8f0";
   generalBlock.style.borderRadius = "8px";
   generalBlock.innerHTML = `
-    <strong>📝 General Day Notes</strong> 
-    <span class="small" style="color:#666;">(applies to the whole day — even if no classes)</span>
-    <textarea id="generalDayNote" style="width:100%; min-height:100px; margin-top:8px; padding:10px; border-radius:6px; border:1px solid #cbd5e1;" 
-              placeholder="Snow day, field trip, assembly, staff meeting, etc...">${existingNotes.general || ''}</textarea>
-  `;
+  <strong>📝 General Day Notes</strong> 
+  <span class="small" style="color:#666;">(applies to the whole day — even if no classes)</span>
+  <textarea id="generalDayNote" data-period="general" style="width:100%; min-height:100px; margin-top:8px; padding:10px; border-radius:6px; border:1px solid #cbd5e1;" 
+            placeholder="Snow day, field trip, assembly, staff meeting, etc...">${existingNotes.general || ''}</textarea>
+`;
   body.appendChild(generalBlock);
 
   // Show existing special tags (unchanged)
@@ -3369,17 +3384,18 @@ function handleSaveNotes() {
 
   const body = document.getElementById("modalBody");
   const textareas = body.querySelectorAll("textarea");
-  const notesObj = {};
 
-  // Save period notes
-  textareas.forEach(ta => {
-    const period = ta.dataset.period;
-    if (period === "general") {
-      notesObj.general = ta.value.trim();
-    } else {
-      notesObj[period] = ta.value.trim();
-    }
-  });
+  const notesObj = { general: "" };
+
+      // Save all textareas (general + periods)
+    textareas.forEach(ta => {
+      const period = ta.dataset.period || ta.id; // fallback to id
+      if (period === "general" || period === "generalDayNote") {
+        notesObj.general = ta.value.trim();
+      } else if (period) {
+        notesObj[period] = ta.value.trim();
+      }
+    });
 
   // === Per-Period Test Handling ===
   const periods = getPeriodsForDate(currentModalDay.date, currentModalDay.letter);
@@ -3394,9 +3410,11 @@ function handleSaveNotes() {
   const noTestToggle = document.getElementById("modalNoTestToggle");
   notesObj.noTest = noTestToggle ? noTestToggle.checked : false;
 
-  saveNotesForDate(currentModalDay.date, notesObj);
+  // Save everything
+saveNotesForDate(currentModalDay.date, notesObj);
 
-  // Warning if test scheduled on No-Test day
+  console.log("✅ Saved notes for", currentModalDay.date, notesObj); // debug
+
   // Warning if test scheduled on No-Test day
   const dayWarnings = getAssessmentWarnings().filter(event => event.date === currentModalDay.date);
   if (notesObj.noTest && dayWarnings.length) {
@@ -3408,19 +3426,36 @@ function handleSaveNotes() {
       return; // don't save
     }
   }
-  closeDayModal();
-  renderSpecialDays();
+
   renderCalendar();
+  renderSpecialDays();
   renderSummary();
+  closeDayModal();
 }
 
-    function handleClearNotes() {
-      if (!currentModalDay) return;
-      localStorage.removeItem(getNotesKey(currentModalDay.date));
-      closeDayModal();
-      renderCalendar();
-      renderSummary();
-    }
+function handleClearNotes() {
+  if (!currentModalDay || !confirm("Clear ALL notes for this day (general + per-period)?")) {
+    return;
+  }
+
+  const notesObj = { general: "" };
+
+  // Clear all period notes
+  const periods = getPeriodsForDate(currentModalDay.date, currentModalDay.letter);
+  periods.forEach(periodNum => {
+    notesObj[periodNum] = "";
+    notesObj[`test-${periodNum}`] = false;
+  });
+
+  notesObj.noTest = false;
+
+  saveNotesForDate(currentModalDay.date, notesObj);
+
+  console.log("Cleared all notes for", currentModalDay.date);
+
+  renderCalendar();
+  closeDayModal(); // or reopen to show empty fields
+}
 
     // === NEW: UNIT MANAGEMENT ===
 const LS_UNITS_KEY = "-units";
@@ -4463,68 +4498,98 @@ function renderSummary() {
 }
 
 document.getElementById("backupBtn").addEventListener("click", () => {
-  const notePrefix = getStorageKey(LS_NOTES_KEY_PREFIX);
-  const appKeys = Object.keys(localStorage).filter(key => /^(hs|ms|ls)-/.test(key) || key === "currentDivision" || key === "currentSemester");
-  const data = {
-    currentDivision,
-    currentSemester,
-    keys: appKeys.reduce((acc, key) => {
-      acc[key] = localStorage.getItem(key);
-      return acc;
-    }, {}),
-    activeSnapshot: {
-      schedule: teacherSchedule,
-      units,
-      specialDays,
-      notes: Object.keys(localStorage)
-      .filter(k => k.startsWith(notePrefix))
-      .reduce((acc, k) => {
-        acc[k] = JSON.parse(localStorage.getItem(k));
-        return acc;
-      }, {})
-    }
-  };
+  const allNotes = {};
 
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "hs-planner-backup.json";
-  a.click();
-  URL.revokeObjectURL(url);
-});
-
-document.getElementById("restoreBtn").addEventListener("click", () => {
-  document.getElementById("restoreInput").click();
-});
-
-document.getElementById("restoreInput").addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const text = await file.text();
-  const data = JSON.parse(text);
-
-  if (data.keys) {
-    Object.entries(data.keys).forEach(([key, value]) => {
-      if (value === null || value === undefined) return;
-      localStorage.setItem(key, value);
-    });
-  } else if (data.activeSnapshot) {
-    if (data.activeSnapshot.schedule) teacherSchedule = data.activeSnapshot.schedule;
-    if (data.activeSnapshot.units) units = data.activeSnapshot.units;
-    if (data.activeSnapshot.specialDays) specialDays = data.activeSnapshot.specialDays.map(normalizeSpecialDay);
-    if (data.activeSnapshot.notes) {
-      Object.entries(data.activeSnapshot.notes).forEach(([k, v]) => localStorage.setItem(k, JSON.stringify(v)));
+  // Collect all notes
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith("notes_")) {
+      allNotes[key] = JSON.parse(localStorage.getItem(key));
     }
   }
 
-  currentDivision = localStorage.getItem("currentDivision") || currentDivision;
-  currentSemester = localStorage.getItem("currentSemester") || currentSemester;
-  saveScheduleToStorage();
-  saveUnits();
-  saveSpecialDays();
-  refreshAllData();
-  alert("Data restored successfully!");
+  const backup = {
+    timestamp: new Date().toISOString(),
+    currentDivision: currentDivision,
+    currentSemester: currentSemester,
+    teacherScheduleSem1: teacherSchedule,
+    unitsSem1: unitsSem1 || {},
+    unitsSem2: unitsSem2 || {},
+    specialDaysSem1: specialDaysSem1 || [],
+    specialDaysSem2: specialDaysSem2 || [],
+    notes: allNotes  // ← This includes all general + period notes
+  };
+
+  const dataStr = JSON.stringify(backup, null, 2);
+  const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+  const exportFileDefaultName = `hs-planner-backup-${new Date().toISOString().slice(0,10)}.json`;
+
+  const linkElement = document.createElement('a');
+  linkElement.setAttribute('href', dataUri);
+  linkElement.setAttribute('download', exportFileDefaultName);
+  linkElement.click();
+
+  alert("Backup downloaded (including all notes)!");
+});
+
+document.getElementById("restoreBtn").addEventListener("click", () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      try {
+        const backup = JSON.parse(event.target.result);
+
+        // Restore core data
+        if (backup.teacherScheduleSem1) {
+          teacherSchedule = backup.teacherScheduleSem1;
+          localStorage.setItem("hs-sem1teacherScheduleSem1", JSON.stringify(teacherSchedule));
+        }
+
+        if (backup.unitsSem1) {
+          unitsSem1 = backup.unitsSem1;
+          localStorage.setItem("hs-sem1-units", JSON.stringify(unitsSem1));
+        }
+
+        if (backup.unitsSem2) {
+          unitsSem2 = backup.unitsSem2;
+          localStorage.setItem("hs-sem2-units", JSON.stringify(unitsSem2));
+        }
+
+        if (backup.specialDaysSem1) {
+          specialDaysSem1 = backup.specialDaysSem1;
+          localStorage.setItem("hs-sem1-specialDays", JSON.stringify(specialDaysSem1));
+        }
+
+        if (backup.specialDaysSem2) {
+          specialDaysSem2 = backup.specialDaysSem2;
+          localStorage.setItem("hs-sem2-specialDays", JSON.stringify(specialDaysSem2));
+        }
+
+        // Restore all notes
+        if (backup.notes) {
+          Object.keys(backup.notes).forEach(key => {
+            localStorage.setItem(key, JSON.stringify(backup.notes[key]));
+          });
+        }
+
+        alert("✅ Restore successful! Including all notes.");
+        location.reload(); // Refresh to load everything
+
+      } catch (err) {
+        alert("Error restoring backup: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  input.click();
 });
 
 document.getElementById("printCalendarBtn").addEventListener("click", () => {
