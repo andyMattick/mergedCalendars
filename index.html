@@ -4536,6 +4536,8 @@ function renderSummary() {
   }
 }
 
+
+
 document.getElementById("backupBtn").addEventListener("click", () => {
 
   const backup = {
@@ -4543,18 +4545,23 @@ document.getElementById("backupBtn").addEventListener("click", () => {
     currentDivision: currentDivision,
     currentSemester: currentSemester,
     teacherScheduleSem1: teacherSchedule,           // ← Added / Fixed: class names
-    teacherScheduleSem2: teacherScheduleSem2 || {}, // ← Added
+    teacherScheduleSem2: window.teacherScheduleSem2 || {},   // Safe access
 
     unitsSem1: unitsSem1 || {},
     unitsSem2: unitsSem2 || {},
     specialDaysSem1: specialDaysSem1 || [],
     specialDaysSem2: specialDaysSem2 || [],
-    notes: allNotes  // ← This includes all general + period notes
+    notes: {}
   };
 
+// Collect all notes safely
   Object.keys(localStorage).forEach(key => {
-    if (key.startsWith("notes-") || key.startsWith("special-")) {
-      backup.notes[key] = JSON.parse(localStorage.getItem(key) || "{}");
+    if (key.startsWith("notes_") || key.startsWith("special_")) {
+      try {
+        backup.notes[key] = JSON.parse(localStorage.getItem(key) || "{}");
+      } catch (e) {
+        backup.notes[key] = localStorage.getItem(key);
+      }
     }
   });
 
@@ -4562,10 +4569,12 @@ const dataStr = JSON.stringify(backup, null, 2);
   const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
   const exportFileDefaultName = `hs-planner-backup-${new Date().toISOString().slice(0,10)}.json`;
 
-  const linkElement = document.createElement('a');
+const linkElement = document.createElement('a');
   linkElement.setAttribute('href', dataUri);
   linkElement.setAttribute('download', exportFileDefaultName);
+  document.body.appendChild(linkElement);
   linkElement.click();
+  document.body.removeChild(linkElement);
 
   alert("✅ Backup downloaded successfully (includes units + class names + notes)!");
 });
