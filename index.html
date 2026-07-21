@@ -2660,26 +2660,65 @@ function getAssessmentSchedule() {
   const counts = {};
   const events = [];
 
+  // Unit-based (unchanged)
   getCurrentRotationData().forEach(day => {
     const periods = getPeriodsForDate(day.date, day.letter);
     periods.forEach(periodNum => {
       counts[periodNum] = (counts[periodNum] || 0) + 1;
       const unitInfo = getUnitProgress(periodNum, counts[periodNum], day.date);
-      if (!unitInfo.hasQuizToday && !unitInfo.hasTestToday) {
-        return;
+
+      if (unitInfo.hasQuizToday || unitInfo.hasTestToday) {
+        events.push({
+          date: day.date,
+          letter: day.letter,
+          periodNum,
+          courseName: unitInfo.courseName,
+          unitInfo,
+          isNoTestDay: isAutoNoTestDay(day.date) || !!loadNotesForDate(day.date).noTest
+        });
       }
-      events.push({
-        date: day.date,
-        letter: day.letter,
-        periodNum,
-        courseName: unitInfo.courseName,
-        unitInfo,
-        isNoTestDay: isAutoNoTestDay(day.date) || !!loadNotesForDate(day.date).noTest
-      });
     });
   });
 
-  return events;
+  // === MANUAL PER-PERIOD TEST CHECKBOXES ===
+  console.log("=== Scanning for manual tests ===");
+  Object.keys(localStorage).forEach(key => {
+    if (!key.startsWith("notes_")) return;
+
+    const date = key.replace("notes_", "");
+    const notesStr = localStorage.getItem(key);
+    if (!notesStr) return;
+
+    let notes;
+    try {
+      notes = JSON.parse(notesStr);
+    } catch(e) {
+      return;
+    }
+
+    const periods = getPeriodsForDate(date, getRotationDayByDate(date)?.letter || "");
+    periods.forEach(periodNum => {
+      if (notes[`test-${periodNum}`] === true) {
+        const periodNote = notes[periodNum] || "";
+
+        console.log(`✅ FOUND manual test on ${date} Period ${periodNum}`);
+
+        events.push({
+          date: date,
+          letter: getRotationDayByDate(date)?.letter || "",
+          periodNum: periodNum,
+          courseName: teacherSchedule[periodNum] || `Period ${periodNum}`,
+          unitInfo: {
+            hasTestToday: true,
+     unitName: periodNote || "TEST",        // Use period note if available            hasQuizToday: false
+          }
+        });
+      }
+    });
+  });
+  console.log(`Total events found: ${events.length}`);
+
+  return events.sort((a, b) => a.date.localeCompare(b.date) || a.periodNum - b.periodNum);
 }
 
 function getAssessmentWarnings() {
@@ -4498,21 +4537,14 @@ function renderSummary() {
 }
 
 document.getElementById("backupBtn").addEventListener("click", () => {
-  const allNotes = {};
-
-  // Collect all notes
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && key.startsWith("notes_")) {
-      allNotes[key] = JSON.parse(localStorage.getItem(key));
-    }
-  }
 
   const backup = {
     timestamp: new Date().toISOString(),
     currentDivision: currentDivision,
     currentSemester: currentSemester,
-    teacherScheduleSem1: teacherSchedule,
+    teacherScheduleSem1: teacherSchedule,           // ← Added / Fixed: class names
+    teacherScheduleSem2: teacherScheduleSem2 || {}, // ← Added
+
     unitsSem1: unitsSem1 || {},
     unitsSem2: unitsSem2 || {},
     specialDaysSem1: specialDaysSem1 || [],
@@ -4520,7 +4552,13 @@ document.getElementById("backupBtn").addEventListener("click", () => {
     notes: allNotes  // ← This includes all general + period notes
   };
 
-  const dataStr = JSON.stringify(backup, null, 2);
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith("notes-") || key.startsWith("special-")) {
+      backup.notes[key] = JSON.parse(localStorage.getItem(key) || "{}");
+    }
+  });
+
+const dataStr = JSON.stringify(backup, null, 2);
   const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
   const exportFileDefaultName = `hs-planner-backup-${new Date().toISOString().slice(0,10)}.json`;
 
@@ -4529,7 +4567,7 @@ document.getElementById("backupBtn").addEventListener("click", () => {
   linkElement.setAttribute('download', exportFileDefaultName);
   linkElement.click();
 
-  alert("Backup downloaded (including all notes)!");
+  alert("✅ Backup downloaded successfully (includes units + class names + notes)!");
 });
 
 document.getElementById("restoreBtn").addEventListener("click", () => {
@@ -4546,44 +4584,41 @@ document.getElementById("restoreBtn").addEventListener("click", () => {
       try {
         const backup = JSON.parse(event.target.result);
 
-        // Restore core data
+        // Restore class names (most important fix)
         if (backup.teacherScheduleSem1) {
           teacherSchedule = backup.teacherScheduleSem1;
-          localStorage.setItem("hs-sem1teacherScheduleSem1", JSON.stringify(teacherSchedule));
+          localStorage.setItem("teacherScheduleSem1", JSON.stringify(teacherSchedule)); // ← Fixed key
+        }
+        if (backup.teacherScheduleSem2) {
+          teacherScheduleSem2 = backup.teacherScheduleSem2;
+          localStorage.setItem("teacherScheduleSem2", JSON.stringify(teacherScheduleSem2));
         }
 
+        // Restore Units
         if (backup.unitsSem1) {
           unitsSem1 = backup.unitsSem1;
-          localStorage.setItem("hs-sem1-units", JSON.stringify(unitsSem1));
+          localStorage.setItem("unitsSem1", JSON.stringify(unitsSem1));
         }
-
         if (backup.unitsSem2) {
           unitsSem2 = backup.unitsSem2;
-          localStorage.setItem("hs-sem2-units", JSON.stringify(unitsSem2));
+          localStorage.setItem("unitsSem2", JSON.stringify(unitsSem2));
         }
 
-        if (backup.specialDaysSem1) {
-          specialDaysSem1 = backup.specialDaysSem1;
-          localStorage.setItem("hs-sem1-specialDays", JSON.stringify(specialDaysSem1));
-        }
+        // Restore Special Days
+        if (backup.specialDaysSem1) specialDaysSem1 = backup.specialDaysSem1;
+        if (backup.specialDaysSem2) specialDaysSem2 = backup.specialDaysSem2;
 
-        if (backup.specialDaysSem2) {
-          specialDaysSem2 = backup.specialDaysSem2;
-          localStorage.setItem("hs-sem2-specialDays", JSON.stringify(specialDaysSem2));
-        }
-
-        // Restore all notes
+        // Restore Notes
         if (backup.notes) {
           Object.keys(backup.notes).forEach(key => {
             localStorage.setItem(key, JSON.stringify(backup.notes[key]));
           });
         }
 
-        alert("✅ Restore successful! Including all notes.");
-        location.reload(); // Refresh to load everything
-
+        alert("✅ Restore successful! Units and class names restored.");
+        location.reload();
       } catch (err) {
-        alert("Error restoring backup: " + err.message);
+        alert("❌ Error restoring backup:\n" + err.message);
       }
     };
     reader.readAsText(file);
@@ -4712,9 +4747,11 @@ function initCollapsibleSections() {
   applyState();
 }
 function applyPrintFilters() {
-  const selectedUnit = document.getElementById("printUnitFilter").value.toLowerCase();
-  const selectedPeriods = Array.from(document.querySelectorAll('#printPeriodFilters input[type="checkbox"]:checked')).map(input => Number(input.value));
-  const selectedMonths = Array.from(document.querySelectorAll('#printMonthFilters input[type="checkbox"]:checked')).map(input => input.value);
+  const selectedUnitText = document.getElementById("printUnitFilter").value.toLowerCase().trim();
+  const selectedPeriods = Array.from(document.querySelectorAll('#printPeriodFilters input[type="checkbox"]:checked'))
+    .map(input => Number(input.value));
+  const selectedMonths = Array.from(document.querySelectorAll('#printMonthFilters input[type="checkbox"]:checked'))
+    .map(input => input.value);
 
   let html = `
     <html>
@@ -4741,6 +4778,8 @@ function applyPrintFilters() {
     return selectedMonths.length === 0 || selectedMonths.includes(key);
   });
 
+  let hasContent = false;
+
   activeMonths.forEach(monthObj => {
     const monthLabel = new Date(monthObj.year, monthObj.month - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
     html += `<h2>${monthLabel}</h2>`;
@@ -4756,16 +4795,24 @@ function applyPrintFilters() {
       const dayNotes = loadNotesForDate(day.date);
       const specialEntries = getUnifiedSpecialDaysForDate(day.date);
 
+      // Filter by selected periods
+      const filteredPeriods = periodsForDay.filter(p => selectedPeriods.length === 0 || selectedPeriods.includes(p));
+      if (filteredPeriods.length === 0) return;
+
       html += `<div class="day"><strong>${day.date} — ${weekdayName} (${day.letter || 'No classes'})</strong><br>`;
 
       if (specialEntries.length) {
         html += `<div class="special">Special: ${specialEntries.map(e => e.label).join(", ")}</div>`;
       }
 
-      periodsForDay.forEach(periodNum => {
-        if (selectedPeriods.length > 0 && !selectedPeriods.includes(periodNum)) return;
-
+      filteredPeriods.forEach(periodNum => {
         const unitInfo = getUnitProgress(periodNum, getDayCountsForDate(day.date, periodsForDay)[periodNum], day.date);
+
+        // Unit name filter
+        if (selectedUnitText && !unitInfo.unitName.toLowerCase().includes(selectedUnitText)) {
+          return;
+        }
+
         let line = `${periodNum}: ${unitInfo.courseName}`;
 
         if (unitInfo.unitName) line += ` — ${unitInfo.unitName}`;
@@ -4778,10 +4825,15 @@ function applyPrintFilters() {
       if (dayNotes.noTest) html += `<div style="color:#166534; font-weight:600;">NO TEST TODAY</div>`;
 
       html += `</div>`;
+      hasContent = true;
     });
 
     html += `</div>`;
   });
+
+  if (!hasContent) {
+    html += `<p style="text-align:center; color:#666; font-style:italic;">No matching entries found for the selected filters.</p>`;
+  }
 
   html += `</body></html>`;
 
@@ -4789,12 +4841,12 @@ function applyPrintFilters() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `planner-${getCurrentConfig().name.toLowerCase()}.html`;
+  a.download = `planner-filtered-${getCurrentConfig().name.toLowerCase()}.html`;
   a.click();
   URL.revokeObjectURL(url);
 
   closePrintFilterModal();
-  alert("✅ Exported with day count included!");
+  alert(`✅ Filter applied successfully! Exported with your selected filters.`);
 }
 // --- Init ---
 function init() {
@@ -4824,77 +4876,132 @@ function init() {
 
   applyDarkModePreference();
   // Export Tests/Quizzes by Class → Nice view + Copy + PDF
-  document.getElementById("exportTestsByClassBtn").addEventListener("click", () => {
-    const allEvents = getAssessmentSchedule();
-    const modalTests = [];
+document.getElementById("exportTestsByClassBtn").addEventListener("click", () => {
+  const allEvents = getAssessmentSchedule();
+  const modalTests = [];
 
-    Object.keys(localStorage).forEach(key => {
-      if (!key.startsWith(getStorageKey(LS_NOTES_KEY_PREFIX))) return;
-      const date = key.replace(getStorageKey(LS_NOTES_KEY_PREFIX) + "-", "");
-      const notes = loadNotesForDate(date);
+  Object.keys(localStorage).forEach(key => {
+    if (!key.startsWith(getStorageKey(LS_NOTES_KEY_PREFIX))) return;
+    const date = key.replace(getStorageKey(LS_NOTES_KEY_PREFIX) + "-", "");
+    const notes = loadNotesForDate(date);
 
-      getPeriodsForDate(date, getRotationDayByDate(date)?.letter || "").forEach(periodNum => {
-        if (notes[`test-${periodNum}`] === true) {
-          modalTests.push({
-            date,
-            periodNum,
-            courseName: teacherSchedule[periodNum] || `Period ${periodNum}`,
-            isTest: true,
-            unitInfo: { hasTestToday: true }
-          });
-        }
-      });
+    getPeriodsForDate(date, getRotationDayByDate(date)?.letter || "").forEach(periodNum => {
+      if (notes[`test-${periodNum}`] === true || notes.isTestDay) {
+        modalTests.push({
+          date,
+          periodNum,
+          courseName: teacherSchedule[periodNum] || `Period ${periodNum}`,
+          isTest: true,
+          unitInfo: { hasTestToday: true, unitName: notes.unitName || "" }
+        });
+      }
     });
-
-    const events = [...allEvents, ...modalTests]
-      .filter(event => event.unitInfo.hasQuizToday || event.unitInfo.hasTestToday || event.isTest)
-      .sort((a, b) => a.date.localeCompare(b.date) || a.periodNum - b.periodNum);
-
-    if (!events.length) {
-      alert("No quizzes or tests scheduled yet.");
-      return;
-    }
-
-    let html = `<h2>Assessments Overview</h2>`;
-    html += `<p><strong>Total Assessments:</strong> ${events.length}</p><hr>`;
-
-    const byClass = {};
-    events.forEach(event => {
-      const course = event.courseName || `Period ${event.periodNum}`;
-      if (!byClass[course]) byClass[course] = [];
-      const type = event.isTest || event.unitInfo.hasTestToday ? "TEST" : "QUIZ";
-      const unitName = event.unitInfo.unitName ? ` — ${event.unitInfo.unitName}` : "";
-      const details = `${event.date} (P${event.periodNum})${unitName}`;
-      byClass[course].push({ type, details });
-    });
-
-    Object.keys(byClass).sort().forEach(course => {
-      html += `<h3>${course}</h3><ul>`;
-      byClass[course].forEach(item => {
-        html += `<li><strong>${item.type}</strong> — ${item.details}</li>`;
-      });
-      html += `</ul>`;
-    });
-
-    const modal = document.createElement("div");
-    modal.style.cssText = "position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; padding:2rem; border-radius:8px; max-width:90%; max-height:90vh; overflow:auto; z-index:100; box-shadow:0 10px 30px rgba(0,0,0,0.3); min-width:650px;";
-    modal.innerHTML = `
-      <div id="printableArea">
-        ${html}
-      </div>
-      <div style="margin-top:1.5rem; text-align:center;">
-        <button onclick="navigator.clipboard.writeText(document.getElementById('assessText').value).then(()=>alert('Copied!'))">Copy to Clipboard</button>
-        <button onclick="printModalContent()">Print / Save as PDF</button>
-        <button onclick="this.closest('div[style*=\"position:fixed\"]').remove()">Close</button>
-      </div>
-      <textarea id="assessText" style="display:none;">${Object.keys(byClass).sort().map(course => {
-        return course + "\n" + byClass[course].map(item => `  • ${item.type} — ${item.details}`).join("\n");
-      }).join("\n\n")}</textarea>
-    `;
-    document.body.appendChild(modal);
   });
 
-  // Helper to print only the modal content
+  const events = [...allEvents, ...modalTests]
+    .filter(event => event.unitInfo.hasQuizToday || event.unitInfo.hasTestToday || event.isTest)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.periodNum - b.periodNum);
+
+  if (!events.length) {
+    alert("No quizzes or tests scheduled yet.");
+    return;
+  }
+
+  // Store events globally for filtering
+  window.currentAssessmentEvents = events;
+
+  let html = `<h2>Assessments Overview</h2>`;
+  html += `<p><strong>Total Assessments:</strong> ${events.length}</p><hr>`;
+
+  const byClass = groupAssessmentsByClass(events);
+
+  html += buildAssessmentsHTML(byClass);
+
+  const modal = document.createElement("div");
+  modal.style.cssText = "position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; padding:2rem; border-radius:8px; max-width:90%; max-height:90vh; overflow:auto; z-index:10000; box-shadow:0 10px 30px rgba(0,0,0,0.3); min-width:700px;";
+  modal.innerHTML = `
+    <div style="margin-bottom:1.5rem; padding:12px; background:#f8fafc; border-radius:6px;">
+      <label><input type="checkbox" id="filterQuiz" checked> Show Quizzes</label>
+      <label style="margin-left:20px;"><input type="checkbox" id="filterTest" checked> Show Tests</label>
+      <button onclick="applyExportFilters()" style="margin-left:30px; padding:8px 16px;">Apply Filters</button>
+    </div>
+    <div id="printableArea">
+      ${html}
+    </div>
+    <div style="margin-top:2rem; text-align:center;">
+      <button onclick="printModalContent()" style="margin:0 8px;">Print / Save as PDF</button>
+      <button onclick="closeAssessmentModal()" style="margin:0 8px; padding:10px 20px; background:#ef4444; color:white;">Close</button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+});
+
+function groupAssessmentsByClass(events) {
+  const byClass = {};
+
+  events.forEach(event => {
+    let courseName = event.courseName || `Period ${event.periodNum}`;
+
+    // Fix "Off (P1)" → show actual period name
+    if (courseName.toLowerCase().includes("off") || courseName.trim() === "") {
+      courseName = `Period ${event.periodNum}`;
+    }
+
+    // Capitalize class name properly
+    courseName = courseName
+      .split(" ")
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
+
+    const type = (event.isTest || event.unitInfo.hasTestToday) ? "TEST" : "QUIZ";
+
+    const key = `${courseName} (P${event.periodNum})`;
+
+    if (!byClass[key]) byClass[key] = [];
+    byClass[key].push({
+      type,
+      details: `${event.date}${event.unitInfo.unitName ? ` — ${event.unitInfo.unitName}` : ''}`
+    });
+  });
+
+  return byClass;
+}
+
+
+function buildAssessmentsHTML(byClass) {
+  let html = '';
+  Object.keys(byClass).sort().forEach(course => {
+    html += `<h3>${course}</h3><ul>`;
+    byClass[course].forEach(item => {
+      html += `<li><strong>${item.type}</strong> — ${item.details}</li>`;
+    });
+    html += `</ul>`;
+  });
+  return html;
+}
+// Add this function
+
+
+window.applyExportFilters = function() {
+  const showQuiz = document.getElementById("filterQuiz").checked;
+  const showTest = document.getElementById("filterTest").checked;
+
+  const filteredEvents = window.currentAssessmentEvents.filter(event => {
+    const isTest = event.isTest || event.unitInfo.hasTestToday;
+    return (showTest && isTest) || (showQuiz && !isTest);
+  });
+
+  const byClass = groupAssessmentsByClass(filteredEvents);
+  const newHTML = buildAssessmentsHTML(byClass);
+
+  const printableArea = document.getElementById("printableArea");
+  if (printableArea) {
+    printableArea.innerHTML = `<h2>Assessments Overview</h2>
+      <p><strong>Total Assessments:</strong> ${filteredEvents.length}</p><hr>${newHTML}`;
+  }
+};
+
+// Helper to print only the modal content
   window.printModalContent = function() {
     const printable = document.getElementById("printableArea");
     if (!printable) return;
@@ -5263,6 +5370,27 @@ window.resolveConflict = function(index, action) {
   } else {
     alert("Could not move test — check for other conflicts.");
   }
+};
+
+window.closeAssessmentModal = function() {
+  console.log("Close button clicked - attempting to close modal..."); // Debug line
+
+  // Try multiple ways to find and remove the modal
+  let modal = document.getElementById("assessmentModal");
+  if (modal) {
+    modal.remove();
+    console.log("Modal closed using ID");
+    return;
+  }
+
+  // Fallback
+  const fixedDivs = document.querySelectorAll('div[style*="position:fixed"], div[style*="position: fixed"]');
+  fixedDivs.forEach(div => {
+    if (div.innerHTML.includes("Assessments Overview") || div.id === "assessmentModal") {
+      div.remove();
+      console.log("Modal closed using fallback");
+    }
+  });
 };
 
   </script>
