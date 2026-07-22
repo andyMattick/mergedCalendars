@@ -1642,6 +1642,8 @@ function createDateRangeEntries(startDate, endDate, divisions, label) {
   return rows;
 }
 
+
+
 const STATIC_SPECIAL_DAY_ROWS = [
   ["2026-08-12", ["ls"], "First day (A-K)"],
   ["2026-08-12", ["ms"], "First day"],
@@ -4834,6 +4836,8 @@ function applyPrintFilters() {
   closePrintFilterModal();
   alert(`✅ Filter applied successfully! Exported with your selected filters.`);
 }
+
+
 // --- Init ---
 function init() {
   document.getElementById("divisionSelector").value = currentDivision;
@@ -5308,6 +5312,8 @@ document.getElementById("divisionSelector")
   
 }
 
+
+
 function getCurrentScheduleKey() {
   return currentSemester === "sem1" ? "teacherScheduleSem1" : "teacherScheduleSem2";
 }
@@ -5330,6 +5336,7 @@ function refreshAllData() {
 
 // Run init ONLY once, AFTER DOM is ready
 document.addEventListener("DOMContentLoaded", init);
+
 
 
 window.resolveConflict = function(index, action) {
@@ -5379,49 +5386,57 @@ window.closeAssessmentModal = function() {
   });
 };
 
-// Auto Backup + Status
-let lastAutoBackupTime = null;
+// ====================== AUTO BACKUP (put it here) ======================
+  let lastAutoBackupTime = null;
 
-setInterval(() => {
-  try {
-    const currentDiv = currentDivision || "default";
-    const backupKey = `autoBackup_${currentDiv}`;
+  setInterval(() => {
+    try {
+      const currentDiv = currentDivision || "default";
+      const backupKey = `autoBackup_${currentDiv}`;
 
-    const backup = {
-      timestamp: new Date().toISOString(),
-      division: currentDiv,
-      teacherScheduleSem1: JSON.parse(localStorage.getItem("hs-sem1teacherScheduleSem1") || "{}"),
-      unitsSem1: JSON.parse(localStorage.getItem("hs-sem1-units") || "{}"),
-      notes: {}
-    };
+      const backup = {
+        timestamp: new Date().toISOString(),
+        division: currentDiv,
+        teacherScheduleSem1: JSON.parse(localStorage.getItem("hs-sem1teacherScheduleSem1") || "{}"),
+        unitsSem1: JSON.parse(localStorage.getItem("hs-sem1-units") || "{}"),
+        notes: {}
+      };
 
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith("notes_")) {
-        try {
-          backup.notes[key] = JSON.parse(localStorage.getItem(key));
-        } catch(e) {}
-      }
-    });
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith("notes_")) {
+          try {
+            backup.notes[key] = JSON.parse(localStorage.getItem(key));
+          } catch(e) {}
+        }
+      });
 
-    localStorage.setItem(backupKey, JSON.stringify(backup));
-    lastAutoBackupTime = Date.now();
+      localStorage.setItem(backupKey, JSON.stringify(backup));
+      lastAutoBackupTime = Date.now();
 
-    console.log(`Auto-backup saved for ${currentDiv}`);
-  } catch (e) {}
-}, 5 * 60 * 1000);
+      console.log(`Auto-backup saved for ${currentDiv}`);
+    } catch (e) {}
+  }, 5 * 60 * 1000);
 
-// Status Message (add this HTML somewhere visible, e.g. near the top)
-const statusDiv = document.createElement("div");
-statusDiv.id = "autoBackupStatus";
-statusDiv.style = "position:fixed; bottom:10px; right:10px; background:#e0f2fe; padding:6px 12px; border-radius:4px; font-size:13px; z-index:1000;";
-document.body.appendChild(statusDiv);
+  // Status message in bottom right
+  // Status message in bottom right
+  const statusDiv = document.createElement("div");
+  statusDiv.id = "autoBackupStatus";
+  statusDiv.style = "position:fixed; bottom:15px; right:15px; background:#e0f2fe; color:#1e40af; padding:6px 12px; border-radius:6px; font-size:13px; z-index:9999; box-shadow:0 2px 8px rgba(0,0,0,0.1); min-width:140px; text-align:center;";
+  document.body.appendChild(statusDiv);
 
-setInterval(() => {
-  if (lastAutoBackupTime) {
-    const minutesAgo = Math.floor((Date.now() - lastAutoBackupTime) / 60000);
-    document.getElementById("autoBackupStatus").innerHTML = `Auto-saved ${minutesAgo} min ago`;
-  }
-}, 30000);
+  // Initial message
+  statusDiv.textContent = "Auto-backup active";
+
+  setInterval(() => {
+    const el = document.getElementById("autoBackupStatus");
+    if (lastAutoBackupTime) {
+      const minutesAgo = Math.floor((Date.now() - lastAutoBackupTime) / 60000);
+      el.textContent = `Auto-saved ${minutesAgo} min ago`;
+    } else {
+      el.textContent = "Auto-backup active";
+    }
+  }, 30000);
+
 
   </script>
 
@@ -5584,78 +5599,77 @@ setInterval(() => {
     <button class="help-tab-btn" data-help-section="notes">Notes & Assessments</button>
     <button class="help-tab-btn" data-help-section="printing">Printing & Export</button>
   </div>
+<div class="help-modal">
+  <div class="help-content">
 
-   <section class="help-section active" data-help-section="welcome">
-    <h2>Welcome to Wesleyan HS Planner</h2>
-    <p>This tool helps you plan your classes with rotation days, units, notes, and test days — all saved locally in your browser.</p>
-    <ul>
-      <li>Enter your class names on the left</li>
-      <li>Define units per period (with topics, quizzes, tests)</li>
-      <li>Click any day to add notes or mark test days</li>
-      <li>Use Backup/Restore to save your work</li>
-      <li>Switch between semesters using the selectors in the header</li>
-    </ul>
-    <p>Everything works offline.</p>
-  </section>
+    <section class="help-section active" data-help-section="welcome">
+      <h2>Welcome to Wesleyan HS Planner</h2>
+      <p>This tool helps you plan your classes with rotation days, units, notes, and test days — all saved locally in your browser.</p>
+      <ul>
+        <li>Enter your class names on the left sidebar</li>
+        <li>Create units per period with length and daily topics</li>
+        <li>Click any day on the calendar to add notes or mark test days</li>
+        <li>Use <strong>Backup / Restore</strong> to save your work safely</li>
+        <li>Switch between divisions/semesters using the header selector</li>
+      </ul>
+      <p>Everything works offline.</p>
+    </section>
 
-  <section class="help-section" data-help-section="units">
-    <h2>Units</h2>
-    <p>Units drive automatic pacing on the calendar.</p>
-    <p><strong>How to use:</strong></p>
-    <ul>
-      <li>Enter Unit Name and Length → + Add Unit</li>
-      <li>Click "Edit Days" to set topics and mark quizzes/tests per day</li>
-      <li>Calendar will show: AP Stats - Unit 1: Exploring Data (Day 4/10)</li>
-    </ul>
-  </section>
+    <section class="help-section" data-help-section="units">
+      <h2>Units & Pacing</h2>
+      <p>Units automatically calculate pacing on the calendar.</p>
+      <ul>
+        <li>Add units with name and length (days)</li>
+        <li>Use "Edit Days" to set topics, quizzes, and tests per day</li>
+        <li>Calendar shows unit name + progress (e.g. Day 4/10)</li>
+      </ul>
+    </section>
 
-  <section class="help-section" data-help-section="snow">
-    <h2>Snow Day & Unit Shifting</h2>
-    <p>If you have a snow day or need to adjust pacing:</p>
-    <ul>
-      <li>Go to the unit in the left panel and click <strong>"+1 Day (Snow)"</strong> or <strong>"-1 Day"</strong>.</li>
-      <li>This shifts the selected unit and all following units.</li>
-      <li>You can also shift from the day modal.</li>
-      <li>The app warns you if any tests would land on a No Test day after shifting.</li>
-    </ul>
-  </section>
+    <section class="help-section" data-help-section="snow">
+      <h2>Snow Days & Shifting</h2>
+      <p>To adjust for snow days or pacing changes:</p>
+      <ul>
+        <li>In the unit list, use <strong>+1 Day (Snow)</strong> or <strong>-1 Day</strong></li>
+        <li>You can shift just that unit or that unit + all following units</li>
+        <li>The app warns you if tests would land on No Test days</li>
+      </ul>
+    </section>
 
-  <section class="help-section" data-help-section="special">
-    <h2>Special Days</h2>
-    <p>Mark Family Nights, holidays, PSAT, etc. You can add multiple special tags per day and remove them individually.</p>
-    <p>Days after major holidays are automatically No Test (you can override).</p>
-  </section>
+    <section class="help-section" data-help-section="special">
+      <h2>Special Days & Multiple Tags</h2>
+      <p>You can now add **multiple special tags** on the same day.</p>
+      <p>Special days automatically block tests (you can override per period).</p>
+    </section>
 
-  <section class="help-section" data-help-section="notes">
-    <h2>Notes & Assessments</h2>
-    <p>Click any day on the calendar to open the day modal.</p>
-    <ul>
-      <li><strong>Per-period notes</strong></li>
-      <li><strong>Test Today</strong> checkbox per class period (creates a "Test" badge on that class)</li>
-      <li><strong>NO TEST TODAY</strong> toggle (separate from special tags — blocks tests on the whole day)</li>
-      <li>Quizzes/Tests planned in the Unit Day Planner appear automatically</li>
-    </ul>
-    <p>Conflict warnings appear if you try to schedule a test on a No Test day (or vice versa).</p>
-  </section>
+    <section class="help-section" data-help-section="notes">
+      <h2>Notes & Test Days</h2>
+      <ul>
+        <li>Click any day → add per-period notes</li>
+        <li>Check <strong>TEST TODAY</strong> per period</li>
+        <li>Use <strong>NO TEST TODAY</strong> for the whole day</li>
+        <li>Unit-planned tests + manual tests both appear in the export</li>
+      </ul>
+    </section>
 
-  <section class="help-section" data-help-section="printing">
-    <h2>Printing & Export</h2>
-    <ul>
-      <li><strong>Print with Filters</strong> — clean monthly view</li>
-      <li><strong>Export Tests/Quizzes by Class</strong> — new button in header (copies clean list to clipboard)</li>
-      <li>Always use Backup/Restore to save your data safely.</li>
-    </ul>
-  </section>
-</div>
-      <div class="help-footer">
-        <label class="welcome-checkbox">
-          <input type="checkbox" id="hideWelcomeCheckbox">
-          Don't show welcome again
-        </label>
-        <button id="startPlanningBtn">Start Planning</button>
-      </div>
-    </div>
+    <section class="help-section" data-help-section="backup">
+      <h2>Backup & Restore</h2>
+      <ul>
+        <li><strong>Backup Data</strong> — saves current division to a .json file</li>
+        <li><strong>Restore Data</strong> — loads a previous backup</li>
+        <li>Auto-backup runs quietly every 5 minutes (bottom-right corner shows last save time)</li>
+      </ul>
+    </section>
+
   </div>
+
+  <div class="help-footer">
+    <label class="welcome-checkbox">
+      <input type="checkbox" id="hideWelcomeCheckbox">
+      Don't show welcome again
+    </label>
+    <button id="startPlanningBtn">Start Planning</button>
+  </div>
+</div>
 
 </body>
 </html>
