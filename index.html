@@ -4536,47 +4536,36 @@ function renderSummary() {
   }
 }
 
-
-
 document.getElementById("backupBtn").addEventListener("click", () => {
+  const currentDiv = currentDivision || "default";
 
   const backup = {
     timestamp: new Date().toISOString(),
-    currentDivision: currentDivision,
-    currentSemester: currentSemester,
-    teacherScheduleSem1: teacherSchedule,           // ← Added / Fixed: class names
-    teacherScheduleSem2: window.teacherScheduleSem2 || {},   // Safe access
-
-    unitsSem1: unitsSem1 || {},
-    unitsSem2: unitsSem2 || {},
-    specialDaysSem1: specialDaysSem1 || [],
-    specialDaysSem2: specialDaysSem2 || [],
+    division: currentDiv,
+    teacherScheduleSem1: JSON.parse(localStorage.getItem("hs-sem1teacherScheduleSem1") || "{}"),
+    unitsSem1: JSON.parse(localStorage.getItem("hs-sem1-units") || "{}"),
     notes: {}
   };
 
-// Collect all notes safely
   Object.keys(localStorage).forEach(key => {
-    if (key.startsWith("notes_") || key.startsWith("special_")) {
+    if (key.startsWith("notes_")) {
       try {
-        backup.notes[key] = JSON.parse(localStorage.getItem(key) || "{}");
-      } catch (e) {
+        backup.notes[key] = JSON.parse(localStorage.getItem(key));
+      } catch(e) {
         backup.notes[key] = localStorage.getItem(key);
       }
     }
   });
 
-const dataStr = JSON.stringify(backup, null, 2);
-  const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-  const exportFileDefaultName = `hs-planner-backup-${new Date().toISOString().slice(0,10)}.json`;
-
-const linkElement = document.createElement('a');
-  linkElement.setAttribute('href', dataUri);
-  linkElement.setAttribute('download', exportFileDefaultName);
+  const dataStr = JSON.stringify(backup, null, 2);
+  const linkElement = document.createElement('a');
+  linkElement.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+  linkElement.download = `hs-planner-backup-${currentDiv}-${new Date().toISOString().slice(0,10)}.json`;
   document.body.appendChild(linkElement);
   linkElement.click();
   document.body.removeChild(linkElement);
 
-  alert("✅ Backup downloaded successfully (includes units + class names + notes)!");
+  alert(`✅ Backup created for ${currentDiv}!`);
 });
 
 document.getElementById("restoreBtn").addEventListener("click", () => {
@@ -4593,29 +4582,17 @@ document.getElementById("restoreBtn").addEventListener("click", () => {
       try {
         const backup = JSON.parse(event.target.result);
 
-        // Restore class names (most important fix)
-        if (backup.teacherScheduleSem1) {
-          teacherSchedule = backup.teacherScheduleSem1;
-          localStorage.setItem("teacherScheduleSem1", JSON.stringify(teacherSchedule)); // ← Fixed key
-        }
-        if (backup.teacherScheduleSem2) {
-          teacherScheduleSem2 = backup.teacherScheduleSem2;
-          localStorage.setItem("teacherScheduleSem2", JSON.stringify(teacherScheduleSem2));
-        }
+        const backupDivision = backup.division || "default";
 
-        // Restore Units
+        console.log(`Restoring backup for division: ${backupDivision}`);
+
+        // Restore Units & Schedule
         if (backup.unitsSem1) {
-          unitsSem1 = backup.unitsSem1;
-          localStorage.setItem("unitsSem1", JSON.stringify(unitsSem1));
+          localStorage.setItem("hs-sem1-units", JSON.stringify(backup.unitsSem1));
         }
-        if (backup.unitsSem2) {
-          unitsSem2 = backup.unitsSem2;
-          localStorage.setItem("unitsSem2", JSON.stringify(unitsSem2));
+        if (backup.teacherScheduleSem1) {
+          localStorage.setItem("hs-sem1teacherScheduleSem1", JSON.stringify(backup.teacherScheduleSem1));
         }
-
-        // Restore Special Days
-        if (backup.specialDaysSem1) specialDaysSem1 = backup.specialDaysSem1;
-        if (backup.specialDaysSem2) specialDaysSem2 = backup.specialDaysSem2;
 
         // Restore Notes
         if (backup.notes) {
@@ -4624,10 +4601,10 @@ document.getElementById("restoreBtn").addEventListener("click", () => {
           });
         }
 
-        alert("✅ Restore successful! Units and class names restored.");
+        alert(`✅ Restore successful for ${backupDivision}!`);
         location.reload();
       } catch (err) {
-        alert("❌ Error restoring backup:\n" + err.message);
+        alert("❌ Restore failed: " + err.message);
       }
     };
     reader.readAsText(file);
@@ -5401,6 +5378,50 @@ window.closeAssessmentModal = function() {
     }
   });
 };
+
+// Auto Backup + Status
+let lastAutoBackupTime = null;
+
+setInterval(() => {
+  try {
+    const currentDiv = currentDivision || "default";
+    const backupKey = `autoBackup_${currentDiv}`;
+
+    const backup = {
+      timestamp: new Date().toISOString(),
+      division: currentDiv,
+      teacherScheduleSem1: JSON.parse(localStorage.getItem("hs-sem1teacherScheduleSem1") || "{}"),
+      unitsSem1: JSON.parse(localStorage.getItem("hs-sem1-units") || "{}"),
+      notes: {}
+    };
+
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith("notes_")) {
+        try {
+          backup.notes[key] = JSON.parse(localStorage.getItem(key));
+        } catch(e) {}
+      }
+    });
+
+    localStorage.setItem(backupKey, JSON.stringify(backup));
+    lastAutoBackupTime = Date.now();
+
+    console.log(`Auto-backup saved for ${currentDiv}`);
+  } catch (e) {}
+}, 5 * 60 * 1000);
+
+// Status Message (add this HTML somewhere visible, e.g. near the top)
+const statusDiv = document.createElement("div");
+statusDiv.id = "autoBackupStatus";
+statusDiv.style = "position:fixed; bottom:10px; right:10px; background:#e0f2fe; padding:6px 12px; border-radius:4px; font-size:13px; z-index:1000;";
+document.body.appendChild(statusDiv);
+
+setInterval(() => {
+  if (lastAutoBackupTime) {
+    const minutesAgo = Math.floor((Date.now() - lastAutoBackupTime) / 60000);
+    document.getElementById("autoBackupStatus").innerHTML = `Auto-saved ${minutesAgo} min ago`;
+  }
+}, 30000);
 
   </script>
 
