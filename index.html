@@ -2712,16 +2712,17 @@ function getAssessmentSchedule() {
 
         console.log(`✅ FOUND manual test on ${date} Period ${periodNum}`);
 
-        events.push({
-          date: date,
-          letter: getRotationDayByDate(date)?.letter || "",
-          periodNum: periodNum,
-          courseName: teacherSchedule[periodNum] || `Period ${periodNum}`,
-          unitInfo: {
-            hasTestToday: true,
-     unitName: periodNote || "TEST",        // Use period note if available            hasQuizToday: false
-          }
-        });
+    events.push({
+      date: date,
+      letter: getRotationDayByDate(date)?.letter || "",
+      periodNum: periodNum,
+      courseName: teacherSchedule[periodNum] || `Period ${periodNum}`,
+      unitInfo: {
+        hasTestToday: true,
+        hasQuizToday: false,
+        unitName: periodNote || ""
+      }
+    });
       }
     });
   });
@@ -2762,6 +2763,7 @@ function getAssessmentWarnings() {
             periodNum,
             courseName: teacherSchedule[periodNum] || `Period ${periodNum}`,
             unitInfo: { hasTestToday: true },
+            unitInfo: { hasQuizToday: true },
             type: "modal"
           });
         }
@@ -3054,7 +3056,7 @@ function renderCalendar() {
       if (periodsForDay.length) {
         periodsForDay.forEach(periodNum => {
           const unitInfo = getUnitProgress(periodNum, classCounts[periodNum], iso);
-          if (unitInfo.unitName || dayNotes[periodNum] || unitInfo.hasTestToday || unitInfo.hasQuizToday || dayNotes[`test-${periodNum}`]) {
+          if (unitInfo.unitName || dayNotes[periodNum] || unitInfo.hasTestToday || unitInfo.hasQuizToday || dayNotes[`test-${periodNum}`] || dayNotes[`quiz-${periodNum}`]) {
             hasContent = true;
             hoverContent += `<strong>${periodNum}: ${unitInfo.courseName}</strong>`;
 
@@ -3068,7 +3070,7 @@ function renderCalendar() {
 
             if (unitInfo.hasTestToday || dayNotes[`test-${periodNum}`]) {
               hoverContent += ` <span style="color:#b91c1c; font-weight:600;">(TEST)</span>`;
-            } else if (unitInfo.hasQuizToday) {
+            } else if (unitInfo.hasQuizToday || dayNotes[`quiz-${periodNum}`]) {
               hoverContent += ` <span style="color:#1d4ed8; font-weight:600;">(QUIZ)</span>`;
             }
 
@@ -3082,10 +3084,6 @@ if (hasContent || dayNotes.noTest || specialEntries.length) {
       hoverAgenda.innerHTML = hoverContent;
       cell.appendChild(hoverAgenda);
     }
-
-
-
-    // Strong red for test on No Test day conflict
     // Strong red for test on No Test day conflict
     const hasConflict = (dayNotes.noTest || isAutoNoTestDay(iso)) && 
                        Object.keys(dayNotes).some(k => k.startsWith('test-') && dayNotes[k] === true);
@@ -3174,7 +3172,6 @@ if (hasContent || dayNotes.noTest || specialEntries.length) {
             classLine = `${classLine} — ${unitLabel}${topicSuffix}${dayCounter}`;
           }
 
-
           if (unitInfo.unitIndex !== null) {
             const unitLabel = unitInfo.unitName || `Unit ${unitInfo.unitIndex + 1}`;
             const topicSuffix = unitInfo.topicName ? `: ${unitInfo.topicName}` : "";
@@ -3197,24 +3194,26 @@ if (hasContent || dayNotes.noTest || specialEntries.length) {
             li.appendChild(specialBadge);
           }
 
-          // Period-level Test / Quiz
-          const hasModalTest = dayNotes[`test-${periodNum}`] === true;
+// Period-level Test / Quiz
+// Period-level Test / Quiz
+const hasModalTest = dayNotes[`test-${periodNum}`] === true;
+const hasModalQuiz = dayNotes[`quiz-${periodNum}`] === true;
 
-          if (unitInfo.hasQuizToday) {
-            const quizBadge = document.createElement("span");
-            quizBadge.className = "assessment-badge quiz";
-            quizBadge.textContent = "Quiz";
-            quizBadge.title = "Quiz on last unit day";
-            li.appendChild(quizBadge);
-          }
+if (unitInfo.hasQuizToday || hasModalQuiz) {
+  const quizBadge = document.createElement("span");
+  quizBadge.className = "assessment-badge quiz";
+  quizBadge.textContent = "Quiz";
+  quizBadge.title = "Quiz Today";
+  li.appendChild(quizBadge);
+}
 
-          if (unitInfo.hasTestToday || hasModalTest) {
-            const testBadge = document.createElement("span");
-            testBadge.className = "assessment-badge test";
-            testBadge.textContent = "Test";
-            testBadge.title = "Test Today";
-            li.appendChild(testBadge);
-          }
+if (unitInfo.hasTestToday || hasModalTest) {
+  const testBadge = document.createElement("span");
+  testBadge.className = "assessment-badge test";
+  testBadge.textContent = "Test";
+  testBadge.title = "Test Today";
+  li.appendChild(testBadge);
+}
 
           li.classList.add(`period-${periodNum}`);
           ul.appendChild(li);
@@ -3360,6 +3359,16 @@ function openDayModal(day) {
     `;
     block.appendChild(testRow);
 
+    // Inside the periods.forEach loop, after the Test checkbox
+    const quizRow = document.createElement("div");
+    quizRow.className = "check-row";
+    quizRow.innerHTML = `
+      <input type="checkbox" id="quiz-period-${periodNum}" 
+            ${existingNotes[`quiz-${periodNum}`] || unitInfo.hasQuizToday ? 'checked' : ''}>
+      <label for="quiz-period-${periodNum}">Quiz Today (Period ${periodNum})</label>
+    `;
+    block.appendChild(quizRow);
+
     if (unitInfo.unitIndex !== null) {
       const editUnitBtn = document.createElement("button");
       editUnitBtn.type = "button";
@@ -3443,48 +3452,34 @@ function handleSaveNotes() {
 
   const body = document.getElementById("modalBody");
   const textareas = body.querySelectorAll("textarea");
-
   const notesObj = { general: "" };
 
-      // Save all textareas (general + periods)
-    textareas.forEach(ta => {
-      const period = ta.dataset.period || ta.id; // fallback to id
-      if (period === "general" || period === "generalDayNote") {
-        notesObj.general = ta.value.trim();
-      } else if (period) {
-        notesObj[period] = ta.value.trim();
-      }
-    });
-
-  // === Per-Period Test Handling ===
-  const periods = getPeriodsForDate(currentModalDay.date, currentModalDay.letter);
-  periods.forEach(periodNum => {
-    const checkbox = document.getElementById(`test-period-${periodNum}`);
-    if (checkbox) {
-      notesObj[`test-${periodNum}`] = checkbox.checked;
+  // Save textareas
+  textareas.forEach(ta => {
+    const period = ta.dataset.period || ta.id;
+    if (period === "general" || period === "generalDayNote") {
+      notesObj.general = ta.value.trim();
+    } else if (period) {
+      notesObj[period] = ta.value.trim();
     }
   });
 
-  // === NO TEST TODAY Toggle ===
+  // Save Test + Quiz checkboxes
+  const periods = getPeriodsForDate(currentModalDay.date, currentModalDay.letter);
+  periods.forEach(periodNum => {
+    const testCheckbox = document.getElementById(`test-period-${periodNum}`);
+    if (testCheckbox) notesObj[`test-${periodNum}`] = testCheckbox.checked;
+
+    const quizCheckbox = document.getElementById(`quiz-period-${periodNum}`);
+    if (quizCheckbox) notesObj[`quiz-${periodNum}`] = quizCheckbox.checked;
+  });
+
+  // No Test toggle
   const noTestToggle = document.getElementById("modalNoTestToggle");
   notesObj.noTest = noTestToggle ? noTestToggle.checked : false;
 
-  // Save everything
-saveNotesForDate(currentModalDay.date, notesObj);
-
-  console.log("✅ Saved notes for", currentModalDay.date, notesObj); // debug
-
-  // Warning if test scheduled on No-Test day
-  const dayWarnings = getAssessmentWarnings().filter(event => event.date === currentModalDay.date);
-  if (notesObj.noTest && dayWarnings.length) {
-    const msg = dayWarnings.map(event => 
-      `${event.courseName} (Period ${event.periodNum}) has a unit test scheduled here.`
-    ).join("\n");
-    
-    if (!confirm(`Warning: You are marking this as NO TEST DAY, but the following tests are scheduled:\n\n${msg}\n\nSave anyway?`)) {
-      return; // don't save
-    }
-  }
+  saveNotesForDate(currentModalDay.date, notesObj);
+  console.log("✅ Saved notes for", currentModalDay.date, notesObj);
 
   renderCalendar();
   renderSpecialDays();
@@ -4510,25 +4505,28 @@ function renderSummary() {
   const unitEvents = getAssessmentSchedule();
   const modalTests = [];
 
-  Object.keys(localStorage).forEach(key => {
-    if (!key.startsWith(getStorageKey(LS_NOTES_KEY_PREFIX))) return;
-    const date = key.replace(getStorageKey(LS_NOTES_KEY_PREFIX) + "-", "");
-    if (date < todayISO) return;
-
+Object.keys(localStorage).forEach(key => {
+  if (!key.startsWith("notes_")) return;   // match saveNotesForDate
+    const date = key.replace("notes_", "");   // ← this was still wrong
     const notes = loadNotesForDate(date);
-    getPeriodsForDate(date, getRotationDayByDate(date)?.letter || "").forEach(periodNum => {
-      if (notes[`test-${periodNum}`] === true) {
-        modalTests.push({
-          date,
-          periodNum,
-          courseName: teacherSchedule[periodNum] || `Period ${periodNum}`,
-          unitInfo: { hasTestToday: true }
-        });
-      }
+
+getPeriodsForDate(date, getRotationDayByDate(date)?.letter || "").forEach(periodNum => {
+    if (notes[`test-${periodNum}`] === true || notes[`quiz-${periodNum}`] === true) {
+      modalTests.push({
+        date,
+        periodNum,
+        courseName: teacherSchedule[periodNum] || `Period ${periodNum}`,
+        isTest: notes[`test-${periodNum}`] === true,
+        isQuiz: notes[`quiz-${periodNum}`] === true,
+        unitInfo: {
+          hasTestToday: notes[`test-${periodNum}`] === true,
+          hasQuizToday: notes[`quiz-${periodNum}`] === true
+          
+          }
+        });      }
     });
   });
-
-  const upcomingAssessments = [...unitEvents, ...modalTests]
+    const upcomingAssessments = [...unitEvents, ...modalTests]
     .filter(event => event.date >= todayISO)
     .sort((a, b) => a.date.localeCompare(b.date) || a.periodNum - b.periodNum);
 
@@ -4557,7 +4555,7 @@ function renderSummary() {
   } else {
     upcomingAssessments.forEach(event => {
       const li = document.createElement("li");
-      const type = (event.isTest || event.unitInfo.hasTestToday) ? "TEST" : "QUIZ";
+const type = (event.isTest || event.unitInfo.hasTestToday) ? "TEST" : "QUIZ";
       
       const unitInfo = getUnitProgress(event.periodNum, getDayCountsForDate(event.date, [event.periodNum])[event.periodNum], event.date);
       const unitPart = unitInfo.unitName ? ` - ${unitInfo.unitName}` : "";
@@ -4859,6 +4857,11 @@ function applyPrintFilters() {
         if (unitInfo.unitName) line += ` — ${unitInfo.unitName}`;
         if (unitInfo.dayInUnit && unitInfo.unitLength) line += ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})`;
         if (dayNotes[periodNum]) line += `<br><span class="note">Note: ${dayNotes[periodNum]}</span>`;
+        if (unitInfo.hasTestToday || dayNotes[`test-${periodNum}`]) {
+          line += ` <strong style="color:#b91c1c;">(TEST)</strong>`;
+        } else if (unitInfo.hasQuizToday || dayNotes[`quiz-${periodNum}`]) {
+          line += ` <strong style="color:#1d4ed8;">(QUIZ)</strong>`;
+        }
 
         html += `<div>${line}</div>`;
       });
@@ -4970,28 +4973,40 @@ function init() {
 document.getElementById("exportTestsByClassBtn").addEventListener("click", () => {
   const allEvents = getAssessmentSchedule();
   const modalTests = [];
+  const todayISO = new Date().toISOString().split("T")[0];
 
-  Object.keys(localStorage).forEach(key => {
-    if (!key.startsWith(getStorageKey(LS_NOTES_KEY_PREFIX))) return;
-    const date = key.replace(getStorageKey(LS_NOTES_KEY_PREFIX) + "-", "");
+Object.keys(localStorage).forEach(key => {
+  if (!key.startsWith("notes_")) return;   // match saveNotesForDate
+    const date = key.replace("notes_", "");   // ← this was still wrong
+    
+    if (date < todayISO) return;
+
     const notes = loadNotesForDate(date);
-
     getPeriodsForDate(date, getRotationDayByDate(date)?.letter || "").forEach(periodNum => {
-      if (notes[`test-${periodNum}`] === true || notes.isTestDay) {
+      if (notes[`test-${periodNum}`] === true || notes[`quiz-${periodNum}`] === true) {
         modalTests.push({
           date,
           periodNum,
           courseName: teacherSchedule[periodNum] || `Period ${periodNum}`,
-          isTest: true,
-          unitInfo: { hasTestToday: true, unitName: notes.unitName || "" }
+          isTest: notes[`test-${periodNum}`] === true,
+          isQuiz: notes[`quiz-${periodNum}`] === true,
+          unitInfo: { 
+            hasTestToday: notes[`test-${periodNum}`] === true, 
+            hasQuizToday: notes[`quiz-${periodNum}`] === true 
+          }
         });
       }
     });
   });
 
-  const events = [...allEvents, ...modalTests]
-    .filter(event => event.unitInfo.hasQuizToday || event.unitInfo.hasTestToday || event.isTest)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.periodNum - b.periodNum);
+
+const events = [...allEvents, ...modalTests]
+  .filter(event => 
+    event.unitInfo.hasQuizToday || 
+    event.unitInfo.hasTestToday || 
+    event.isTest || 
+    event.isQuiz
+  )
 
   if (!events.length) {
     alert("No quizzes or tests scheduled yet.");
@@ -5008,33 +5023,34 @@ document.getElementById("exportTestsByClassBtn").addEventListener("click", () =>
 
   html += buildAssessmentsHTML(byClass);
 
- const isDark = document.body.classList.contains('dark');
- 
-  const modal = document.createElement("div");
-  modal.style.cssText = `
-    position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); 
-    background:${isDark ? '#2a2d31' : '#fff'}; 
-    color:${isDark ? '#e5e7eb' : '#111827'}; 
-    padding:2rem; border-radius:8px; 
-    max-width:90%; max-height:90vh; overflow:auto; 
-    z-index:10000; box-shadow:0 10px 30px rgba(0,0,0,0.3); 
-    min-width:700px;
-  `;
+const isDark = document.body.classList.contains('dark');
 
-  modal.innerHTML = `
-    <div style="margin-bottom:1.5rem; padding:12px; background:${isDark ? '#374151' : '#f8fafc'}; border-radius:6px; color:${isDark ? '#e5e7eb' : '#111827'};">
-      <label><input type="checkbox" id="filterQuiz" checked> Show Quizzes</label>
-      <label style="margin-left:20px;"><input type="checkbox" id="filterTest" checked> Show Tests</label>
-      <button onclick="applyExportFilters()" style="margin-left:30px; padding:8px 16px;">Apply Filters</button>
-    </div>
-    <div id="printableArea">
-      ${html}
-    </div>
-    <div style="margin-top:2rem; text-align:center;">
-      <button onclick="printModalContent()" style="margin:0 8px;">Print / Save as PDF</button>
-      <button onclick="closeAssessmentModal()" style="margin:0 8px; padding:10px 20px; background:#ef4444; color:white;">Close</button>
-    </div>
-  `;
+const modal = document.createElement("div");
+modal.style.cssText = `
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); 
+  background:${isDark ? '#2a2d31' : '#ffffff'}; 
+  color:${isDark ? '#e5e7eb' : '#111827'}; 
+  padding:2rem; border-radius:8px; 
+  max-width:90%; max-height:90vh; overflow:auto; 
+  z-index:10000; box-shadow:0 10px 30px rgba(0,0,0,0.3); 
+  min-width:700px;
+  border: ${isDark ? 'none' : '1px solid #e5e7eb'};
+`;
+
+modal.innerHTML = `
+  <div style="margin-bottom:1.5rem; padding:12px; background:#f1f5f9; border-radius:6px; color:#0f172a; border:1px solid #cbd5e1;">
+    <label style="color:#0f172a; font-weight:500;"><input type="checkbox" id="filterQuiz" checked> Show Quizzes</label>
+    <label style="margin-left:20px; color:#0f172a; font-weight:500;"><input type="checkbox" id="filterTest" checked> Show Tests</label>
+    <button onclick="applyExportFilters()" style="margin-left:30px; padding:8px 16px; background:#2563eb; color:white; border:none; border-radius:4px; cursor:pointer;">Apply Filters</button>
+  </div>
+<div id="printableArea" style="color:${isDark ? '#e5e7eb' : '#111827'};">
+    ${html}
+  </div>
+  <div style="margin-top:2rem; text-align:center;">
+    <button onclick="printModalContent()" style="margin:0 8px; padding:10px 18px; background:#2563eb; color:white; border:none; border-radius:4px; cursor:pointer;">Print / Save as PDF</button>
+    <button onclick="closeAssessmentModal()" style="margin:0 8px; padding:10px 20px; background:#ef4444; color:white; border:none; border-radius:4px; cursor:pointer;">Close</button>
+  </div>
+`;
   document.body.appendChild(modal);
 });
 
@@ -5043,29 +5059,29 @@ function groupAssessmentsByClass(events) {
 
   events.forEach(event => {
     let courseName = event.courseName || `Period ${event.periodNum}`;
-
     if (courseName.toLowerCase().includes("off") || courseName.trim() === "") {
       courseName = `Period ${event.periodNum}`;
     }
 
-    courseName = courseName
-      .split(" ")
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ");
-
-    const type = (event.isTest || event.unitInfo.hasTestToday) ? "TEST" : "QUIZ";
-
+    const type = (event.isTest || event.unitInfo?.hasTestToday) ? "TEST" : "QUIZ";
     const key = `${courseName} (P${event.periodNum})`;
 
     if (!byClass[key]) byClass[key] = [];
-byClass[key].push({
+
+    // Only show unit name if it exists and is not the word "TEST"
+    const unitName = event.unitInfo?.unitName;
+    const unitPart = (unitName && unitName.toUpperCase() !== "TEST") ? ` - ${unitName}` : "";
+
+    byClass[key].push({
       type,
-      details: `${event.date}${event.unitInfo.unitName ? ` - ${event.unitInfo.unitName}` : ''}`
+      details: `${event.date}${unitPart}`
     });
   });
 
   return byClass;
 }
+
+
 
 function buildAssessmentsHTML(byClass) {
   let html = '';
