@@ -1007,6 +1007,13 @@ body.dark #periodSlots > div {
   border-color: var(--card-border) !important;
 }
 
+body.dark #printableArea, #printableArea {
+  color: #e5e7eb;
+}
+body.dark #printableArea h3, #printableArea h3 {
+  color: #60a5fa;
+}
+
 
   </style>
 </head>
@@ -1029,7 +1036,7 @@ body.dark #periodSlots > div {
         <option value="">Change Calendar Views</option>
         <option value="mobile">Toggle Desktop / Mobile View</option>
         <option value="special">Toggle Special Tags On / Off</option>
-        <option value="dark">Switch to Dark Mode</option>
+        <option value="dark">Toggle Light / Dark Mode</option>
       </select>
       
       </select>
@@ -1113,7 +1120,7 @@ body.dark #periodSlots > div {
       </button>
       <div class="config-section-body">
         <div id="unitsContainer"></div>
-        <button id="addUnitBtn">+ Add New Unit</button>
+
       </div>
     </div>
 
@@ -2615,7 +2622,7 @@ function countScheduledClassesBefore(dateLimit) {
   const counts = {};
 
   getCurrentRotationData().forEach(day => {
-    if (day.date >= dateLimit) {
+    if (day.date > dateLimit) {
       return;
     }
 
@@ -3216,7 +3223,16 @@ if (hasContent || dayNotes.noTest || specialEntries.length) {
       }
     }
 
-    cell.addEventListener("click", () => openDayModal({ date: iso, letter: schoolDay ? schoolDay.letter : `No ${getCurrentConfig().name} classes` }));
+// Add this inside your day-cell creation loop, after creating the cell
+cell.addEventListener("click", (e) => {
+  // Normal day click
+  openDayModal({ 
+    date: iso, 
+    letter: schoolDay ? schoolDay.letter : `No ${getCurrentConfig().name} classes` 
+  });
+});
+
+
 
     monthGrid.appendChild(cell);
   }
@@ -3412,6 +3428,8 @@ function openDayModal(day) {
   });
 
   backdrop.style.display = "flex";
+
+  
 }
 
 function closeDayModal() {
@@ -3576,26 +3594,32 @@ function renderUnits() {
     const div = document.createElement("div");
     div.className = "unit-card";
     div.innerHTML = `
-      <div class="unit-heading">Period ${p} - ${courseName}</div>
-      <div class="unit-grid">
-        <div>
-          <label>Unit Name</label>
-          <input type="text" id="newUnitName-${p}" placeholder="Exploring Data">
-        </div>
-        <div>
-          <label>Length (days) 
-            <span id="maxDaysHint-${p}" class="small" style="color:#2563eb; font-weight:normal;"></span>
-          </label>
-          <input type="number" id="newUnitLength-${p}" min="1" value="10">
-        </div>
+      <div class="unit-heading" style="cursor: pointer; user-select: none; padding: 0.5rem;" onclick="togglePeriod(${p})">
+        ▶ Period ${p} - ${courseName} 
+        <span style="float:right; font-size:0.85em; color:#666; font-weight:normal;">(${periodUnits.length} units)</span>
       </div>
-      <div class="unit-actions">
-        <button onclick="addUnitFromInputs(${p})">+ Add Unit</button>
+      <div id="period-content-${p}" class="period-content" style="display: none; padding: 0.5rem 0;">
+        <div class="unit-grid">
+          <div>
+            <label>Unit Name</label>
+            <input type="text" id="newUnitName-${p}" placeholder="Exploring Data">
+          </div>
+          <div>
+            <label>Length (days) 
+              <span id="maxDaysHint-${p}" class="small" style="color:#2563eb; font-weight:normal;"></span>
+            </label>
+            <input type="number" id="newUnitLength-${p}" min="1" value="10">
+          </div>
+        </div>
+        <div class="unit-actions">
+          <button onclick="addUnitFromInputs(${p})">+ Add Unit</button>
+        </div>
+        <div id="units-list-${p}"></div>
       </div>
-      <div id="units-list-${p}"></div>
     `;
     container.appendChild(div);
 
+    // Render units inside the collapsible section
     const list = document.getElementById(`units-list-${p}`);
     periodUnits.forEach((unit, i) => {
       const normalized = normalizeUnit(unit, i);
@@ -3603,6 +3627,7 @@ function renderUnits() {
       const dateRangeText = window
         ? `${formatDateLabel(window.startDate)} - ${formatDateLabel(window.endDate)}`
         : "Date range unavailable";
+
       const row = document.createElement("div");
       row.className = "unit-row unit-card";
       row.innerHTML = `
@@ -3623,7 +3648,6 @@ function renderUnits() {
         <div class="small">Scheduled dates: ${dateRangeText}</div>
         ${normalized.shiftedUnit ? `<span class="shift-unit-tag">SHIFT UNIT</span>` : ""}
         <div class="unit-actions">
-          <button onclick="copyUnitToPeriod(${p}, ${i})" class="secondary">Copy to another period</button>
           <button onclick="saveUnitInfo(${p}, ${i})">Save Info</button>
           <button onclick="openUnitDaysEditor(${p}, ${i})">Edit Days</button>
           <button onclick="shiftUnit(${p}, ${i}, 1)">+1 Day (Snow)</button>
@@ -3637,6 +3661,21 @@ function renderUnits() {
   }
   updateMaxDaysHints();
 }
+
+// Toggle function
+window.togglePeriod = function(period) {
+  const content = document.getElementById(`period-content-${period}`);
+  const heading = content.parentElement.querySelector(".unit-heading");
+
+  if (content.style.display === "none" || content.style.display === "") {
+    content.style.display = "block";
+    heading.innerHTML = heading.innerHTML.replace("▶", "▼");
+  } else {
+    content.style.display = "none";
+    heading.innerHTML = heading.innerHTML.replace("▼", "▶");
+  }
+};
+
 
 function renderSpecialDays() {
   const container = document.getElementById("specialDaysContainer");
@@ -3771,47 +3810,25 @@ window.removeKnownClass = function(index) {
     if (saved) knownClasses = JSON.parse(saved);
   } catch (e) {}
 
+  const className = knownClasses[index];
+  if (!className) return;
+
+  if (!confirm(`Remove "${className}" from known classes?`)) return;
+
   knownClasses.splice(index, 1);
   localStorage.setItem("knownClasses", JSON.stringify(knownClasses));
 
-  renderKnownClasses();
-};
+  // Clear any periods using this class
+  Object.keys(teacherSchedule).forEach(p => {
+    if (teacherSchedule[p] === className) {
+      delete teacherSchedule[p];
+    }
+  });
 
-window.copyUnitToPeriod = function(fromPeriod, unitIndex) {
-  const sourceUnits = getUnitsForPeriod(fromPeriod);
-  const unitToCopy = sourceUnits[unitIndex];
-  if (!unitToCopy) return;
-
-  const maxPeriod = getCurrentPeriodCount();
-  const targetPeriod = prompt(`Copy this unit to which period? (1-${maxPeriod})`, fromPeriod);
-  if (!targetPeriod) return;
-
-  const target = parseInt(targetPeriod);
-  if (isNaN(target) || target < 1 || target > maxPeriod) {
-    alert("Invalid period number.");
-    return;
-  }
-
-  if (!units[target]) units[target] = [];
-
-  // Deep clone the unit
-  const copiedUnit = JSON.parse(JSON.stringify(unitToCopy));
-
-  units[target].push(copiedUnit);
-  saveUnits();
-
-  renderUnits();
-  renderCalendar();
-  renderSummary();
-
-  alert(`Unit copied from Period ${fromPeriod} to Period ${target}`);
-};
-
-window.clearPeriod = function(p) {
-  delete teacherSchedule[p];
   saveScheduleToStorage();
-  renderPeriodSlots();     // refresh the UI
-  renderCalendar();        // ← This was missing / broken
+  renderKnownClasses();
+  renderPeriodSlots();
+  renderCalendar();
 };
 
 window.assignPeriodClass = function(period, className) {
@@ -3850,34 +3867,37 @@ window.addKnownClass = function() {
 window.removeKnownClass = function(index) {
   let knownClasses = [];
   try {
-    knownClasses = JSON.parse(localStorage.getItem("knownClasses") || "[]");
+    const saved = localStorage.getItem("knownClasses");
+    if (saved) knownClasses = JSON.parse(saved);
   } catch (e) {}
+
+  const className = knownClasses[index];
+  if (!className) return;
+
+  if (!confirm(`Remove "${className}" from known classes?`)) return;
 
   knownClasses.splice(index, 1);
   localStorage.setItem("knownClasses", JSON.stringify(knownClasses));
 
+  // Clear any periods using this class
+  Object.keys(teacherSchedule).forEach(p => {
+    if (teacherSchedule[p] === className) {
+      delete teacherSchedule[p];
+    }
+  });
+
+  saveScheduleToStorage();
   renderKnownClasses();
   renderPeriodSlots();
-};
-
-
-window.addUnit = function(period) {
-  if (!units[period]) units[period] = [];
-  const preview = applyUnitSchedule(period, units[period], false);
-  const defaultStartDate = preview.valid && preview.windows.length
-    ? preview.occurrenceDates[Math.min(preview.windows[preview.windows.length - 1].endIndex + 1, preview.occurrenceDates.length - 1)] || ""
-    : "";
-  const newUnits = [...units[period], normalizeUnit({ name: `Unit ${units[period].length + 1}`, length: 10, startDate: defaultStartDate }, units[period].length)];
-  const validated = applyUnitSchedule(period, newUnits, true);
-  if (!validated.valid) return;
-  units[period] = validated.units;
-  saveUnits();
+  renderCalendar();   // ← This was missing
   renderUnits();
-  renderCalendar();
   renderSummary();
-  openUnitDaysEditor(period, units[period].length - 1);
-  alertAssessmentWarnings(period);
 };
+
+function getCurrentPeriodNumbers() {
+  const count = getCurrentPeriodCount(); // or your existing period count function
+  return Array.from({ length: count }, (_, i) => i + 1);
+}
 
 window.addUnitFromInputs = function(period) {
   const nameInput = document.getElementById(`newUnitName-${period}`);
@@ -3890,6 +3910,7 @@ window.addUnitFromInputs = function(period) {
     return;
   }
 
+  // Create the unit for the starting period
   if (!units[period]) units[period] = [];
   const preview = applyUnitSchedule(period, units[period], false);
   const defaultStartDate = preview.valid && preview.windows.length
@@ -3901,10 +3922,38 @@ window.addUnitFromInputs = function(period) {
     return;
   }
   units[period] = validated.units;
+
+  // Ask if they want to duplicate to other periods
+  const allPeriods = getCurrentPeriodNumbers();
+  const otherPeriods = allPeriods.filter(p => p !== period);
+
+  if (otherPeriods.length > 0 && confirm(`Duplicate this unit to another period?`)) {
+    const input = prompt(`Which other period(s)? (comma separated)\nExample: 2,5,7`, otherPeriods.join(","));
+    if (input) {
+      const extras = input.split(",").map(p => parseInt(p.trim())).filter(p => !isNaN(p) && p !== period);
+      const selectedPeriods = [period, ...extras];
+
+      selectedPeriods.forEach(p => {
+        if (p === period) return; // already done
+        if (!units[p]) units[p] = [];
+        const preview2 = applyUnitSchedule(p, units[p], false);
+        const defaultStartDate2 = preview2.valid && preview2.windows.length
+          ? preview2.occurrenceDates[Math.min(preview2.windows[preview2.windows.length - 1].endIndex + 1, preview2.occurrenceDates.length - 1)] || ""
+          : "";
+        const candidate2 = [...units[p], normalizeUnit({ name, length, startDate: defaultStartDate2 }, units[p].length)];
+        const validated2 = applyUnitSchedule(p, candidate2, true);
+        if (validated2.valid) {
+          units[p] = validated2.units;
+        }
+      });
+    }
+  }
+
   saveUnits();
   renderUnits();
   renderCalendar();
   renderSummary();
+
   openUnitDaysEditor(period, units[period].length - 1);
 };
 
@@ -4508,11 +4557,15 @@ function renderSummary() {
   } else {
     upcomingAssessments.forEach(event => {
       const li = document.createElement("li");
-      const type = event.unitInfo.hasTestToday ? "TEST" : "QUIZ";
-      const unitPart = event.unitInfo.unitName ? ` — ${event.unitInfo.unitName}` : "";
-      li.textContent = `${event.date} - P${event.periodNum} ${event.courseName}: ${type}${unitPart}`;
+      const type = (event.isTest || event.unitInfo.hasTestToday) ? "TEST" : "QUIZ";
+      
+      const unitInfo = getUnitProgress(event.periodNum, getDayCountsForDate(event.date, [event.periodNum])[event.periodNum], event.date);
+      const unitPart = unitInfo.unitName ? ` - ${unitInfo.unitName}` : "";
+
+      li.textContent = `${type} - ${event.date}: ${event.courseName}${unitPart}`;
       testList.appendChild(li);
     });
+  
   }
 
   // Conflicts with action buttons
@@ -4837,6 +4890,55 @@ function applyPrintFilters() {
   alert(`✅ Filter applied successfully! Exported with your selected filters.`);
 }
 
+function isValidClassDayForPeriod(date, period) {
+  const rotationDay = getRotationDayByDate(date);
+  if (!rotationDay) return false;
+  const periodsForDay = getPeriodsForDate(date, rotationDay.letter);
+  return periodsForDay.includes(period);
+}
+
+function getDateNClassDaysAfter(startDate, n, targetPeriod) {
+  let current = new Date(startDate);
+  let daysAdded = 0;
+
+  while (daysAdded < n) {
+    current.setDate(current.getDate() + 1);
+    if (isValidClassDayForPeriod(current.toISOString().split('T')[0], targetPeriod)) {
+      daysAdded++;
+    }
+  }
+
+  return current.toISOString().split('T')[0];
+}
+
+function copyNotesFromDateToDate(oldDate, newDate, targetPeriod) {
+  const oldNotes = loadNotesForDate(oldDate);
+  if (!oldNotes || Object.keys(oldNotes).length === 0) return;
+
+  let newNotes = loadNotesForDate(newDate) || { general: "" };
+
+  // Copy general day notes
+  if (oldNotes.general) {
+    newNotes.general = oldNotes.general;
+  }
+
+  // Copy period-specific notes and test flags
+  Object.keys(oldNotes).forEach(key => {
+    if (key === "general" || key === "noTest") {
+      newNotes[key] = oldNotes[key];
+    } else if (key.startsWith("test-")) {
+      // Map old test flag to new period
+      const oldP = key.replace("test-", "");
+      newNotes[`test-${targetPeriod}`] = oldNotes[key];
+    } else if (!isNaN(key)) {
+      // Copy period notes
+      newNotes[targetPeriod] = oldNotes[key];
+    }
+  });
+
+  saveNotesForDate(newDate, newNotes);
+}
+
 
 // --- Init ---
 function init() {
@@ -4854,7 +4956,6 @@ function init() {
   refreshAllData();
   initCollapsibleSections();
 
-  document.getElementById("addUnitBtn").addEventListener("click", () => choosePeriodForNewUnit());
   document.getElementById("addSpecialDayBtn").addEventListener("click", () => addSpecialDay());
 
   document.getElementById("darkModeToggle")
@@ -4907,10 +5008,21 @@ document.getElementById("exportTestsByClassBtn").addEventListener("click", () =>
 
   html += buildAssessmentsHTML(byClass);
 
+ const isDark = document.body.classList.contains('dark');
+ 
   const modal = document.createElement("div");
-  modal.style.cssText = "position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; padding:2rem; border-radius:8px; max-width:90%; max-height:90vh; overflow:auto; z-index:10000; box-shadow:0 10px 30px rgba(0,0,0,0.3); min-width:700px;";
+  modal.style.cssText = `
+    position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); 
+    background:${isDark ? '#2a2d31' : '#fff'}; 
+    color:${isDark ? '#e5e7eb' : '#111827'}; 
+    padding:2rem; border-radius:8px; 
+    max-width:90%; max-height:90vh; overflow:auto; 
+    z-index:10000; box-shadow:0 10px 30px rgba(0,0,0,0.3); 
+    min-width:700px;
+  `;
+
   modal.innerHTML = `
-    <div style="margin-bottom:1.5rem; padding:12px; background:#f8fafc; border-radius:6px;">
+    <div style="margin-bottom:1.5rem; padding:12px; background:${isDark ? '#374151' : '#f8fafc'}; border-radius:6px; color:${isDark ? '#e5e7eb' : '#111827'};">
       <label><input type="checkbox" id="filterQuiz" checked> Show Quizzes</label>
       <label style="margin-left:20px;"><input type="checkbox" id="filterTest" checked> Show Tests</label>
       <button onclick="applyExportFilters()" style="margin-left:30px; padding:8px 16px;">Apply Filters</button>
@@ -4932,12 +5044,10 @@ function groupAssessmentsByClass(events) {
   events.forEach(event => {
     let courseName = event.courseName || `Period ${event.periodNum}`;
 
-    // Fix "Off (P1)" → show actual period name
     if (courseName.toLowerCase().includes("off") || courseName.trim() === "") {
       courseName = `Period ${event.periodNum}`;
     }
 
-    // Capitalize class name properly
     courseName = courseName
       .split(" ")
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
@@ -4948,29 +5058,26 @@ function groupAssessmentsByClass(events) {
     const key = `${courseName} (P${event.periodNum})`;
 
     if (!byClass[key]) byClass[key] = [];
-    byClass[key].push({
+byClass[key].push({
       type,
-      details: `${event.date}${event.unitInfo.unitName ? ` — ${event.unitInfo.unitName}` : ''}`
+      details: `${event.date}${event.unitInfo.unitName ? ` - ${event.unitInfo.unitName}` : ''}`
     });
   });
 
   return byClass;
 }
 
-
 function buildAssessmentsHTML(byClass) {
   let html = '';
   Object.keys(byClass).sort().forEach(course => {
     html += `<h3>${course}</h3><ul>`;
     byClass[course].forEach(item => {
-      html += `<li><strong>${item.type}</strong> — ${item.details}</li>`;
+      html += `<li><strong>${item.type}</strong> - ${item.details}</li>`;
     });
     html += `</ul>`;
   });
   return html;
 }
-// Add this function
-
 
 window.applyExportFilters = function() {
   const showQuiz = document.getElementById("filterQuiz").checked;
@@ -5452,7 +5559,6 @@ window.closeAssessmentModal = function() {
       </div>
       <div class="modal-body" id="modalBody"></div>
       <div class="modal-footer">
-        <button class="secondary" id="copyDayBtn">Copy Day</button>
         <button class="secondary" id="shiftAllUnitsBtn">Shift All Units</button>
         <button class="secondary" id="clearNotesBtn">Clear notes</button>
         <button id="saveNotesBtn">Save notes</button>
