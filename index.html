@@ -3327,7 +3327,7 @@ if (hasCycle) {
       if (periodsForDay.length) {
         periodsForDay.forEach(periodNum => {
           const unitInfo = getUnitProgress(periodNum, classCounts[periodNum], iso);
-          if (unitInfo.unitName || dayNotes[periodNum] || unitInfo.hasTestToday || unitInfo.hasQuizToday || dayNotes[`test-${periodNum}`] || dayNotes[`quiz-${periodNum}`]) {
+          if (true) {  // show every period that meets today, including Off 
             hasContent = true;
             hoverContent += `<strong>${periodNum}: ${unitInfo.courseName}</strong>`;
 
