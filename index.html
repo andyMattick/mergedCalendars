@@ -206,28 +206,83 @@ body.dark {
       box-shadow: 0 1px 3px rgba(0,0,0,0.6);
     }
 
-    .day-cell:hover {
+.day-cell {
   position: relative;
 }
 
-    .day-cell .tooltip {
-      display: none;
-      position: absolute;
-      bottom: 4px;
-      left: 4px;
-      background: var(--card-bg);
-      color: var(--fg);
-      border: 1px solid var(--card-border);
-      padding: 0.3rem 0.5rem;
-      font-size: 0.75rem;
-      border-radius: 4px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.25);
-      z-index: 50;
-    }
+.day-cell .tooltip {
+  display: none;
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  background: var(--card-bg);
+  color: var(--fg);
+  border: 1px solid var(--card-border);
+  padding: 0.3rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+  z-index: 50;
+  pointer-events: none;
+}
 
-    .day-cell:hover .tooltip {
-      display: block;
-    }
+.day-cell:hover .tooltip {
+  display: block;
+}
+
+.day-cell .hover-agenda {
+  position: fixed;              /* screen-based, not cell-based */
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, 90vw);
+  max-height: 70vh;
+  overflow: auto;
+
+  display: none;
+  opacity: 0;
+  pointer-events: none;
+
+  z-index: 2000;
+  background: var(--card-bg);
+  color: var(--fg);
+  border: 1px solid var(--card-border);
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+
+
+
+/* Delayed hover so Show more is clickable */
+.day-cell:hover .hover-agenda {
+  display: block;
+  animation: hoverAgendaIn 0s 0.45s forwards;
+}
+
+@keyframes hoverAgendaIn {
+  to { opacity: 1; }
+}
+
+.day-cell .day-expand-btn {
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  z-index: 20;
+  pointer-events: auto;
+  border: none;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+body.dark .day-cell .day-expand-btn {
+  background: rgba(255,255,255,0.25);
+}
 
     body.dark input[type="text"],
     body.dark textarea {
@@ -382,6 +437,10 @@ body.dark {
 .day-cell {
   width: 100%;
   min-height: 160px;
+  max-height: 220px;          /* fixed height */
+  overflow: hidden;           /* clip overflow */
+  position: relative;         /* for Show more button */
+
   background: var(--card-bg);
   color: var(--fg);
   border: 1px solid var(--card-border);
@@ -392,26 +451,52 @@ body.dark {
   flex-direction: column;
   justify-content: flex-start;
 }
-    .day-cell-header {
-      font-weight: 600;
-      margin-bottom: 0.25rem;
-    }
-    .classes-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .classes-list li {
-      font-size: 0.95rem;   /* bump up from 0.75rem */
-      line-height: 1.3;     /* slightly taller lines for readability */
-      font-weight: 500;     /* optional: makes text stand out */
-      margin-bottom: 0.2rem;
-    }
 
-    .has-notes {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 1px var(--accent)33;
-    }
+.day-cell.is-expanded {
+  max-height: none;
+  overflow: visible;
+}
+
+.day-cell-header {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.classes-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.classes-list li {
+  font-size: 0.95rem;
+  line-height: 1.3;
+  font-weight: 500;
+  margin-bottom: 0.2rem;
+}
+
+.has-notes {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent)33;
+}
+
+.day-cell .day-expand-btn {
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  border: none;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  border-radius: 999px;
+  cursor: pointer;
+  z-index: 5;
+}
+
+body.dark .day-cell .day-expand-btn {
+  background: rgba(255,255,255,0.25);
+}
     /* Modal */
     .modal-backdrop {
       position: fixed;
@@ -3384,7 +3469,6 @@ if (hasContent || dayNotes.noTest || specialEntries.length) {
           }
 
 // Period-level Test / Quiz
-// Period-level Test / Quiz
 const hasModalTest = dayNotes[`test-${periodNum}`] === true;
 const hasModalQuiz = dayNotes[`quiz-${periodNum}`] === true;
 
@@ -3411,18 +3495,32 @@ if (unitInfo.hasTestToday || hasModalTest) {
       }
     }
 
-// Add this inside your day-cell creation loop, after creating the cell
 cell.addEventListener("click", (e) => {
-  // Normal day click
   openDayModal({ 
     date: iso, 
     letter: schoolDay ? schoolDay.letter : `No ${getCurrentConfig().name} classes` 
   });
 });
 
+// Fixed height + Show more / Show less
+requestAnimationFrame(() => {
+  if (cell.scrollHeight <= 220) return;
 
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "day-expand-btn";
+  btn.textContent = "Show more";
 
-    monthGrid.appendChild(cell);
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation(); // don't open day modal
+    const expanded = cell.classList.toggle("is-expanded");
+    btn.textContent = expanded ? "Show less" : "Show more";
+  });
+
+  cell.appendChild(btn);
+});
+
+monthGrid.appendChild(cell);
   }
 
   calendarRoot.appendChild(monthGrid);
