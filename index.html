@@ -4107,37 +4107,16 @@ window.addUnitFromInputs = function(period) {
   }
   units[period] = validated.units;
 
-  // Ask if they want to duplicate to other periods
-  const allPeriods = getCurrentPeriodNumbers();
-  const otherPeriods = allPeriods.filter(p => p !== period);
-
-  if (otherPeriods.length > 0 && confirm(`Duplicate this unit to another period?`)) {
-    const input = prompt(`Which other period(s)? (comma separated)\nExample: 2,5,7`, otherPeriods.join(","));
-    if (input) {
-      const extras = input.split(",").map(p => parseInt(p.trim())).filter(p => !isNaN(p) && p !== period);
-      const selectedPeriods = [period, ...extras];
-
-      selectedPeriods.forEach(p => {
-        if (p === period) return; // already done
-        if (!units[p]) units[p] = [];
-        const preview2 = applyUnitSchedule(p, units[p], false);
-        const defaultStartDate2 = preview2.valid && preview2.windows.length
-          ? preview2.occurrenceDates[Math.min(preview2.windows[preview2.windows.length - 1].endIndex + 1, preview2.occurrenceDates.length - 1)] || ""
-          : "";
-        const candidate2 = [...units[p], normalizeUnit({ name, length, startDate: defaultStartDate2 }, units[p].length)];
-        const validated2 = applyUnitSchedule(p, candidate2, true);
-        if (validated2.valid) {
-          units[p] = validated2.units;
-        }
-      });
-    }
-  }
-
-  saveUnits();
+    saveUnits();
   renderUnits();
   renderCalendar();
   renderSummary();
 
+  // remember this unit so we can duplicate after topics are saved
+  window.pendingUnitDuplicate = {
+    period,
+    index: units[period].length - 1
+  };
   openUnitDaysEditor(period, units[period].length - 1);
 };
 
@@ -4604,6 +4583,51 @@ function saveUnitDaysEditor() {
       return;
     }
   }
+
+  // after units are saved with topics...
+if (window.pendingUnitDuplicate) {
+  const srcPeriod = window.pendingUnitDuplicate.period;
+  const srcIndex = window.pendingUnitDuplicate.index;
+  const sourceUnit = units[srcPeriod]?.[srcIndex];
+
+  if (sourceUnit && confirm("Duplicate this unit (with topics/tests) to other periods?")) {
+    const allPeriods = getCurrentPeriodNumbers();
+    const otherPeriods = allPeriods.filter(p => p !== srcPeriod);
+    const input = prompt(
+      `Which other period(s)? (comma separated)\nExample: 2,5,7`,
+      otherPeriods.join(",")
+    );
+
+    if (input) {
+      const targets = input.split(",")
+        .map(p => parseInt(p.trim(), 10))
+        .filter(p => !isNaN(p) && p !== srcPeriod);
+
+      targets.forEach(p => {
+        if (!units[p]) units[p] = [];
+
+        const preview2 = applyUnitSchedule(p, units[p], false);
+        const defaultStartDate2 = preview2.valid && preview2.windows.length
+          ? preview2.occurrenceDates[Math.min(
+              preview2.windows[preview2.windows.length - 1].endIndex + 1,
+              preview2.occurrenceDates.length - 1
+            )] || ""
+          : "";
+
+        const copy = JSON.parse(JSON.stringify(sourceUnit));
+        copy.startDate = defaultStartDate2;
+
+        const candidate2 = [...units[p], normalizeUnit(copy, units[p].length)];
+        const validated2 = applyUnitSchedule(p, candidate2, true);
+        if (validated2.valid) units[p] = validated2.units;
+      });
+
+      alert("Unit duplicated with topics.");
+    }
+  }
+
+  delete window.pendingUnitDuplicate;
+}
 
   saveUnits();
   closeUnitDaysEditor();
