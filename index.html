@@ -1656,13 +1656,13 @@ const CYCLE_COLOR_DEFAULTS = {
 };
 
 const CLASS_COLOR_DEFAULTS = [
-  "#1d4ed8", // blue
-  "#b45309", // brown/orange
-  "#047857", // green
-  "#6d28d9", // purple
-  "#be123c", // rose
-  "#0f766e", // teal
-  "#a16207"  // gold/brown
+  "#1d4ed8",
+  "#b45309",
+  "#047857",
+  "#6d28d9",
+  "#be123c",
+  "#0f766e",
+  "#a16207"
 ];
 
 
@@ -1709,10 +1709,11 @@ function getDefaultClassColor(className) {
   return CLASS_COLOR_DEFAULTS[hash];
 }
 
-function getColorForClass(className) {
-  if (!className) return "";
-  const saved = getClassColors()[className];
-  return saved || getDefaultClassColor(className);
+function getColorForPeriod(periodNum) {
+  const map = getClassColors();
+  const key = `P${periodNum}`;
+  if (map[key]) return map[key];
+  return CLASS_COLOR_DEFAULTS[(Number(periodNum) - 1) % CLASS_COLOR_DEFAULTS.length];
 }
 
 // ====================== UNIT LENGTH HELPERS ======================
@@ -3015,7 +3016,7 @@ function renderPeriodSlots() {
 
   for (let p = 1; p <= getCurrentPeriodCount(); p++) {
     const currentClass = teacherSchedule[p] || `Period ${p}`;
-    const currentColor = getColorForClass(currentClass) || "#93c5fd";
+    const currentColor = getColorForPeriod(p);
 
     const slot = document.createElement("div");
     slot.style.cssText = "display:flex; align-items:center; gap:12px; margin-bottom:12px; padding:10px; border:1px solid #ddd; border-radius:8px; background:#fff;";
@@ -3051,15 +3052,11 @@ window.assignPeriodClass = function(period, className) {
 };
 
 window.setClassColorForPeriod = function(period, color) {
-  const className = teacherSchedule[period];
-  if (!className) {
-    alert("Assign a class name first, then set its color.");
-    return;
-  }
   const map = getClassColors();
-  map[className] = color;
+  map[`P${period}`] = color;
   saveClassColors(map);
   renderCalendar();
+  renderPeriodSlots();
 };
 
 function addKnownClass() {
@@ -3341,16 +3338,16 @@ if (hasContent || dayNotes.noTest || specialEntries.length) {
           li.dataset.unitName = (unitInfo.unitName || "").toLowerCase();
           li.dataset.courseName = unitInfo.courseName.toLowerCase();
         const className = unitInfo.courseName || teacherSchedule[periodNum] || `Period ${periodNum}`;
-        const classColor = getColorForClass(className);
+        const classColor = getColorForPeriod(periodNum);
 
         if (classColor) {
-        li.style.background = classColor;
+          li.style.background = classColor;
           li.style.color = "#ffffff";
           li.style.textShadow = "0 1px 1px rgba(0,0,0,0.35)";
           li.style.borderRadius = "4px";
           li.style.padding = "2px 6px";
           li.style.fontWeight = "600";
-}
+        }
 
           const classPrefix = `${periodNum}: ${unitInfo.courseName} (${periodDayCount})`;
           let classLine = `${periodNum}: ${unitInfo.courseName}`;
