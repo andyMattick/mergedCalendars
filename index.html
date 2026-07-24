@@ -141,6 +141,27 @@ body.dark option {
   position: relative;
 }
 
+:root {
+  --no-cycle-bg: #eef2f7;
+  --no-cycle-fg: #334155;
+}
+
+body.dark {
+  --no-cycle-bg: #2f343c;
+  --no-cycle-fg: #e5e7eb;
+}
+
+/* Any day that is not a normal A–G cycle day */
+.day-cell.no-cycle {
+  background: var(--no-cycle-bg);
+  color: var(--no-cycle-fg);
+}
+
+.day-cell.no-cycle .day-date-line,
+.day-cell.no-cycle .day-cell-header {
+  color: var(--no-cycle-fg) !important;
+}
+
 .hover-agenda {
   display: none;
   position: fixed;
@@ -3161,6 +3182,7 @@ function renderCalendar() {
     const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
     const schoolDay = dayMap[iso] || null;
     const cycleLetter = normalizeLetter(schoolDay?.letter);
+    
     const dayNotes = loadNotesForDate(iso);
     const specialEntries = getUnifiedSpecialDaysForDate(iso);
 
@@ -3172,6 +3194,17 @@ function renderCalendar() {
       cell.classList.add(`cycle-${cycleLetter}`);
     }
     if (iso === todayISO) cell.classList.add("today");
+
+    
+const hasCycle =
+  !!(cycleLetter && getCurrentRotationRules()[cycleLetter]);
+
+if (hasCycle) {
+  cell.classList.add(`cycle-${cycleLetter}`);
+} else if (schoolDay) {
+  // First day *, Labor Day, Reading Day, Exam, PSAT, Fall Break, Homecoming, etc.
+  cell.classList.add("no-cycle");
+}
 
     // === Smart Hover Agenda ===
     const hoverAgenda = document.createElement("div");
