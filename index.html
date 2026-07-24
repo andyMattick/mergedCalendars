@@ -5,8 +5,16 @@
   <title>HS Faculty Planner</title>
   <style>
 
-/* === SCHEDULE & PERIOD LABELS DARK MODE FIX === */
-/* Date header stays readable on cycle colors */
+.day-cell {
+  max-height: 220px;
+  overflow: hidden;
+}
+
+#calendarGrid.days-expanded .day-cell {
+  max-height: none;
+  overflow: visible;
+}
+
 .day-cell .day-date-line,
 .day-cell .day-cell-header {
   color: #111827;
@@ -135,6 +143,25 @@ body.dark option {
 .mobile-view .classes-list li {
   font-size: 0.8rem;
   line-height: 1.2;
+}
+
+#toggleExpandDaysBtn {
+  position: fixed;
+  right: 15px;
+  bottom: 52px; /* sits above the auto-backup badge */
+  z-index: 10000;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #1f2937;
+  color: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+body.dark #toggleExpandDaysBtn {
+  background: #374151;
 }
 
     .day-cell {
@@ -452,11 +479,6 @@ body.dark .day-cell .day-expand-btn {
   justify-content: flex-start;
 }
 
-.day-cell.is-expanded {
-  max-height: none;
-  overflow: visible;
-}
-
 .day-cell-header {
   font-weight: 600;
   margin-bottom: 0.25rem;
@@ -480,23 +502,7 @@ body.dark .day-cell .day-expand-btn {
   box-shadow: 0 0 0 1px var(--accent)33;
 }
 
-.day-cell .day-expand-btn {
-  position: absolute;
-  right: 6px;
-  bottom: 4px;
-  border: none;
-  background: rgba(0,0,0,0.55);
-  color: #fff;
-  font-size: 0.7rem;
-  padding: 2px 6px;
-  border-radius: 999px;
-  cursor: pointer;
-  z-index: 5;
-}
 
-body.dark .day-cell .day-expand-btn {
-  background: rgba(255,255,255,0.25);
-}
     /* Modal */
     .modal-backdrop {
       position: fixed;
@@ -1247,6 +1253,8 @@ body.dark #printableArea h3, #printableArea h3 {
       <button id="mobileViewBtn" class="secondary">Mobile View</button>
       <button id="toggleSpecialTagsBtn" class="secondary">Remove Special Tags</button>
       <button id="helpBtn" class="secondary">? Help</button>
+          <button type="button" id="toggleExpandDaysBtn">Expand calendar view</button>
+
       <button id="jumpTodayBtn" class="secondary">Jump To Today</button>
     </div>
       </div>
@@ -3502,24 +3510,6 @@ cell.addEventListener("click", (e) => {
   });
 });
 
-// Fixed height + Show more / Show less
-requestAnimationFrame(() => {
-  if (cell.scrollHeight <= 220) return;
-
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "day-expand-btn";
-  btn.textContent = "Show more";
-
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation(); // don't open day modal
-    const expanded = cell.classList.toggle("is-expanded");
-    btn.textContent = expanded ? "Show less" : "Show more";
-  });
-
-  cell.appendChild(btn);
-});
-
 monthGrid.appendChild(cell);
   }
 
@@ -3821,6 +3811,7 @@ function loadUnits() {
     units = {};
   }
 }
+
 
 function saveUnits() {
   Object.keys(units).forEach(period => {
@@ -5062,6 +5053,9 @@ function closeHelp() {
     localStorage.setItem(getStorageKey(LS_HIDE_WELCOME_KEY), "true");
   }
   document.getElementById("helpBackdrop").style.display = "none";
+
+  // Make sure expand button still exists after help closes
+  ensureExpandDaysButton();
 }
 
 function applyDarkModePreference() {
@@ -5127,10 +5121,13 @@ function applyPrintFilters() {
         .special { color: #7c3aed; font-weight: 600; }
       </style>
     </head>
+
     <body>
       <h1>${getCurrentConfig().name} Rotation Planner</h1>
       <p style="text-align:center; color:#666;">Generated on ${new Date().toLocaleDateString()}</p>
   `;
+
+  
 
   const months = getCurrentMonths();
   const activeMonths = months.filter(monthObj => {
@@ -5300,8 +5297,31 @@ function renderCycleColorPickers() {
   });
 }
 
+function ensureExpandDaysButton() {
+  let btn = document.getElementById("toggleExpandDaysBtn");
+  if (!btn) {
+    btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "toggleExpandDaysBtn";
+    btn.textContent = "Expand calendar view";
+    document.body.appendChild(btn);
+  }
+
+  btn.onclick = () => {
+    const grid = document.getElementById("calendarGrid");
+    if (!grid) return;
+    const expanded = grid.classList.toggle("days-expanded");
+    btn.textContent = expanded ? "Contract calendar view" : "Expand calendar view";
+  };
+}
+
+
 // --- Init ---
 function init() {
+
+
+// call this in init()
+ensureExpandDaysButton();
 applyCycleColors();
 renderCycleColorPickers();
 
