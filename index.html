@@ -6,6 +6,69 @@
   <style>
 
 /* === SCHEDULE & PERIOD LABELS DARK MODE FIX === */
+/* Date header stays readable on cycle colors */
+.day-cell .day-date-line,
+.day-cell .day-cell-header {
+  color: #111827;
+  font-weight: 700;
+}
+
+/* In dark mode, still keep date dark on pastel cycle backgrounds */
+body.dark .day-cell.cycle-A .day-date-line,
+body.dark .day-cell.cycle-B .day-date-line,
+body.dark .day-cell.cycle-C .day-date-line,
+body.dark .day-cell.cycle-D .day-date-line,
+body.dark .day-cell.cycle-E .day-date-line,
+body.dark .day-cell.cycle-F .day-date-line,
+body.dark .day-cell.cycle-G .day-date-line,
+body.dark .day-cell.cycle-A .day-cell-header,
+body.dark .day-cell.cycle-B .day-cell-header,
+body.dark .day-cell.cycle-C .day-cell-header,
+body.dark .day-cell.cycle-D .day-cell-header,
+body.dark .day-cell.cycle-E .day-cell-header,
+body.dark .day-cell.cycle-F .day-cell-header,
+body.dark .day-cell.cycle-G .day-cell-header {
+  color: #111827 !important;
+}
+
+body.dark .day-cell.cycle-A,
+body.dark .day-cell.cycle-B,
+body.dark .day-cell.cycle-C,
+body.dark .day-cell.cycle-D,
+body.dark .day-cell.cycle-E,
+body.dark .day-cell.cycle-F,
+body.dark .day-cell.cycle-G {
+  box-shadow: inset 0 0 0 9999px rgba(0,0,0,0.12);
+}
+
+/* No-class / empty days */
+.day-cell.empty,
+.day-cell.weekend {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+body.dark .day-cell.empty,
+body.dark .day-cell.weekend {
+  background: #2a2d31;
+  color: #d1d5db;
+}
+
+body.dark .day-cell.empty .day-date-line,
+body.dark .day-cell.weekend .day-date-line,
+body.dark .day-cell.empty .day-cell-header,
+body.dark .day-cell.weekend .day-cell-header {
+  color: #e5e7eb !important;
+}
+
+.day-cell.cycle-A { background: var(--cycle-A) !important; }
+.day-cell.cycle-B { background: var(--cycle-B) !important; }
+.day-cell.cycle-C { background: var(--cycle-C) !important; }
+.day-cell.cycle-D { background: var(--cycle-D) !important; }
+.day-cell.cycle-E { background: var(--cycle-E) !important; }
+.day-cell.cycle-F { background: var(--cycle-F) !important; }
+.day-cell.cycle-G { background: var(--cycle-G) !important; }
+
 /* General Day Notes dark mode */
 body.dark .general-day-notes {
   background: #1f2937 !important;
@@ -1100,18 +1163,21 @@ body.dark #printableArea h3, #printableArea h3 {
       </div>
     </div>
 
-    <div class="config-section" data-section-key="rotation">
-      <button class="config-section-toggle" type="button">
-        <span class="config-chevron">▼</span>
-        <span>Rotation Rules</span>
-      </button>
-      <div class="config-section-body">
-        <div id="rotationRulesLegend" class="small"></div>
+<div class="config-section" data-section-key="rotation">
+  <button class="config-section-toggle" type="button">
+    <span class="config-chevron">▼</span>
+    <span>Rotation Rules</span>
+  </button>
+  <div class="config-section-body">
+    <div id="rotationRulesLegend" class="small"></div>
 
-        <div class="small" style="margin-top:0.5rem;"><strong>Cycle color key</strong></div>
-        <div id="rotationKey" class="rotation-key" aria-label="Cycle color key"></div>
-      </div>
-    </div>
+    <div id="rotationKey" class="rotation-key" aria-label="Cycle color key"></div>
+
+    <!-- Cycle color pickers -->
+    <div class="small" style="margin-top:0.75rem;"><strong>Customize cycle colors</strong></div>
+    <div id="cycleColorPickers"></div>
+  </div>
+</div>
 
     <div class="config-section" data-section-key="units">
       <button class="config-section-toggle" type="button">
@@ -1557,6 +1623,76 @@ let unitsSem1 = {};
 let unitsSem2 = {};
 let specialDaysSem1 = [];
 let specialDaysSem2 = [];
+
+const CYCLE_COLOR_DEFAULTS = {
+  A: "#fde68a",
+  B: "#bbf7d0",
+  C: "#bfdbfe",
+  D: "#fecaca",
+  E: "#ddd6fe",
+  F: "#fed7aa",
+  G: "#a5f3fc"
+};
+
+const CLASS_COLOR_DEFAULTS = [
+  "#1d4ed8", // blue
+  "#b45309", // brown/orange
+  "#047857", // green
+  "#6d28d9", // purple
+  "#be123c", // rose
+  "#0f766e", // teal
+  "#a16207"  // gold/brown
+];
+
+
+
+function getCycleColors() {
+  try {
+    return { ...CYCLE_COLOR_DEFAULTS, ...JSON.parse(localStorage.getItem("cycleColors") || "{}") };
+  } catch {
+    return { ...CYCLE_COLOR_DEFAULTS };
+  }
+}
+
+function saveCycleColors(map) {
+  localStorage.setItem("cycleColors", JSON.stringify(map));
+}
+
+function applyCycleColors() {
+  const colors = getCycleColors();
+  const root = document.documentElement;
+  Object.keys(colors).forEach(letter => {
+    root.style.setProperty(`--cycle-${letter}`, colors[letter]);
+  });
+}
+
+function getClassColors() {
+  try {
+    return JSON.parse(localStorage.getItem("classColors") || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveClassColors(map) {
+  localStorage.setItem("classColors", JSON.stringify(map));
+}
+
+function getDefaultClassColor(className) {
+  if (!className) return CLASS_COLOR_DEFAULTS[0];
+  // Stable color from class name
+  let hash = 0;
+  for (let i = 0; i < className.length; i++) {
+    hash = (hash + className.charCodeAt(i) * (i + 1)) % CLASS_COLOR_DEFAULTS.length;
+  }
+  return CLASS_COLOR_DEFAULTS[hash];
+}
+
+function getColorForClass(className) {
+  if (!className) return "";
+  const saved = getClassColors()[className];
+  return saved || getDefaultClassColor(className);
+}
 
 // ====================== UNIT LENGTH HELPERS ======================
 
@@ -2858,6 +2994,7 @@ function renderPeriodSlots() {
 
   for (let p = 1; p <= getCurrentPeriodCount(); p++) {
     const currentClass = teacherSchedule[p] || `Period ${p}`;
+    const currentColor = getColorForClass(currentClass) || "#93c5fd";
 
     const slot = document.createElement("div");
     slot.style.cssText = "display:flex; align-items:center; gap:12px; margin-bottom:12px; padding:10px; border:1px solid #ddd; border-radius:8px; background:#fff;";
@@ -2872,8 +3009,13 @@ function renderPeriodSlots() {
               style="flex:1; padding:8px; border-radius:6px; border:1px solid #ccc;">
         ${optionsHTML}
       </select>
+      
+      <input type="color"
+             value="${currentColor}"
+             title="Color for this class"
+             onchange="setClassColorForPeriod(${p}, this.value)"
+             style="width:42px; height:34px; border:none; background:transparent; cursor:pointer;">
     `;
-
     container.appendChild(slot);
   }
 }
@@ -2886,6 +3028,19 @@ window.assignPeriodClass = function(period, className) {
     renderCalendar();
   }
 };
+
+window.setClassColorForPeriod = function(period, color) {
+  const className = teacherSchedule[period];
+  if (!className) {
+    alert("Assign a class name first, then set its color.");
+    return;
+  }
+  const map = getClassColors();
+  map[className] = color;
+  saveClassColors(map);
+  renderCalendar();
+};
+
 function addKnownClass() {
   const input = document.getElementById("newClassName");
   if (!input || !input.value.trim()) return;
@@ -2925,13 +3080,6 @@ function renderRotationLegend() {
     .map(([letter, periods]) => `${letter}: ${periods.join(",")}`)
     .join("<br/>");
 
-  key.innerHTML = "";
-  letters.forEach(letter => {
-    const chip = document.createElement("span");
-    chip.className = "rotation-chip";
-    chip.innerHTML = `<span class="rotation-dot rotation-dot-${letter}"></span>${letter}`;
-    key.appendChild(chip);
-  });
 }
 
     // --- UI: schedule form ---
@@ -3159,6 +3307,17 @@ if (hasContent || dayNotes.noTest || specialEntries.length) {
           li.dataset.period = String(periodNum);
           li.dataset.unitName = (unitInfo.unitName || "").toLowerCase();
           li.dataset.courseName = unitInfo.courseName.toLowerCase();
+        const className = unitInfo.courseName || teacherSchedule[periodNum] || `Period ${periodNum}`;
+        const classColor = getColorForClass(className);
+
+        if (classColor) {
+        li.style.background = classColor;
+          li.style.color = "#ffffff";
+          li.style.textShadow = "0 1px 1px rgba(0,0,0,0.35)";
+          li.style.borderRadius = "4px";
+          li.style.padding = "2px 6px";
+          li.style.fontWeight = "600";
+}
 
           const classPrefix = `${periodNum}: ${unitInfo.courseName} (${periodDayCount})`;
           let classLine = `${periodNum}: ${unitInfo.courseName}`;
@@ -4592,13 +4751,15 @@ const type = (event.isTest || event.unitInfo.hasTestToday) ? "TEST" : "QUIZ";
 document.getElementById("backupBtn").addEventListener("click", () => {
   const currentDiv = currentDivision || "default";
 
-  const backup = {
-    timestamp: new Date().toISOString(),
-    division: currentDiv,
-    teacherScheduleSem1: JSON.parse(localStorage.getItem("hs-sem1teacherScheduleSem1") || "{}"),
-    unitsSem1: JSON.parse(localStorage.getItem("hs-sem1-units") || "{}"),
-    notes: {}
-  };
+      const backup = {
+        timestamp: new Date().toISOString(),
+        division: currentDiv,
+        teacherScheduleSem1: JSON.parse(localStorage.getItem("hs-sem1teacherScheduleSem1") || "{}"),
+        unitsSem1: JSON.parse(localStorage.getItem("hs-sem1-units") || "{}"),
+        notes: {},
+        cycleColors: getCycleColors(),
+        classColors: JSON.parse(localStorage.getItem("classColors") || "{}")
+      };
 
   Object.keys(localStorage).forEach(key => {
     if (key.startsWith("notes_")) {
@@ -4652,6 +4813,14 @@ document.getElementById("restoreBtn").addEventListener("click", () => {
           Object.keys(backup.notes).forEach(key => {
             localStorage.setItem(key, JSON.stringify(backup.notes[key]));
           });
+        }
+
+        // Restore colors
+        if (backup.cycleColors) {
+          localStorage.setItem("cycleColors", JSON.stringify(backup.cycleColors));
+        }
+        if (backup.classColors) {
+          localStorage.setItem("classColors", JSON.stringify(backup.classColors));
         }
 
         alert(`✅ Restore successful for ${backupDivision}!`);
@@ -4942,9 +5111,48 @@ function copyNotesFromDateToDate(oldDate, newDate, targetPeriod) {
   saveNotesForDate(newDate, newNotes);
 }
 
+function renderCycleColorPickers() {
+  const wrap = document.getElementById("cycleColorPickers");
+  if (!wrap) return;
+
+  const colors = getCycleColors();
+
+  wrap.innerHTML = Object.keys(CYCLE_COLOR_DEFAULTS).map(letter => `
+    <div style="display:inline-flex; align-items:center; gap:6px; margin:6px 12px 6px 0;">
+      <strong>${letter}</strong>
+      <input type="color" data-cycle="${letter}" value="${colors[letter]}">
+    </div>
+  `).join("") + `
+    <div style="margin-top:8px;">
+      <button type="button" id="saveCycleColorsBtn">Save Cycle Colors</button>
+      <button type="button" id="resetCycleColorsBtn">Reset</button>
+    </div>
+  `;
+
+  document.getElementById("saveCycleColorsBtn")?.addEventListener("click", () => {
+    const map = {};
+    wrap.querySelectorAll("input[type=color][data-cycle]").forEach(input => {
+      map[input.dataset.cycle] = input.value;
+    });
+    saveCycleColors(map);
+    applyCycleColors();
+    renderCalendar();
+    alert("✅ Cycle colors saved");
+  });
+
+  document.getElementById("resetCycleColorsBtn")?.addEventListener("click", () => {
+    localStorage.removeItem("cycleColors");
+    applyCycleColors();
+    renderCycleColorPickers();
+    renderCalendar();
+  });
+}
 
 // --- Init ---
 function init() {
+applyCycleColors();
+renderCycleColorPickers();
+
   document.getElementById("divisionSelector").value = currentDivision;
   document.getElementById("semesterSelector").value = currentSemester;
 
@@ -5522,7 +5730,9 @@ window.closeAssessmentModal = function() {
         division: currentDiv,
         teacherScheduleSem1: JSON.parse(localStorage.getItem("hs-sem1teacherScheduleSem1") || "{}"),
         unitsSem1: JSON.parse(localStorage.getItem("hs-sem1-units") || "{}"),
-        notes: {}
+        notes: {},
+        cycleColors: getCycleColors(),
+        classColors: JSON.parse(localStorage.getItem("classColors") || "{}")
       };
 
       Object.keys(localStorage).forEach(key => {
@@ -5540,7 +5750,6 @@ window.closeAssessmentModal = function() {
     } catch (e) {}
   }, 5 * 60 * 1000);
 
-  // Status message in bottom right
   // Status message in bottom right
   const statusDiv = document.createElement("div");
   statusDiv.id = "autoBackupStatus";
