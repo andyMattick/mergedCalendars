@@ -5,6 +5,103 @@
   <title>HS Faculty Planner</title>
   <style>
 
+    .collapse-header {
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f3f4f6;
+  color: #111827;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: none;
+}
+.collapse-header:hover {
+  background: #e5e7eb;
+}
+body.dark .collapse-header {
+  background: #374151;
+  border-color: #4b5563;
+  color: #e5e7eb;
+}
+.collapse-panel.collapsed .collapse-body {
+  display: none;
+}
+
+#projectsPanel.collapsed #projectsList {
+  display: none;
+}
+
+.note-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.note-toolbar button {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  background: #e5e7eb;
+  color: #111;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+}
+body.dark .note-toolbar button {
+  background: #4b5563;
+  color: #e5e7eb;
+  border-color: #6b7280;
+}
+.note-doc {
+  min-height: 100px;
+  padding: 12px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  line-height: 1.5;
+  font-size: 0.95rem;
+  outline: none;
+  overflow-y: auto;
+}
+.note-doc:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+.note-doc ul,
+.note-doc ol {
+  margin: 0.25rem 0 0.25rem 1.25rem;
+  padding: 0;
+}
+body.dark .note-doc {
+  background: #374151;
+  border-color: #6b7280;
+  color: #e5e7eb;
+}
+
+#profileToast {
+  position: fixed !important;
+  bottom: 20px !important;
+  left: 15px !important;
+  right: auto !important;
+  z-index: 10050 !important;
+  background: #111827 !important;
+  color: #fff !important;
+  padding: 10px 14px !important;
+  border-radius: 8px !important;
+  font-size: 0.85rem !important;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  max-width: 280px;
+}
+#profileToast.show {
+  opacity: 1 !important;
+}
+
 .day-cell {
   max-height: 220px;
   overflow: hidden;
@@ -292,20 +389,6 @@ body.dark {
   to { opacity: 1; }
 }
 
-.day-cell .day-expand-btn {
-  position: absolute;
-  right: 6px;
-  bottom: 4px;
-  z-index: 20;
-  pointer-events: auto;
-  border: none;
-  background: rgba(0,0,0,0.55);
-  color: #fff;
-  font-size: 0.7rem;
-  padding: 2px 6px;
-  border-radius: 999px;
-  cursor: pointer;
-}
 
 body.dark .day-cell .day-expand-btn {
   background: rgba(255,255,255,0.25);
@@ -351,26 +434,55 @@ body.dark .day-cell .day-expand-btn {
       background: #1f2933;
       color: #fff;
     }
-    .header-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.8rem;
-      flex-wrap: wrap;
-    }
-    .header-left,
-    .header-right {
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    .header-center {
+
+  .header-bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}  
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 auto;
+  max-width: 220px;
+}
+
+.header-left select,
+.header-left .header-select {
+  width: 220px !important;
+  max-width: 220px;
+  min-width: 0;
+  font-size: 0.85rem;
+  padding: 6px 8px;
+  margin-bottom: 0;
+}
+
+#profileSelect {
+  width: 200px !important;
+  max-width: 200px;
+  font-size: 0.85rem;
+  padding: 6px 8px;
+  margin-bottom: 0;
+}
+
+.header-right {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.header-center {
+  flex: 1 1 auto;
+  min-width: 220px;
       display: flex;
       flex-direction: column;
       align-items: center;
       text-align: center;
-      min-width: 200px;
+      
       flex: 1;
     }
     .header-center h1 {
@@ -438,6 +550,7 @@ body.dark .day-cell .day-expand-btn {
       opacity: 0.5;
       cursor: default;
     }
+    
 
 .calendar-grid {
   display: grid;
@@ -1195,7 +1308,9 @@ body.dark #printableArea h3, #printableArea h3 {
 <body>
   <header>
     <div class="header-bar">
+      
       <div class="header-left">
+
         <button id="backupBtn" class="secondary">Backup Data</button>
         <button id="restoreBtn" class="secondary">Restore Data</button>
         <input id="restoreInput" type="file" accept=".json" style="display:none;">
@@ -1213,12 +1328,23 @@ body.dark #printableArea h3, #printableArea h3 {
         <option value="special">Toggle Special Tags On / Off</option>
         <option value="dark">Toggle Light / Dark Mode</option>
       </select>
+
+              <select id="profileActions" class="header-select" aria-label="Profile actions">
+        <option value="">Profile actions…</option>
+        <option value="new">New Profile</option>
+        <option value="rename">Rename Profile</option>
+        <option value="delete">Delete Profile</option>
+      </select>
       
       </select>
 
       </div>
 
       <div class="header-center">
+        
+        <select id="profileSelect" class="header-select">...</select>
+
+
                 <h1 id="mainTitle">Wesleyan HS 26-27 Planner</h1>
                 <select id="divisionSelector" aria-label="Division selector">
           <option value="hs">High School</option>
@@ -1253,6 +1379,8 @@ body.dark #printableArea h3, #printableArea h3 {
       <button id="mobileViewBtn" class="secondary">Mobile View</button>
       <button id="toggleSpecialTagsBtn" class="secondary">Remove Special Tags</button>
       <button id="helpBtn" class="secondary">? Help</button>
+
+</div>
           <button type="button" id="toggleExpandDaysBtn">Expand calendar view</button>
 
       <button id="jumpTodayBtn" class="secondary">Jump To Today</button>
@@ -1263,21 +1391,8 @@ body.dark #printableArea h3, #printableArea h3 {
 
   <main>
   <section id="config">
-    <div class="config-section" data-section-key="schedule">
-      <button class="config-section-toggle" type="button">
-        <span class="config-chevron">▼</span>
-        <span>Teacher Schedule</span>
-      </button>
-      <div class="config-section-body">
-        <form id="scheduleForm">
-          <div id="scheduleFields"></div>
-          <button type="submit">Save schedule</button>
-        </form>
-        
-      </div>
-    </div>
 
-<div class="config-section" data-section-key="rotation">
+    <div class="config-section" data-section-key="rotation">
   <button class="config-section-toggle" type="button">
     <span class="config-chevron">▼</span>
     <span>Rotation Rules</span>
@@ -1293,6 +1408,23 @@ body.dark #printableArea h3, #printableArea h3 {
   </div>
 </div>
 
+
+    <div class="config-section" data-section-key="schedule">
+      <button class="config-section-toggle" type="button">
+        <span class="config-chevron">▼</span>
+        <span>Teacher Schedule</span>
+      </button>
+      <div class="config-section-body">
+        <form id="scheduleForm">
+          <div id="scheduleFields"></div>
+          <button type="submit">Save schedule</button>
+        </form>
+        
+      </div>
+    </div>
+
+
+
     <div class="config-section" data-section-key="units">
       <button class="config-section-toggle" type="button">
         <span class="config-chevron">▼</span>
@@ -1303,6 +1435,15 @@ body.dark #printableArea h3, #printableArea h3 {
 
       </div>
     </div>
+
+<div id="projectsPanel" class="collapse-panel collapsed">
+  <button type="button" id="projectsToggleBtn" class="collapse-header">
+    ▶ Projects
+  </button>
+  <div id="projectsList" class="collapse-body"></div>
+</div>
+
+    
 
     <div class="config-section" data-section-key="special">
       <button class="config-section-toggle" type="button">
@@ -1343,6 +1484,158 @@ body.dark #printableArea h3, #printableArea h3 {
 </main>
 
     <script>
+
+let editingProject = null; // { periodNum, projectId } or null for new
+
+function openProjectEditor(periodNum, projectId = null) {
+  editingProject = { periodNum, projectId };
+
+  const course = teacherSchedule[periodNum] || `Period ${periodNum}`;
+  document.getElementById("projectEditorSubtitle").textContent = `P${periodNum}: ${course}`;
+
+  const nameEl = document.getElementById("projectNameInput");
+  const dueEl = document.getElementById("projectDueInput");
+  const notesEl = document.getElementById("projectNotesInput");
+  const rubricEl = document.getElementById("projectRubricInput");
+  const titleEl = document.getElementById("projectEditorTitle");
+
+  if (projectId) {
+    const p = getProjectsForPeriod(periodNum).find(x => x.id === projectId);
+    if (!p) return;
+    titleEl.textContent = "Edit Project";
+    nameEl.value = p.name || "";
+    dueEl.value = p.dueDate || "";
+    notesEl.value = p.notes || "";
+    rubricEl.value = p.rubric || "";
+  } else {
+    titleEl.textContent = "Add Project";
+    nameEl.value = "";
+    dueEl.value = "";
+    notesEl.value = "";
+    rubricEl.value = "";
+  }
+
+  document.getElementById("projectEditorBackdrop").style.display = "flex";
+}
+
+function closeProjectEditor() {
+  document.getElementById("projectEditorBackdrop").style.display = "none";
+  editingProject = null;
+}
+
+function saveProjectEditor() {
+  if (!editingProject) return;
+
+  const { periodNum, projectId } = editingProject;
+  const name = document.getElementById("projectNameInput").value.trim();
+  const dueDate = document.getElementById("projectDueInput").value;
+  const notes = document.getElementById("projectNotesInput").value.trim();
+  const rubric = document.getElementById("projectRubricInput").value.trim();
+
+  if (!name) {
+    alert("Project name is required.");
+    return;
+  }
+  if (!dueDate) {
+    alert("Due date is required.");
+    return;
+  }
+
+  const list = getProjectsForPeriod(periodNum);
+
+  if (projectId) {
+    const p = list.find(x => x.id === projectId);
+    if (!p) return;
+    p.name = name;
+    p.dueDate = dueDate;
+    p.notes = notes;
+    p.rubric = rubric;
+  } else {
+    list.push({
+      id: makeProjectId(),
+      name,
+      dueDate,
+      startDate: getLocalTodayISO(),
+      notes,
+      rubric
+    });
+  }
+
+  list.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  saveProjects();
+  closeProjectEditor();
+  renderProjects();
+  renderSummary();
+  renderCalendar();
+}
+
+function formatNoteCmd(cmd, value = null) {
+  document.execCommand(cmd, false, value);
+}
+
+function buildNoteEditor(periodKey, initialHtml) {
+  const wrap = document.createElement("div");
+  wrap.className = "note-editor-wrap";
+
+  const toolbar = document.createElement("div");
+  toolbar.className = "note-toolbar";
+  toolbar.innerHTML = `
+    <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
+    <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
+    <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
+    <button type="button" data-cmd="insertUnorderedList" title="Bullets">• List</button>
+    <button type="button" data-cmd="insertOrderedList" title="Numbers">1. List</button>
+    <button type="button" data-cmd="removeFormat" title="Clear formatting">Clear</button>
+  `;
+
+  const doc = document.createElement("div");
+  doc.className = "note-doc";
+  doc.contentEditable = "true";
+  doc.dataset.period = periodKey;
+  doc.innerHTML = initialHtml || "";
+
+  toolbar.addEventListener("mousedown", (e) => {
+    const btn = e.target.closest("button[data-cmd]");
+    if (!btn) return;
+    e.preventDefault(); // keep selection in editor
+    doc.focus();
+    formatNoteCmd(btn.dataset.cmd);
+  });
+
+  wrap.appendChild(toolbar);
+  wrap.appendChild(doc);
+  return wrap;
+}
+
+function noteToPlain(html) {
+  const tmp = document.createElement("div");
+  tmp.innerHTML = html || "";
+  return (tmp.textContent || "").trim();
+}
+
+function saveCurrentProfile(showToast = false) {
+  if (typeof getCurrentProfileId !== "function" || typeof getProfiles !== "function") {
+    console.warn("Profile helpers missing");
+    return;
+  }
+  const id = getCurrentProfileId();
+  if (!id) {
+    console.warn("No current profile id");
+    return;
+  }
+  const profiles = getProfiles();
+  if (!profiles[id]) {
+    console.warn("Profile not found:", id);
+    return;
+  }
+  if (typeof collectCurrentProfileData === "function") {
+    profiles[id].data = collectCurrentProfileData();
+  }
+  profiles[id].updatedAt = new Date().toISOString();
+  if (typeof saveProfiles === "function") saveProfiles(profiles);
+
+  if (showToast) showProfileToast(`Profile "${profiles[id].name}" updated`);
+}
     // --- Rotation rules (HS A–G) ---
     const HS_ROTATION_RULES = {
       A: [1,2,3,4,5],
@@ -1758,8 +2051,282 @@ const CLASS_COLOR_DEFAULTS = [
   "#a16207"
 ];
 
+const LS_PROFILES = "plannerProfiles";
+const LS_CURRENT_PROFILE = "plannerCurrentProfileId";
 
+const LS_PROJECTS_KEY = "-projects";
+let projects = {}; // { "1": [ {...}, ... ], ... }
 
+function loadProjects() {
+  const raw = localStorage.getItem(getStorageKey(LS_PROJECTS_KEY));
+  if (!raw) {
+    projects = {};
+    return;
+  }
+  try {
+    projects = JSON.parse(raw) || {};
+  } catch (e) {
+    console.warn("Failed to parse projects", e);
+    projects = {};
+  }
+}
+
+function saveProjects() {
+  localStorage.setItem(getStorageKey(LS_PROJECTS_KEY), JSON.stringify(projects));
+}
+
+function getProjectsForPeriod(periodNum) {
+  const key = String(periodNum);
+  if (!Array.isArray(projects[key])) projects[key] = [];
+  return projects[key];
+}
+
+function makeProjectId() {
+  return `proj_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function generateProfileId() {
+  return "p_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 7);
+}
+
+function getProfiles() {
+  try {
+    return JSON.parse(localStorage.getItem(LS_PROFILES) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveProfiles(map) {
+  localStorage.setItem(LS_PROFILES, JSON.stringify(map));
+}
+
+function getCurrentProfileId() {
+  return localStorage.getItem(LS_CURRENT_PROFILE) || "";
+}
+
+function setCurrentProfileId(id) {
+  localStorage.setItem(LS_CURRENT_PROFILE, id);
+}
+
+/** Collect EVERYTHING the live app is using right now */
+function collectCurrentProfileData() {
+  const notes = {};
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith("notes_")) {
+      try {
+        notes[key] = JSON.parse(localStorage.getItem(key));
+      } catch {
+        notes[key] = localStorage.getItem(key);
+      }
+    }
+  });
+
+  return {
+    // live memory objects
+    teacherSchedule: typeof teacherSchedule !== "undefined" ? teacherSchedule : {},
+    units: typeof units !== "undefined" ? units : {},
+    specialDays: typeof specialDays !== "undefined" ? specialDays : [],
+    currentDivision: typeof currentDivision !== "undefined" ? currentDivision : "hs",
+    currentSemester: typeof currentSemester !== "undefined" ? currentSemester : "sem1",
+
+    // colors
+    cycleColors: typeof getCycleColors === "function" ? getCycleColors() : {},
+    classColors: JSON.parse(localStorage.getItem("classColors") || "{}"),
+
+    // lists
+    knownClasses: JSON.parse(localStorage.getItem("knownClasses") || "[]"),
+
+    // notes by date
+    notes,
+
+    // legacy/named keys (keep compatibility)
+    teacherScheduleSem1: JSON.parse(localStorage.getItem("hs-sem1teacherScheduleSem1") || "{}"),
+    unitsSem1: JSON.parse(localStorage.getItem("hs-sem1-units") || "{}"),
+
+    // future-ready empty slots (don't remove if already present on profile)
+    periodCount: Number(localStorage.getItem("periodCount")) || 7,
+    rotationRules: JSON.parse(localStorage.getItem("rotationRules") || "null"),
+    calendar: JSON.parse(localStorage.getItem("plannerCalendar") || "null"),
+    events: JSON.parse(localStorage.getItem("plannerEvents") || "[]"),
+    settings: JSON.parse(localStorage.getItem("plannerSettings") || "{}")
+  };
+}
+
+/** Write a profile data object back into the live app + localStorage */
+function applyProfileData(data) {
+  if (!data) return;
+
+  // memory
+  if (data.teacherSchedule) teacherSchedule = data.teacherSchedule;
+  if (data.units) units = data.units;
+  if (data.specialDays) specialDays = data.specialDays;
+  if (data.currentDivision) currentDivision = data.currentDivision;
+  if (data.currentSemester) currentSemester = data.currentSemester;
+
+  // colors
+  if (data.cycleColors) {
+    localStorage.setItem("cycleColors", JSON.stringify(data.cycleColors));
+    if (typeof applyCycleColors === "function") applyCycleColors();
+  }
+  if (data.classColors) {
+    localStorage.setItem("classColors", JSON.stringify(data.classColors));
+  }
+
+  // lists
+  if (data.knownClasses) {
+    localStorage.setItem("knownClasses", JSON.stringify(data.knownClasses));
+  }
+
+  // named keys
+  if (data.teacherScheduleSem1) {
+    localStorage.setItem("hs-sem1teacherScheduleSem1", JSON.stringify(data.teacherScheduleSem1));
+  }
+  if (data.unitsSem1) {
+    localStorage.setItem("hs-sem1-units", JSON.stringify(data.unitsSem1));
+  }
+
+  // notes: clear old notes_ keys then restore
+  Object.keys(localStorage).forEach(key => {
+    if (key.startsWith("notes_")) localStorage.removeItem(key);
+  });
+  if (data.notes) {
+    Object.keys(data.notes).forEach(key => {
+      localStorage.setItem(key, JSON.stringify(data.notes[key]));
+    });
+  }
+
+  // future fields
+  if (data.periodCount) localStorage.setItem("periodCount", String(data.periodCount));
+  if (data.rotationRules) localStorage.setItem("rotationRules", JSON.stringify(data.rotationRules));
+  if (data.calendar) localStorage.setItem("plannerCalendar", JSON.stringify(data.calendar));
+  if (data.events) localStorage.setItem("plannerEvents", JSON.stringify(data.events));
+  if (data.settings) localStorage.setItem("plannerSettings", JSON.stringify(data.settings));
+}
+
+function saveCurrentProfile() {
+  const id = getCurrentProfileId();
+  if (!id) return;
+
+  const profiles = getProfiles();
+  if (!profiles[id]) return;
+
+  profiles[id].data = collectCurrentProfileData();
+  profiles[id].updatedAt = new Date().toISOString();
+  saveProfiles(profiles);
+}
+
+function loadProfile(id) {
+  const profiles = getProfiles();
+  const profile = profiles[id];
+  if (!profile) return false;
+
+  // save current first
+  saveCurrentProfile(false);
+  
+
+  setCurrentProfileId(id);
+  applyProfileData(profile.data || {});
+
+  if (typeof refreshAllData === "function") refreshAllData();
+  else {
+    if (typeof renderCalendar === "function") renderCalendar();
+    if (typeof renderUnits === "function") renderUnits();
+    if (typeof renderSummary === "function") renderSummary();
+    if (typeof renderPeriodSlots === "function") renderPeriodSlots();
+  }
+
+  renderProfileSelector();
+  return true;
+}
+
+function createProfile(name, type = "teacher", fromCurrent = true) {
+  const id = generateProfileId();
+  const profiles = getProfiles();
+
+  profiles[id] = {
+    id,
+    name: name || "New Profile",
+    type,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    data: fromCurrent ? collectCurrentProfileData() : {
+      teacherSchedule: {},
+      units: {},
+      notes: {},
+      cycleColors: {},
+      classColors: {},
+      knownClasses: [],
+      specialDays: [],
+      events: [],
+      periodCount: 7,
+      settings: {}
+    }
+  };
+
+  saveProfiles(profiles);
+  setCurrentProfileId(id);
+  applyProfileData(profiles[id].data);
+  renderProfileSelector();
+  if (typeof refreshAllData === "function") refreshAllData();
+  return id;
+}
+
+function renameProfile(id, newName) {
+  const profiles = getProfiles();
+  if (!profiles[id] || !newName) return;
+  profiles[id].name = newName.trim();
+  profiles[id].updatedAt = new Date().toISOString();
+  saveProfiles(profiles);
+  renderProfileSelector();
+}
+
+function deleteProfile(id) {
+  const profiles = getProfiles();
+  if (!profiles[id]) return;
+
+  const ids = Object.keys(profiles);
+  if (ids.length <= 1) {
+    alert("You must keep at least one profile.");
+    return;
+  }
+
+  delete profiles[id];
+  saveProfiles(profiles);
+
+  if (getCurrentProfileId() === id) {
+    const nextId = Object.keys(profiles)[0];
+    setCurrentProfileId(nextId);
+    applyProfileData(profiles[nextId].data);
+    if (typeof refreshAllData === "function") refreshAllData();
+  }
+  renderProfileSelector();
+}
+
+/** First run: wrap existing data into a default profile */
+function ensureDefaultProfile() {
+  let profiles = getProfiles();
+  let currentId = getCurrentProfileId();
+
+  if (!Object.keys(profiles).length) {
+    const id = generateProfileId();
+    profiles[id] = {
+      id,
+      name: "My Planner",
+      type: "teacher",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      data: collectCurrentProfileData()
+    };
+    saveProfiles(profiles);
+    setCurrentProfileId(id);
+    return;
+  }
+
+  if (!currentId || !profiles[currentId]) {
+    setCurrentProfileId(Object.keys(profiles)[0]);
+  }
+}
 function getCycleColors() {
   try {
     return { ...CYCLE_COLOR_DEFAULTS, ...JSON.parse(localStorage.getItem("cycleColors") || "{}") };
@@ -2847,6 +3414,32 @@ function formatDateLabel(dateStr) {
   });
 }
 
+function countCalendarDaysUntil(dueDate, fromDate = getLocalTodayISO()) {
+  const a = new Date(fromDate + "T12:00:00");
+  const b = new Date(dueDate + "T12:00:00");
+  return Math.round((b - a) / 86400000);
+}
+
+function countClassDaysUntil(periodNum, dueDate, fromDate = getLocalTodayISO()) {
+  if (dueDate < fromDate) return 0;
+  let count = 0;
+  let d = new Date(fromDate + "T12:00:00");
+  const end = new Date(dueDate + "T12:00:00");
+
+  while (d <= end) {
+    const iso = d.toISOString().slice(0, 10);
+    const rot = getRotationDayByDate(iso);
+    if (rot) {
+      const periods = getPeriodsForDate(iso, rot.letter || "");
+      if (periods.includes(Number(periodNum)) || periods.includes(String(periodNum))) {
+        count++;
+      }
+    }
+    d.setDate(d.getDate() + 1);
+  }
+  return count;
+}
+
 function loadSpecialDays() {
   const raw = localStorage.getItem(getStorageKey(LS_SPECIAL_DAYS_KEY));
   if (!raw) {
@@ -3031,6 +3624,155 @@ function alertAssessmentWarnings(periodFilter) {
 
   const lines = warnings.map(event => `${event.date}: ${event.courseName} test falls on a No Test day.`);
   alert(`Warning:\n${lines.join("\n")}`);
+}
+
+function renderProjects() {
+  const root = document.getElementById("projectsList");
+  if (!root) return;
+  root.innerHTML = "";
+
+  getPeriodNumbers().forEach(periodNum => {
+    const course = teacherSchedule[periodNum] || `Period ${periodNum}`;
+    const list = getProjectsForPeriod(periodNum);
+
+    const card = document.createElement("div");
+    card.className = "unit-card";
+    card.innerHTML = `<div class="unit-heading">P${periodNum}: ${course}</div>`;
+
+    list.forEach(p => {
+      const row = document.createElement("div");
+      row.className = "project-row";
+      row.style.cssText = "border-top:1px solid var(--card-border); padding:8px 0; margin-top:6px;";
+
+      const calDays = countCalendarDaysUntil(p.dueDate);
+      const classDays = countClassDaysUntil(periodNum, p.dueDate);
+
+      row.innerHTML = `
+        <div style="font-size:0.85rem;">
+          <strong>${p.name}</strong><br>
+          <span class="small">Due ${p.dueDate}
+            · ${calDays} day${calDays === 1 ? "" : "s"}
+            · ${classDays} class day${classDays === 1 ? "" : "s"}
+          </span>
+          ${p.notes ? `<div class="small" style="margin-top:4px;"><em>Notes:</em> ${escapeHtml(p.notes)}</div>` : ""}
+          ${p.rubric ? `<div class="small"><em>Rubric:</em> ${escapeHtml(p.rubric)}</div>` : ""}
+        </div>
+        <div style="display:flex; gap:6px; margin-top:6px;">
+          <button type="button" class="secondary" data-edit="${p.id}">Edit</button>
+          <button type="button" class="secondary" data-del="${p.id}">Delete</button>
+        </div>
+      `;
+
+      row.querySelector("[data-del]").addEventListener("click", () => {
+        window.deleteProject(periodNum, p.id);
+      });
+      row.querySelector("[data-edit]").addEventListener("click", () => {
+        window.editProject(periodNum, p.id);
+      });
+
+      card.appendChild(row);
+    });
+
+    const addBtn = document.createElement("button");
+    addBtn.type = "button";
+    addBtn.textContent = "+ Add Project";
+    addBtn.style.marginTop = "8px";
+    addBtn.addEventListener("click", () => window.addProject(periodNum));
+    card.appendChild(addBtn);
+
+    root.appendChild(card);
+  });
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+window.addProject = function(periodNum) {
+  openProjectEditor(periodNum, null);
+};
+
+window.editProject = function(periodNum, projectId) {
+  openProjectEditor(periodNum, projectId);
+};
+
+function renderProfileSelector() {
+  const select = document.getElementById("profileSelect");
+  if (!select) return;
+
+  const profiles = getProfiles();
+  const currentId = getCurrentProfileId();
+
+  select.innerHTML = Object.values(profiles)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(p => `<option value="${p.id}" ${p.id === currentId ? "selected" : ""}>${p.name}</option>`)
+    .join("");
+}
+
+function showProfileToast(message) {
+  const el = document.getElementById("profileToast");
+  if (!el) {
+    console.warn("profileToast element missing");
+    return;
+  }
+  el.textContent = message;
+  el.classList.add("show");
+  clearTimeout(window._profileToastTimer);
+  window._profileToastTimer = setTimeout(() => {
+    el.classList.remove("show");
+  }, 1500);
+}
+
+function wireProfileUI() {
+  const select = document.getElementById("profileSelect");
+  const actions = document.getElementById("profileActions");
+
+  if (select) {
+    select.onchange = (e) => {
+      if (e.target.value) loadProfile(e.target.value);
+    };
+  }
+
+  if (actions) {
+    actions.onchange = (e) => {
+      const action = e.target.value;
+      e.target.value = ""; // reset label
+
+      if (action === "new") {
+        const name = prompt("Name for new profile?", "New Profile");
+        if (!name) return;
+        saveCurrentProfile(false);
+        createProfile(name, true);
+        showProfileToast?.(`Created profile "${name}"`);
+      }
+
+      if (action === "rename") {
+        const id = getCurrentProfileId();
+        const profiles = getProfiles();
+        const current = profiles[id];
+        if (!current) return alert("No active profile.");
+        const name = prompt("Rename profile:", current.name);
+        if (name) {
+          renameProfile(id, name);
+          showProfileToast?.(`Renamed to "${name}"`);
+        }
+      }
+
+      if (action === "delete") {
+        const id = getCurrentProfileId();
+        if (confirm("Delete this profile?")) {
+          deleteProfile(id);
+          showProfileToast?.("Profile deleted");
+        }
+      }
+    };
+  } else {
+    console.warn("profileActions select not found");
+  }
 }
 
 function renderScheduleFields() {
@@ -3311,7 +4053,7 @@ if (hasCycle) {
 
         if (dayNotes.general && dayNotes.general.trim()) {
       hasContent = true;
-      hoverContent += `<strong>📝 General Notes:</strong><br>${dayNotes.general}<br><br>`;
+      hoverContent += `...${noteToPlain(dayNotes.general)}...`;
     }
 
     if (dayNotes.noTest) {
@@ -3345,7 +4087,16 @@ if (hasCycle) {
               hoverContent += ` <span style="color:#1d4ed8; font-weight:600;">(QUIZ)</span>`;
             }
 
+            getProjectsForPeriod(periodNum)
+              .filter(p => p.dueDate === iso)
+              .forEach(p => {
+                hasContent = true;
+                hoverContent += ` <span style="color:#b91c1c;font-weight:600;">(PROJECT: ${p.name})</span>`;
+              });
+
             hoverContent += `<br><br>`;
+
+            
           }
         });
       }
@@ -3408,6 +4159,17 @@ if (hasContent || dayNotes.noTest || specialEntries.length) {
       noTestBadge.className = "status-badge no-test-day";
       noTestBadge.textContent = "NO TEST TODAY";
       badgeRow.appendChild(noTestBadge);
+    }
+
+    // Project due any period today
+    const hasProjectDue = getPeriodNumbers().some(pn =>
+      getProjectsForPeriod(pn).some(p => p.dueDate === iso)
+    );
+    if (hasProjectDue) {
+      const projDayBadge = document.createElement("span");
+      projDayBadge.className = "status-badge test-day";
+      projDayBadge.textContent = "PROJECT DAY";
+      badgeRow.appendChild(projDayBadge);
     }
 
     if (badgeRow.childElementCount > 0) {
@@ -3496,6 +4258,19 @@ if (unitInfo.hasTestToday || hasModalTest) {
   li.appendChild(testBadge);
 }
 
+// Projects due this day for this period
+getProjectsForPeriod(periodNum)
+  .filter(p => p.dueDate === iso)
+  .forEach(p => {
+    const projBadge = document.createElement("span");
+    projBadge.className = "status-badge test-day";
+    projBadge.textContent = "PROJECT";
+    projBadge.title = p.name;
+    li.appendChild(projBadge);
+
+    li.appendChild(document.createTextNode(` ${p.name}`));
+  });
+
           li.classList.add(`period-${periodNum}`);
           ul.appendChild(li);
         });
@@ -3545,20 +4320,15 @@ function openDayModal(day) {
   if (shiftAllBtn) shiftAllBtn.style.display = periods.length ? "inline-block" : "none";
 
   // === NEW: GENERAL DAY NOTES ===
-  const generalBlock = document.createElement("div");
-  generalBlock.className = "note-block general-day-notes";
-  generalBlock.style.marginBottom = "20px";
-  generalBlock.style.padding = "14px";
-  generalBlock.style.background = "#f8fafc";
-  generalBlock.style.border = "1px solid #e2e8f0";
-  generalBlock.style.borderRadius = "8px";
-  generalBlock.innerHTML = `
-  <strong>📝 General Day Notes</strong> 
-  <span class="small" style="color:#666;">(applies to the whole day — even if no classes)</span>
-  <textarea id="generalDayNote" data-period="general" style="width:100%; min-height:100px; margin-top:8px; padding:10px; border-radius:6px; border:1px solid #cbd5e1;" 
-            placeholder="Snow day, field trip, assembly, staff meeting, etc...">${existingNotes.general || ''}</textarea>
-`;
-  body.appendChild(generalBlock);
+const generalBlock = document.createElement("div");
+generalBlock.className = "note-block general-day-notes";
+generalBlock.style.marginBottom = "20px";
+generalBlock.innerHTML = `<strong> General Day Notes</strong>`;
+generalBlock.appendChild(
+  buildNoteEditor("general", existingNotes.general || "")
+);
+body.appendChild(generalBlock);
+
 
   // Show existing special tags (unchanged)
   if (specialEntries.length > 0) {
@@ -3658,10 +4428,9 @@ function openDayModal(day) {
       block.appendChild(editUnitBtn);
     }
 
-    const textarea = document.createElement("textarea");
-    textarea.value = existingNotes[periodNum] || "";
-    textarea.dataset.period = periodNum;
-    block.appendChild(textarea);
+block.appendChild(
+  buildNoteEditor(String(periodNum), existingNotes[periodNum] || "")
+);
 
     body.appendChild(block);
   });
@@ -3728,17 +4497,13 @@ function handleSaveNotes() {
   if (!currentModalDay) return;
 
   const body = document.getElementById("modalBody");
-  const textareas = body.querySelectorAll("textarea");
   const notesObj = { general: "" };
 
-  // Save textareas
-  textareas.forEach(ta => {
-    const period = ta.dataset.period || ta.id;
-    if (period === "general" || period === "generalDayNote") {
-      notesObj.general = ta.value.trim();
-    } else if (period) {
-      notesObj[period] = ta.value.trim();
-    }
+// Rich note editors
+  body.querySelectorAll(".note-doc").forEach(doc => {
+    const period = doc.dataset.period;
+    if (!period) return;
+    notesObj[period] = doc.innerHTML.trim();
   });
 
   // Save Test + Quiz checkboxes
@@ -3776,8 +4541,10 @@ function handleClearNotes() {
   periods.forEach(periodNum => {
     notesObj[periodNum] = "";
     notesObj[`test-${periodNum}`] = false;
+    notesObj[`quiz-${periodNum}`] = false;
   });
 
+  notesObj.noTest = false;
   notesObj.noTest = false;
 
   saveNotesForDate(currentModalDay.date, notesObj);
@@ -3833,6 +4600,8 @@ function shiftISODate(isoDate, daysToShift) {
   date.setDate(date.getDate() + daysToShift);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
+
+
 
 function updateMaxDaysHints() {
   getPeriodNumbers().forEach(periodNum => {
@@ -4101,6 +4870,16 @@ window.removeKnownClass = function(index) {
   saveScheduleToStorage();
   renderKnownClasses();
   renderPeriodSlots();
+  renderCalendar();
+};
+
+window.deleteProject = function(periodNum, projectId) {
+  if (!confirm("Delete this project?")) return;
+  const key = String(periodNum);
+  projects[key] = getProjectsForPeriod(periodNum).filter(p => p.id !== projectId);
+  saveProjects();
+  renderProjects();
+  renderSummary();
   renderCalendar();
 };
 
@@ -4901,7 +5680,9 @@ document.getElementById("backupBtn").addEventListener("click", () => {
         unitsSem1: JSON.parse(localStorage.getItem("hs-sem1-units") || "{}"),
         notes: {},
         cycleColors: getCycleColors(),
-        classColors: JSON.parse(localStorage.getItem("classColors") || "{}")
+        classColors: JSON.parse(localStorage.getItem("classColors") || "{}"),
+        profiles: getProfiles(),
+        currentProfileId: getCurrentProfileId()
       };
 
   Object.keys(localStorage).forEach(key => {
@@ -4926,6 +5707,12 @@ document.getElementById("backupBtn").addEventListener("click", () => {
 });
 
 document.getElementById("restoreBtn").addEventListener("click", () => {
+  if (backup.profiles) {
+  localStorage.setItem(LS_PROFILES, JSON.stringify(backup.profiles));
+}
+if (backup.currentProfileId) {
+  localStorage.setItem(LS_CURRENT_PROFILE, backup.currentProfileId);
+}
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = '.json';
@@ -5318,6 +6105,25 @@ function ensureExpandDaysButton() {
 
 // --- Init ---
 function init() {
+  ensureDefaultProfile();
+  wireProfileUI();
+  renderProfileSelector();
+
+const projectsToggle = document.getElementById("projectsToggleBtn");
+if (projectsToggle) {
+  projectsToggle.addEventListener("click", () => {
+    const panel = document.getElementById("projectsPanel");
+    panel.classList.toggle("collapsed");
+    projectsToggle.textContent = panel.classList.contains("collapsed")
+      ? "▶ Projects"
+      : "▼ Projects";
+  });
+}
+
+  // load active profile data into live app
+  const profiles = getProfiles();
+  const id = getCurrentProfileId();
+  if (profiles[id]) applyProfileData(profiles[id].data);
 
 
 // call this in init()
@@ -5338,6 +6144,13 @@ renderCycleColorPickers();
   renderRotationLegend();
   refreshAllData();
   initCollapsibleSections();
+
+  document.getElementById("closeProjectEditorBtn")
+  .addEventListener("click", closeProjectEditor);
+document.getElementById("cancelProjectEditorBtn")
+  .addEventListener("click", closeProjectEditor);
+document.getElementById("saveProjectEditorBtn")
+  .addEventListener("click", saveProjectEditor);
 
   document.getElementById("addSpecialDayBtn").addEventListener("click", () => addSpecialDay());
 
@@ -5404,6 +6217,8 @@ const events = [...allEvents, ...modalTests]
   html += buildAssessmentsHTML(byClass);
 
 const isDark = document.body.classList.contains('dark');
+
+
 
 const modal = document.createElement("div");
 modal.style.cssText = `
@@ -5826,15 +6641,18 @@ function refreshAllData() {
   loadScheduleFromStorage();
   console.log("Loaded schedule for", currentSemester, ":", Object.keys(teacherSchedule)); // debug
   loadUnits();
+  loadProjects()
   loadHiddenSpecialEntries();
   loadSpecialDays();
   saveUnits();
   saveSpecialDays();
   hydrateScheduleForm();
   renderUnits();
+  renderProjects()
   renderSpecialDays();
   renderCalendar();
   renderSummary();
+  
 }
 
 // Run init ONLY once, AFTER DOM is ready
@@ -5868,6 +6686,39 @@ window.resolveConflict = function(index, action) {
   }
 };
 
+window.showProfileToast = function(message) {
+  let el = document.getElementById("profileToast");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "profileToast";
+    document.body.appendChild(el);
+  }
+  document.body.appendChild(el);
+
+  el.style.cssText = [
+    "position:fixed",
+    "bottom:20px",
+    "left:15px",
+    "z-index:2147483647",
+    "background:#111827",
+    "color:#fff",
+    "padding:10px 14px",
+    "border-radius:8px",
+    "font-size:14px",
+    "box-shadow:0 4px 12px rgba(0,0,0,0.3)",
+    "opacity:1",
+    "pointer-events:none",
+    "max-width:320px"
+  ].join(";");
+
+  el.textContent = message;
+
+  clearTimeout(window._profileToastTimer);
+  window._profileToastTimer = setTimeout(() => {
+    el.style.opacity = "0";
+  }, 2000);
+};
+
 window.closeAssessmentModal = function() {
   console.log("Close button clicked - attempting to close modal..."); // Debug line
 
@@ -5889,58 +6740,76 @@ window.closeAssessmentModal = function() {
   });
 };
 
-// ====================== AUTO BACKUP (put it here) ======================
-  let lastAutoBackupTime = null;
+// ====================== AUTO BACKUP ======================
+let lastAutoBackupTime = null;
 
-  setInterval(() => {
-    try {
-      const currentDiv = currentDivision || "default";
-      const backupKey = `autoBackup_${currentDiv}`;
+setInterval(() => {
+  try {
+    const currentDiv = currentDivision || "default";
+    const backupKey = `autoBackup_${currentDiv}`;
 
-      const backup = {
-        timestamp: new Date().toISOString(),
-        division: currentDiv,
-        teacherScheduleSem1: JSON.parse(localStorage.getItem("hs-sem1teacherScheduleSem1") || "{}"),
-        unitsSem1: JSON.parse(localStorage.getItem("hs-sem1-units") || "{}"),
-        notes: {},
-        cycleColors: getCycleColors(),
-        classColors: JSON.parse(localStorage.getItem("classColors") || "{}")
-      };
+    const backup = {
+      timestamp: new Date().toISOString(),
+      division: currentDiv,
+      teacherScheduleSem1: JSON.parse(localStorage.getItem("hs-sem1teacherScheduleSem1") || "{}"),
+      unitsSem1: JSON.parse(localStorage.getItem("hs-sem1-units") || "{}"),
+      notes: {},
+      cycleColors: getCycleColors(),
+      classColors: JSON.parse(localStorage.getItem("classColors") || "{}")
+    };
 
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith("notes_")) {
-          try {
-            backup.notes[key] = JSON.parse(localStorage.getItem(key));
-          } catch(e) {}
-        }
-      });
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith("notes_")) {
+        try {
+          backup.notes[key] = JSON.parse(localStorage.getItem(key));
+        } catch (e) {}
+      }
+    });
 
-      localStorage.setItem(backupKey, JSON.stringify(backup));
-      lastAutoBackupTime = Date.now();
+    localStorage.setItem(backupKey, JSON.stringify(backup));
+    lastAutoBackupTime = Date.now();
 
-      console.log(`Auto-backup saved for ${currentDiv}`);
-    } catch (e) {}
-  }, 5 * 60 * 1000);
-
-  // Status message in bottom right
-  const statusDiv = document.createElement("div");
-  statusDiv.id = "autoBackupStatus";
-  statusDiv.style = "position:fixed; bottom:15px; right:15px; background:#e0f2fe; color:#1e40af; padding:6px 12px; border-radius:6px; font-size:13px; z-index:9999; box-shadow:0 2px 8px rgba(0,0,0,0.1); min-width:140px; text-align:center;";
-  document.body.appendChild(statusDiv);
-
-  // Initial message
-  statusDiv.textContent = "Auto-backup active";
-
-  setInterval(() => {
-    const el = document.getElementById("autoBackupStatus");
-    if (lastAutoBackupTime) {
-      const minutesAgo = Math.floor((Date.now() - lastAutoBackupTime) / 60000);
-      el.textContent = `Auto-saved ${minutesAgo} min ago`;
-    } else {
-      el.textContent = "Auto-backup active";
+    // Profile snapshot (no toast inside)
+    if (typeof saveCurrentProfile === "function") {
+      saveCurrentProfile(false);
     }
-  }, 30000);
 
+    // One clear toast
+    const name =
+      typeof getProfiles === "function" && typeof getCurrentProfileId === "function"
+        ? (getProfiles()[getCurrentProfileId()] || {}).name || "Profile"
+        : "Profile";
+    const time = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    showProfileToast(`${name} saved · ${time}`);
+
+    // Badge
+    const status = document.getElementById("autoBackupStatus");
+    if (status) status.textContent = "Auto-saved just now";
+
+    console.log(`Auto-backup saved for ${currentDiv}`);
+  } catch (e) {
+    console.warn("Auto-backup failed", e);
+  }
+}, 5 * 60 * 1000);
+
+// Status badge (create once)
+const statusDiv = document.createElement("div");
+statusDiv.id = "autoBackupStatus";
+statusDiv.style.cssText =
+  "position:fixed; bottom:15px; right:15px; background:#e0f2fe; color:#1e40af; padding:6px 12px; border-radius:6px; font-size:13px; z-index:9999; box-shadow:0 2px 8px rgba(0,0,0,0.1); min-width:140px; text-align:center;";
+statusDiv.textContent = "Auto-backup active";
+document.body.appendChild(statusDiv);
+
+setInterval(() => {
+  const el = document.getElementById("autoBackupStatus");
+  if (!el) return;
+  if (lastAutoBackupTime) {
+    const minutesAgo = Math.floor((Date.now() - lastAutoBackupTime) / 60000);
+    el.textContent = minutesAgo === 0 ? "Auto-saved just now" : `Auto-saved ${minutesAgo} min ago`;
+  } else {
+    el.textContent = "Auto-backup active";
+  }
+}, 30000);
 
   </script>
 
@@ -6063,6 +6932,34 @@ window.closeAssessmentModal = function() {
       </div>
     </div>
   </div>
+  <div class="modal-backdrop" id="projectEditorBackdrop">
+  <div class="modal" style="width:520px; max-width:95vw;">
+    <div class="modal-header">
+      <div>
+        <div id="projectEditorTitle">Edit Project</div>
+        <div class="small" id="projectEditorSubtitle"></div>
+      </div>
+      <button class="secondary" id="closeProjectEditorBtn">Close</button>
+    </div>
+    <div class="modal-body">
+      <label for="projectNameInput">Name</label>
+      <input id="projectNameInput" type="text">
+
+      <label for="projectDueInput">Due date</label>
+      <input id="projectDueInput" type="date">
+
+      <label for="projectNotesInput">Notes / directions</label>
+      <textarea id="projectNotesInput" style="min-height:90px;"></textarea>
+
+      <label for="projectRubricInput">Rubric / checklist</label>
+      <textarea id="projectRubricInput" style="min-height:110px;"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="secondary" id="cancelProjectEditorBtn">Cancel</button>
+      <button id="saveProjectEditorBtn">Save Project</button>
+    </div>
+  </div>
+</div>
 
   <div class="modal-backdrop" id="shiftSummaryBackdrop">
     <div class="modal" style="width:640px; max-width:95vw;">
@@ -6173,6 +7070,10 @@ window.closeAssessmentModal = function() {
     <button id="startPlanningBtn">Start Planning</button>
   </div>
 </div>
+</div>
+
+<div id="profileToast"></div>
+
 
 </body>
 </html>
