@@ -5,6 +5,19 @@
   <title>HS Faculty Planner</title>
   <style>
 
+    .day-cell.day-off {
+  opacity: 0.75;
+  background: #f3f4f6;
+}
+.day-cell.day-off .day-date-line::after {
+  content: " · OFF";
+  font-weight: 600;
+  color: #6b7280;
+}
+body.dark .day-cell.day-off {
+  background: #2a2d31;
+}
+
     .collapse-header {
   width: 100%;
   text-align: left;
@@ -1005,6 +1018,44 @@ body.dark .day-cell.today.cycle-G { background: #3a4657; }
   gap: 0.35rem 0.6rem;
 }
 
+        .month-nav {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          justify-content: center;
+          margin-bottom: 20px;
+        }
+        .month-nav a {
+          text-decoration: none;
+          background: #e0e7ff;
+          color: #1e3a8a;
+          padding: 6px 12px;
+          border-radius: 999px;
+          font-size: 0.85rem;
+          font-weight: 600;
+        }
+        .month-block {
+          border: 1px solid #dbeafe;
+          border-radius: 12px;
+          margin-bottom: 16px;
+          background: #fff;
+          overflow: hidden;
+        }
+        .month-summary {
+          cursor: pointer;
+          list-style: none;
+          padding: 12px 16px;
+          font-size: 1.15rem;
+          font-weight: 700;
+          color: #1e40af;
+          background: #eff6ff;
+        }
+        .month-summary::-webkit-details-marker { display: none; }
+        .month-summary::before { content: "▸ "; }
+        details[open] > .month-summary::before { content: "▾ "; }
+        .month-body { padding: 12px 14px 4px; }
+        
+
 .modal-special-day {
   border-top: 1px solid var(--card-border);
   padding-top: 0.75rem;
@@ -1397,6 +1448,10 @@ body.dark #printableArea h3, #printableArea h3 {
     <span class="config-chevron">▼</span>
     <span>Rotation Rules</span>
   </button>
+<button type="button" id="clearCustomDaysBtn" class="secondary"
+  onclick = "window.clearAllCustomDays && window.clearAllCustomDays();">
+  Clear day overrides
+</button>
   <div class="config-section-body">
     <div id="rotationRulesLegend" class="small"></div>
 
@@ -1484,6 +1539,99 @@ body.dark #printableArea h3, #printableArea h3 {
 </main>
 
     <script>
+
+function isRotationLetter(letter) {
+  if (!letter) return false;
+  const n = normalizeLetter(letter);
+  return !!(n && getCurrentRotationRules()[n]);
+}
+
+function getLetterCycle() {
+  return Object.keys(getCurrentRotationRules()); // e.g. ["A","B",...,"G"]
+}
+
+/** Next school day after iso that is a weekday and not OFF in customDays (unless we only care about calendar walk) */
+function getNextSchoolDate(iso) {
+  const d = new Date(iso + "T12:00:00");
+  for (let i = 0; i < 366; i++) {
+    d.setDate(d.getDate() + 1);
+    const next = d.toISOString().slice(0, 10);
+    const dow = d.getDay();
+    if (dow === 0 || dow === 6) continue; // skip weekends
+    return next;
+  }
+  return null;
+}
+
+/**
+ * mode: "push" | "skip"
+ * fromDate: the day just marked OFF (that day already saved as OFF)
+ * displacedLetter: the letter that day used to have
+ */
+function reflowLettersFrom(fromDate, displacedLetter, mode) {
+  if (mode !== "push" && mode !== "skip") return;
+  if (!isRotationLetter(displacedLetter)) return;
+
+  const cycle = getLetterCycle();
+  if (!cycle.length) return;
+
+  // Build ordered list of school days AFTER fromDate that currently have a rotation letter
+  const allDates = [];
+  const start = new Date(fromDate + "T12:00:00");
+  // Walk forward ~1 year of weekdays
+  for (let i = 1; i <= 370; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    if (d.getDay() === 0 || d.getDay() === 6) continue;
+    allDates.push(d.toISOString().slice(0, 10));
+  }
+
+  // Resolve current letter for each date (override or built-in)
+  const sequence = [];
+  allDates.forEach(date => {
+    const day = getRotationDayByDate(date);
+    const letter = day?.letter;
+    if (isRotationLetter(letter)) {
+      sequence.push({ date, letter: normalizeLetter(letter) });
+    }
+  });
+
+  if (!sequence.length) return;
+
+  if (mode === "skip") {
+    // Letter is burned; leave all later days alone
+    return;
+  }
+
+  // mode === "push": insert displacedLetter at the first school day after fromDate,
+  // and shift each later letter one school-day forward (only write customDays)
+  const lettersToPlace = [
+    normalizeLetter(displacedLetter),
+    ...sequence.map(s => s.letter)
+  ];
+
+  // We need sequence.length school days to place lettersToPlace[0..sequence.length-1]
+  // Last letter falls off the end of this window (acceptable for v1) OR extend one more day
+  for (let i = 0; i < sequence.length; i++) {
+    const date = sequence[i].date;
+    const newLetter = lettersToPlace[i];
+    customDays[date] = { letter: newLetter, label: "" };
+  }
+
+  // Optional: place the final shifted letter on the next school day after sequence
+  if (lettersToPlace.length > sequence.length) {
+    const lastDate = sequence[sequence.length - 1].date;
+    const extra = getNextSchoolDate(lastDate);
+    if (extra) {
+      customDays[extra] = {
+        letter: lettersToPlace[sequence.length],
+        label: ""
+      };
+    }
+  }
+
+  saveCustomDays();
+}
 
 let editingProject = null; // { periodNum, projectId } or null for new
 
@@ -1611,6 +1759,18 @@ function noteToPlain(html) {
   const tmp = document.createElement("div");
   tmp.innerHTML = html || "";
   return (tmp.textContent || "").trim();
+}
+
+function noteToHtml(note) {
+  if (!note) return "";
+  // already HTML
+  if (/<[a-z][\s\S]*>/i.test(note)) return note;
+  // plain → escape only
+  return String(note)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br>");
 }
 
 function saveCurrentProfile(showToast = false) {
@@ -2149,7 +2309,8 @@ function collectCurrentProfileData() {
     rotationRules: JSON.parse(localStorage.getItem("rotationRules") || "null"),
     calendar: JSON.parse(localStorage.getItem("plannerCalendar") || "null"),
     events: JSON.parse(localStorage.getItem("plannerEvents") || "[]"),
-    settings: JSON.parse(localStorage.getItem("plannerSettings") || "{}")
+    settings: JSON.parse(localStorage.getItem("plannerSettings") || "{}"),
+    customDays: JSON.parse(JSON.stringify(customDays || {})),
   };
 }
 
@@ -2185,6 +2346,13 @@ function applyProfileData(data) {
   if (data.unitsSem1) {
     localStorage.setItem("hs-sem1-units", JSON.stringify(data.unitsSem1));
   }
+
+  if (data.customDays && typeof data.customDays === "object") {
+    customDays = data.customDays;
+  } else {
+    customDays = {};
+  }
+  if (typeof saveCustomDays === "function") saveCustomDays();
 
   // notes: clear old notes_ keys then restore
   Object.keys(localStorage).forEach(key => {
@@ -2260,7 +2428,8 @@ function createProfile(name, type = "teacher", fromCurrent = true) {
       specialDays: [],
       events: [],
       periodCount: 7,
-      settings: {}
+      settings: {},
+      customDays: {},
     }
   };
 
@@ -2919,31 +3088,50 @@ function hexToRgba(hex, alpha) {
   const blue = value & 255;
   return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
-
-function getPeriodsForDate(date, letterLike) {
-  const overrides = DIVISION_SPECIFIC_PERIOD_OVERRIDES[currentDivision]?.[currentSemester] || {};
-  if (overrides[date]) {
-    return overrides[date];
-  }
-  const fullPeriodDates = DIVISION_SPECIFIC_ALL_PERIOD_DATES[currentDivision]?.[currentSemester] || new Set();
-  if (fullPeriodDates.has(date)) {
-    return getPeriodNumbers();
-  }
-  const letter = normalizeLetter(letterLike);
-  return getCurrentRotationRules()[letter] || [];
-}
-
 function getPeriodOccurrenceDates(periodNum) {
   const dates = [];
   getCurrentRotationData().forEach(day => {
     const periods = getPeriodsForDate(day.date, day.letter);
-    if (periods.includes(periodNum)) {
+    if (periods.includes(periodNum) || periods.includes(Number(periodNum))) {
       dates.push(day.date);
     }
   });
   return dates;
 }
 
+function getPeriodsForDate(date, letterLike) {
+  // No letter / explicit OFF → no periods
+  if (
+    letterLike == null ||
+    letterLike === "" ||
+    String(letterLike).toUpperCase() === "OFF"
+  ) {
+    return [];
+  }
+
+  // Division-specific overrides (existing behavior)
+  const overrides =
+    DIVISION_SPECIFIC_PERIOD_OVERRIDES[currentDivision]?.[currentSemester] || {};
+  if (overrides[date]) {
+    return overrides[date];
+  }
+
+  // Full-period dates (existing behavior)
+  const fullPeriodDates =
+    DIVISION_SPECIFIC_ALL_PERIOD_DATES[currentDivision]?.[currentSemester] ||
+    new Set();
+  if (fullPeriodDates.has(date)) {
+    return getPeriodNumbers();
+  }
+
+  // Normal rotation letter
+  const letter = normalizeLetter(letterLike);
+  if (!letter || letter === "OFF") {
+    return [];
+  }
+
+  return getCurrentRotationRules()[letter] || [];
+}
 function applyUnitSchedule(periodNum, periodUnits, showAlert = false) {
   const unitsToSchedule = periodUnits.map((unit, index) => normalizeUnit(unit, index));
   const occurrenceDates = getPeriodOccurrenceDates(periodNum);
@@ -3205,8 +3393,18 @@ function getLocalTodayISO() {
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 }
 
-function getRotationDayByDate(date) {
-  return getCurrentRotationData().find(day => day.date === date) || null;
+function getRotationDayByDate(iso) {
+// --- Phase 1: optional teacher override ---
+  const override = getCustomDay(iso);
+  if (override) {
+    return {
+      date: iso,
+      letter: override.letter,
+      label: override.label || ""
+    };
+  }
+
+  return getCurrentRotationData().find(day => day.date === iso) || null;
 }
 
 function formatAgendaDateLine(date, letterText) {
@@ -3894,6 +4092,8 @@ window.setClassColorForPeriod = function(period, color) {
   renderPeriodSlots();
 };
 
+
+
 function addKnownClass() {
   const input = document.getElementById("newClassName");
   if (!input || !input.value.trim()) return;
@@ -3936,6 +4136,7 @@ function renderRotationLegend() {
 }
 
     // --- UI: schedule form ---
+
 
 function hydrateScheduleForm() {
   // No longer needed for inputs, but keep for compatibility
@@ -4008,122 +4209,116 @@ function renderCalendar() {
     monthGrid.appendChild(empty);
   }
 
-  for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
+    for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
     const iso = `${year}-${String(month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
     const dateObj = new Date(year, month - 1, dayNum);
     const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
-    const schoolDay = dayMap[iso] || null;
+
+    const schoolDay = getRotationDayByDate(iso) || dayMap[iso] || null;
     const cycleLetter = normalizeLetter(schoolDay?.letter);
-    
+    const letter = schoolDay?.letter;
+    const isOff = !!(letter && String(letter).toUpperCase() === "OFF");
+
+    const periodsForDay = schoolDay && !isOff
+      ? getPeriodsForDate(iso, schoolDay.letter)
+      : [];
+
     const dayNotes = loadNotesForDate(iso);
     const specialEntries = getUnifiedSpecialDaysForDate(iso);
 
+    const monthAbbrev = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month - 1];
+    const cleanDate = `${monthAbbrev}. ${dayNum}`;
+    const codedLabel = letter && !isOff ? ` - ${letter}` : "";
+
     const cell = document.createElement("div");
-    cell.className = `day-cell ${isWeekend ? 'weekend' : ''} ${!schoolDay ? 'empty' : ''}`;
+    cell.className = `day-cell ${isWeekend ? "weekend" : ""} ${!schoolDay ? "empty" : ""}`;
     cell.dataset.date = iso;
 
-    if (cycleLetter && getCurrentRotationRules()[cycleLetter]) {
+    if (isOff) {
+      cell.classList.add("empty");
+      cell.classList.add("day-off");
+    }
+
+    const hasCycle = !!(cycleLetter && getCurrentRotationRules()[cycleLetter]);
+    if (hasCycle) {
       cell.classList.add(`cycle-${cycleLetter}`);
+    } else if (schoolDay) {
+      cell.classList.add("no-cycle");
     }
     if (iso === todayISO) cell.classList.add("today");
 
-    
-const hasCycle =
-  !!(cycleLetter && getCurrentRotationRules()[cycleLetter]);
-
-if (hasCycle) {
-  cell.classList.add(`cycle-${cycleLetter}`);
-} else if (schoolDay) {
-  // First day *, Labor Day, Reading Day, Exam, PSAT, Fall Break, Homecoming, etc.
-  cell.classList.add("no-cycle");
-}
-
-    // === Smart Hover Agenda ===
+        // === Smart Hover Agenda ===
     const hoverAgenda = document.createElement("div");
     hoverAgenda.className = "hover-agenda";
 
-    const monthAbbrev = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][month - 1];
-    const cleanDate = `${monthAbbrev}. ${dayNum}`;
-    const codedLabel = schoolDay?.letter ? ` - ${schoolDay.letter}` : "";
-
-    const weekdayName = dateObj.toLocaleDateString('en-US', { weekday: "long" });
+    const weekdayName = dateObj.toLocaleDateString("en-US", { weekday: "long" });
     let hoverContent = `<strong>${cleanDate} — ${weekdayName}${codedLabel}</strong><br><br>`;
-
     let hasContent = false;
 
-        if (dayNotes.general && dayNotes.general.trim()) {
+    if (isOff) {
       hasContent = true;
-      hoverContent += `...${noteToPlain(dayNotes.general)}...`;
+      hoverContent += `<span style="color:#6b7280;font-weight:600;">OFF — No classes</span><br><br>`;
+    }
+
+    if (dayNotes.general && String(dayNotes.general).trim()) {
+      hasContent = true;
+      hoverContent += `${typeof noteToPlain === "function" ? noteToHtml(dayNotes.general) : dayNotes.general}<br><br>`;
     }
 
     if (dayNotes.noTest) {
-      hoverContent += `<span style="color:#166534; font-weight:600;">NO TEST TODAY</span><br>`;
+      hasContent = true;
+      hoverContent += `<span style="color:#166534;font-weight:600;">NO TEST TODAY</span><br>`;
     }
 
     if (specialEntries.length) {
+      hasContent = true;
       hoverContent += `<span style="color:#7c3aed;">${specialEntries.map(e => e.label).join(", ")}</span><br><br>`;
     }
 
-    if (schoolDay) {
-      const periodsForDay = getPeriodsForDate(iso, schoolDay.letter);
-      if (periodsForDay.length) {
-        periodsForDay.forEach(periodNum => {
-          const unitInfo = getUnitProgress(periodNum, classCounts[periodNum], iso);
-          if (true) {  // show every period that meets today, including Off 
-            hasContent = true;
-            hoverContent += `<strong>${periodNum}: ${unitInfo.courseName}</strong>`;
-
-            if (unitInfo.unitName) hoverContent += ` — ${unitInfo.unitName}`;
-            if (unitInfo.topicName) hoverContent += ` (${unitInfo.topicName})`;
-            if (unitInfo.dayInUnit && unitInfo.unitLength) hoverContent += ` [Day ${unitInfo.dayInUnit}/${unitInfo.unitLength}]`;
-
-            if (dayNotes[periodNum]) {
-              hoverContent += `<br><span style="color:#555;">Note: ${dayNotes[periodNum]}</span>`;
-            }
-
-            if (unitInfo.hasTestToday || dayNotes[`test-${periodNum}`]) {
-              hoverContent += ` <span style="color:#b91c1c; font-weight:600;">(TEST)</span>`;
-            } else if (unitInfo.hasQuizToday || dayNotes[`quiz-${periodNum}`]) {
-              hoverContent += ` <span style="color:#1d4ed8; font-weight:600;">(QUIZ)</span>`;
-            }
-
-            getProjectsForPeriod(periodNum)
-              .filter(p => p.dueDate === iso)
-              .forEach(p => {
-                hasContent = true;
-                hoverContent += ` <span style="color:#b91c1c;font-weight:600;">(PROJECT: ${p.name})</span>`;
-              });
-
-            hoverContent += `<br><br>`;
-
-            
-          }
-        });
-      }
+    if (!isOff && periodsForDay.length) {
+      periodsForDay.forEach(periodNum => {
+        const unitInfo = getUnitProgress(
+          periodNum,
+          (classCounts[periodNum] || 0) + 1,
+          iso
+        );
+        hasContent = true;
+        hoverContent += `<strong>${periodNum}: ${unitInfo.courseName}</strong>`;
+        if (unitInfo.unitName) hoverContent += ` — ${unitInfo.unitName}`;
+        if (unitInfo.topicName) hoverContent += ` (${unitInfo.topicName})`;
+        if (unitInfo.dayInUnit && unitInfo.unitLength) {
+          hoverContent += ` [Day ${unitInfo.dayInUnit}/${unitInfo.unitLength}]`;
+        }
+        if (dayNotes[periodNum]) {
+          hoverContent += `<br><span style="color:#555;">Note: ${
+            typeof noteToHtml === "function" ? noteToHtml(dayNotes[periodNum]) : dayNotes[periodNum]
+          }</span>`;
+        }
+        if (unitInfo.hasTestToday || dayNotes[`test-${periodNum}`]) {
+          hoverContent += ` <span style="color:#b91c1c;font-weight:600;">(TEST)</span>`;
+        } else if (unitInfo.hasQuizToday || dayNotes[`quiz-${periodNum}`]) {
+          hoverContent += ` <span style="color:#1d4ed8;font-weight:600;">(QUIZ)</span>`;
+        }
+        if (typeof getProjectsForPeriod === "function") {
+          getProjectsForPeriod(periodNum)
+            .filter(p => p.dueDate === iso)
+            .forEach(p => {
+              hoverContent += ` <span style="color:#b91c1c;font-weight:600;">(PROJECT: ${p.name})</span>`;
+            });
+        }
+        hoverContent += `<br><br>`;
+      });
     }
 
-if (hasContent || dayNotes.noTest || specialEntries.length) {
+    if (hasContent || dayNotes.noTest || specialEntries.length) {
       hoverAgenda.innerHTML = hoverContent;
       cell.appendChild(hoverAgenda);
     }
-    // Strong red for test on No Test day conflict
-    const hasConflict = (dayNotes.noTest || isAutoNoTestDay(iso)) && 
-                       Object.keys(dayNotes).some(k => k.startsWith('test-') && dayNotes[k] === true);
 
-    if (hasConflict) {
-      cell.style.background = '#000000';     // bright red
-      cell.style.color = '#ffffff';          // white text
-      cell.style.borderColor = '#991b1b';
-      cell.style.boxShadow = 'inset 0 0 0 3px #ef4444';
-      
-      // Force period text white
-      const periodLis = cell.querySelectorAll('.classes-list li');
-      periodLis.forEach(li => {
-        li.style.color = '#ffffff';
-      });
-    }
+    // --- Header ---
     const header = document.createElement("div");
     header.className = "day-cell-header";
+
     const dateLine = document.createElement("div");
     dateLine.className = "day-date-line";
     dateLine.textContent = `${cleanDate}${codedLabel}`;
@@ -4132,28 +4327,25 @@ if (hasContent || dayNotes.noTest || specialEntries.length) {
     const badgeRow = document.createElement("div");
     badgeRow.className = "day-badge-row";
 
-    // Special tags
+    if (isOff) {
+      const offBadge = document.createElement("span");
+      offBadge.className = "status-badge no-test-day";
+      offBadge.textContent = "OFF";
+      badgeRow.appendChild(offBadge);
+    }
+
     if (!hideAllSpecialTags) {
       specialEntries.forEach(entry => {
         if (entry.appliesTo !== "day") return;
-
-        const wrapper = document.createElement("div");
-        wrapper.style.display = "inline-flex";
-        wrapper.style.alignItems = "center";
-        wrapper.style.gap = "4px";
-
         const badge = document.createElement("span");
         badge.className = "special-day-badge";
-        badge.textContent = `${entry.label}`;
+        badge.textContent = entry.label;
         badge.style.background = hexToRgba(entry.color, 0.45);
         badge.style.borderColor = entry.color;
-
-        wrapper.appendChild(badge);
-        badgeRow.appendChild(wrapper);
+        badgeRow.appendChild(badge);
       });
     }
 
-    // No Test Today (from modal toggle)
     if (dayNotes.noTest && !isAutoNoTestDay(iso)) {
       const noTestBadge = document.createElement("span");
       noTestBadge.className = "status-badge no-test-day";
@@ -4161,7 +4353,6 @@ if (hasContent || dayNotes.noTest || specialEntries.length) {
       badgeRow.appendChild(noTestBadge);
     }
 
-    // Project due any period today
     const hasProjectDue = getPeriodNumbers().some(pn =>
       getProjectsForPeriod(pn).some(p => p.dueDate === iso)
     );
@@ -4175,26 +4366,25 @@ if (hasContent || dayNotes.noTest || specialEntries.length) {
     if (badgeRow.childElementCount > 0) {
       header.appendChild(badgeRow);
     }
-
     cell.appendChild(header);
 
-    if (schoolDay) {
-      const periodsForDay = getPeriodsForDate(iso, schoolDay.letter);
-      if (periodsForDay.length) {
-        const ul = document.createElement("ul");
-        ul.className = "classes-list";
+    // --- Class list (not on OFF) ---
+    if (periodsForDay.length) {
+      const ul = document.createElement("ul");
+      ul.className = "classes-list";
 
-        periodsForDay.forEach(periodNum => {
-          classCounts[periodNum] = (classCounts[periodNum] || 0) + 1;
-          const periodDayCount = classCounts[periodNum];
-          const unitInfo = getUnitProgress(periodNum, periodDayCount, iso);
-          const li = document.createElement("li");
-          li.dataset.period = String(periodNum);
-          li.dataset.unitName = (unitInfo.unitName || "").toLowerCase();
-          li.dataset.courseName = unitInfo.courseName.toLowerCase();
-        const className = unitInfo.courseName || teacherSchedule[periodNum] || `Period ${periodNum}`;
+      periodsForDay.forEach(periodNum => {
+        classCounts[periodNum] = (classCounts[periodNum] || 0) + 1;
+        const periodDayCount = classCounts[periodNum];
+        const unitInfo = getUnitProgress(periodNum, periodDayCount, iso);
+
+        const li = document.createElement("li");
+        li.dataset.period = String(periodNum);
+        li.dataset.unitName = (unitInfo.unitName || "").toLowerCase();
+        li.dataset.courseName = (unitInfo.courseName || "").toLowerCase();
+        li.classList.add(`period-${periodNum}`);
+
         const classColor = getColorForPeriod(periodNum);
-
         if (classColor) {
           li.style.background = classColor;
           li.style.color = "#ffffff";
@@ -4204,93 +4394,106 @@ if (hasContent || dayNotes.noTest || specialEntries.length) {
           li.style.fontWeight = "600";
         }
 
-          const classPrefix = `${periodNum}: ${unitInfo.courseName} (${periodDayCount})`;
-          let classLine = `${periodNum}: ${unitInfo.courseName}`;
+        const classPrefix = `${periodNum}: ${unitInfo.courseName} (${periodDayCount})`;
+        let classLine = `${periodNum}: ${unitInfo.courseName}`;
 
-          if (unitInfo.unitName) {
-            const unitLabel = unitInfo.unitName;
-            const topicSuffix = unitInfo.topicName ? `: ${unitInfo.topicName}` : "";
-            const dayCounter = (unitInfo.dayInUnit && unitInfo.unitLength) 
-              ? ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})` 
+        if (unitInfo.unitIndex !== null) {
+          const unitLabel = unitInfo.unitName || `Unit ${unitInfo.unitIndex + 1}`;
+          const topicSuffix = unitInfo.topicName ? `: ${unitInfo.topicName}` : "";
+          const dayCounter =
+            unitInfo.dayInUnit && unitInfo.unitLength
+              ? ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})`
               : "";
-            classLine = `${classLine} — ${unitLabel}${topicSuffix}${dayCounter}`;
-          }
+          classLine = `${classPrefix} • ${unitLabel}${topicSuffix}${dayCounter}`;
+        } else if (unitInfo.unitName) {
+          const topicSuffix = unitInfo.topicName ? `: ${unitInfo.topicName}` : "";
+          const dayCounter =
+            unitInfo.dayInUnit && unitInfo.unitLength
+              ? ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})`
+              : "";
+          classLine = `${classLine} — ${unitInfo.unitName}${topicSuffix}${dayCounter}`;
+        }
 
-          if (unitInfo.unitIndex !== null) {
-            const unitLabel = unitInfo.unitName || `Unit ${unitInfo.unitIndex + 1}`;
-            const topicSuffix = unitInfo.topicName ? `: ${unitInfo.topicName}` : "";
-            const dayCounter = (unitInfo.dayInUnit && unitInfo.unitLength) ? ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})` : "";
-            classLine = `${classPrefix} • ${unitLabel}${topicSuffix}${dayCounter}`;
-          }
+        li.appendChild(document.createTextNode(classLine));
 
-          li.appendChild(document.createTextNode(classLine));
+        const specialDay = specialEntries[0] || null;
+        if (
+          specialDay &&
+          specialDay.appliesTo === "periods" &&
+          specialDayAppliesToPeriod(specialDay, periodNum)
+        ) {
+          const specialBadge = document.createElement("span");
+          specialBadge.className = "special-day-badge";
+          specialBadge.textContent = specialDay.label;
+          specialBadge.style.background = hexToRgba(specialDay.color, 0.45);
+          specialBadge.style.borderColor = specialDay.color;
+          li.appendChild(specialBadge);
+        }
 
-          // Special period tags
-          const specialDay = specialEntries[0] || null;
-          if (specialDay && specialDay.appliesTo === "periods" && specialDayAppliesToPeriod(specialDay, periodNum)) {
-            const specialBadge = document.createElement("span");
-            specialBadge.className = "special-day-badge";
-            specialBadge.textContent = specialDay.label;
-            specialBadge.title = specialDay.label;
-            specialBadge.style.background = hexToRgba(specialDay.color, 0.45);
-            specialBadge.style.color = "#1f2937";
-            specialBadge.style.borderColor = specialDay.color;
-            li.appendChild(specialBadge);
-          }
+        const hasModalTest = dayNotes[`test-${periodNum}`] === true;
+        const hasModalQuiz = dayNotes[`quiz-${periodNum}`] === true;
 
-// Period-level Test / Quiz
-const hasModalTest = dayNotes[`test-${periodNum}`] === true;
-const hasModalQuiz = dayNotes[`quiz-${periodNum}`] === true;
+        if (unitInfo.hasQuizToday || hasModalQuiz) {
+          const quizBadge = document.createElement("span");
+          quizBadge.className = "assessment-badge quiz";
+          quizBadge.textContent = "Quiz";
+          li.appendChild(quizBadge);
+        }
 
-if (unitInfo.hasQuizToday || hasModalQuiz) {
-  const quizBadge = document.createElement("span");
-  quizBadge.className = "assessment-badge quiz";
-  quizBadge.textContent = "Quiz";
-  quizBadge.title = "Quiz Today";
-  li.appendChild(quizBadge);
-}
+        if (unitInfo.hasTestToday || hasModalTest) {
+          const testBadge = document.createElement("span");
+          testBadge.className = "assessment-badge test";
+          testBadge.textContent = "Test";
+          li.appendChild(testBadge);
+        }
 
-if (unitInfo.hasTestToday || hasModalTest) {
-  const testBadge = document.createElement("span");
-  testBadge.className = "assessment-badge test";
-  testBadge.textContent = "Test";
-  testBadge.title = "Test Today";
-  li.appendChild(testBadge);
-}
+        getProjectsForPeriod(periodNum)
+          .filter(p => p.dueDate === iso)
+          .forEach(p => {
+            const projBadge = document.createElement("span");
+            projBadge.className = "status-badge test-day";
+            projBadge.textContent = "PROJECT";
+            projBadge.title = p.name;
+            li.appendChild(projBadge);
+            li.appendChild(document.createTextNode(` ${p.name}`));
+          });
 
-// Projects due this day for this period
-getProjectsForPeriod(periodNum)
-  .filter(p => p.dueDate === iso)
-  .forEach(p => {
-    const projBadge = document.createElement("span");
-    projBadge.className = "status-badge test-day";
-    projBadge.textContent = "PROJECT";
-    projBadge.title = p.name;
-    li.appendChild(projBadge);
+        ul.appendChild(li);
+      });
 
-    li.appendChild(document.createTextNode(` ${p.name}`));
-  });
-
-          li.classList.add(`period-${periodNum}`);
-          ul.appendChild(li);
-        });
-        cell.appendChild(ul);
-      }
+      cell.appendChild(ul);
     }
 
-cell.addEventListener("click", (e) => {
-  openDayModal({ 
-    date: iso, 
-    letter: schoolDay ? schoolDay.letter : `No ${getCurrentConfig().name} classes` 
-  });
-});
+    cell.addEventListener("click", () => {
+      openDayModal({
+        date: iso,
+        letter: schoolDay
+          ? schoolDay.letter
+          : `No ${getCurrentConfig().name} classes`
+      });
+    });
 
-monthGrid.appendChild(cell);
+    monthGrid.appendChild(cell);
   }
 
   calendarRoot.appendChild(monthGrid);
   localStorage.setItem(LS_CLASS_COUNT_KEY, JSON.stringify(classCounts));
   renderSummary();
+}
+
+function getRotationDayByDate(iso) {
+  if (!iso) return null;
+
+  const override = getCustomDay(iso);
+  if (override) {
+    return {
+      date: iso,
+      letter: override.letter,
+      label: override.label || ""
+    };
+  }
+
+  return getCurrentRotationData().find(day => day.date === iso) || null;
 }
 
 function openDayModal(day) {
@@ -4301,23 +4504,53 @@ function openDayModal(day) {
   const letterLabel = document.getElementById("modalLetterLabel");
   const body = document.getElementById("modalBody");
 
+  const override = getCustomDay(day.date);
+  const effectiveLetter = override ? override.letter : day.letter;
+
   dateLabel.textContent = formatDateLabel(day.date);
-  letterLabel.textContent = getCurrentRotationRules()[normalizeLetter(day.letter)]
-    ? `${getCurrentConfig().name} letter: ${day.letter}`
-    : (day.letter || `No ${getCurrentConfig().name} classes`);
+
+  if (override) {
+    letterLabel.textContent =
+      `Override: ${override.letter}` +
+      (override.label ? ` — ${override.label}` : "");
+  } else {
+    letterLabel.textContent = getCurrentRotationRules()[normalizeLetter(day.letter)]
+      ? `${getCurrentConfig().name} letter: ${day.letter}`
+      : (day.letter || `No ${getCurrentConfig().name} classes`);
+  }
 
   body.innerHTML = "";
 
   const existingNotes = loadNotesForDate(day.date);
-  console.log("Loaded notes for", day.date, existingNotes);
   const autoNoTest = isAutoNoTestDay(day.date);
   const specialEntries = getUnifiedSpecialDaysForDate(day.date);
 
-  const periods = getPeriodsForDate(day.date, day.letter);
+  // Use effective letter so OFF / override shows correct periods
+  const periods = getPeriodsForDate(day.date, effectiveLetter);
   const dayCounts = getDayCountsForDate(day.date, periods);
 
   const shiftAllBtn = document.getElementById("shiftAllUnitsBtn");
   if (shiftAllBtn) shiftAllBtn.style.display = periods.length ? "inline-block" : "none";
+
+  const currentLetter = override ? override.letter : (day.letter || "");
+  const letters = Object.keys(getCurrentRotationRules());
+
+  const letterBlock = document.createElement("div");
+  letterBlock.className = "note-block";
+  letterBlock.innerHTML = `
+    <label for="modalDayLetter">Day letter / schedule</label>
+    <select id="modalDayLetter">
+      <option value="DEFAULT" ${!override ? "selected" : ""}>Default (built-in calendar)</option>
+      ${letters.map(L =>
+        `<option value="${L}" ${override && currentLetter === L ? "selected" : ""}>${L}</option>`
+      ).join("")}
+      <option value="OFF" ${override && currentLetter === "OFF" ? "selected" : ""}>OFF — No classes</option>
+    </select>
+    <div class="small" style="margin-top:4px;">
+      Default uses the school rotation list. Override only changes this date.
+    </div>
+  `;
+  body.appendChild(letterBlock);
 
   // === NEW: GENERAL DAY NOTES ===
 const generalBlock = document.createElement("div");
@@ -4506,6 +4739,59 @@ function handleSaveNotes() {
     notesObj[period] = doc.innerHTML.trim();
   });
 
+  const letterSelect = document.getElementById("modalDayLetter");
+  if (letterSelect) {
+    const newVal = letterSelect.value;
+    const date = currentModalDay.date;
+
+    // What letter was this day BEFORE this save?
+    const previous = getCustomDay(date);
+    const builtIn = getCurrentRotationData().find(d => d.date === date);
+    const oldLetter = previous
+      ? previous.letter
+      : (builtIn?.letter || currentModalDay.letter || "");
+
+    if (newVal === "DEFAULT") {
+      setCustomDay(date, "DEFAULT");
+    } else {
+      setCustomDay(date, newVal);
+    }
+
+    // Phase 2: OFF + had a real letter → ask push / skip / this day only
+    const goingOff = newVal === "OFF";
+    const hadLetter = isRotationLetter(oldLetter);
+
+    if (goingOff && hadLetter) {
+    const choice = prompt(
+      `This day was ${normalizeLetter(oldLetter)}.\n\n` +
+      `Type one of:\n` +
+      `  push — slide letters to following school days\n` +
+      `  skip — drop this letter; leave later days as-is\n`,
+            "skip"
+    );
+
+      alert(
+    "Letters updated.\n\n" +
+    "Special tags, notes, units, and projects were NOT moved.\n" +
+    "Adjust those manually if needed."
+  );
+
+      const mode = (choice || "none").trim().toLowerCase();
+      if (mode === "push" || mode === "skip") {
+        reflowLettersFrom(date, oldLetter, mode);
+      }
+    }
+  }
+
+  if (letterSelect) {
+    const val = letterSelect.value;
+    if (val === "DEFAULT") {
+      setCustomDay(currentModalDay.date, "DEFAULT");
+    } else {
+      setCustomDay(currentModalDay.date, val);
+    }
+  }
+
   // Save Test + Quiz checkboxes
   const periods = getPeriodsForDate(currentModalDay.date, currentModalDay.letter);
   periods.forEach(periodNum => {
@@ -4553,6 +4839,41 @@ function handleClearNotes() {
 
   renderCalendar();
   closeDayModal(); // or reopen to show empty fields
+}
+
+const LS_CUSTOM_DAYS_KEY = "-customDays";
+let customDays = {}; // { "YYYY-MM-DD": { letter: "A"|"OFF"|..., label?: "" } }
+
+function loadCustomDays() {
+  const raw = localStorage.getItem(getStorageKey(LS_CUSTOM_DAYS_KEY));
+  if (!raw) {
+    customDays = {};
+    return;
+  }
+  try {
+    customDays = JSON.parse(raw) || {};
+  } catch (e) {
+    console.warn("Failed to parse customDays", e);
+    customDays = {};
+  }
+}
+
+function saveCustomDays() {
+  localStorage.setItem(getStorageKey(LS_CUSTOM_DAYS_KEY), JSON.stringify(customDays));
+}
+
+function setCustomDay(date, letter, label = "") {
+  if (!date) return;
+  if (!letter || letter === "DEFAULT") {
+    delete customDays[date];
+  } else {
+    customDays[date] = { letter, label: label || "" };
+  }
+  saveCustomDays();
+}
+
+function getCustomDay(date) {
+  return customDays[date] || null;
 }
 
     // === NEW: UNIT MANAGEMENT ===
@@ -4844,6 +5165,14 @@ function renderSpecialDays() {
       container.appendChild(row);
     });
 }
+
+window.clearAllCustomDays = function() {
+  if (!confirm("Remove all day overrides and return to the built-in calendar?")) return;
+  customDays = {};
+  saveCustomDays();
+  renderCalendar();
+  alert("Overrides cleared.");
+};
 
 window.removeKnownClass = function(index) {
   let knownClasses = [];
@@ -5682,7 +6011,8 @@ document.getElementById("backupBtn").addEventListener("click", () => {
         cycleColors: getCycleColors(),
         classColors: JSON.parse(localStorage.getItem("classColors") || "{}"),
         profiles: getProfiles(),
-        currentProfileId: getCurrentProfileId()
+        currentProfileId: getCurrentProfileId(),
+        customDays: JSON.parse(JSON.stringify(customDays || {})),
       };
 
   Object.keys(localStorage).forEach(key => {
@@ -5751,6 +6081,13 @@ if (backup.currentProfileId) {
         }
         if (backup.classColors) {
           localStorage.setItem("classColors", JSON.stringify(backup.classColors));
+        }
+
+        if (data.customDays && typeof data.customDays === "object") {
+          customDays = data.customDays;
+          saveCustomDays();
+        } else {
+          // leave existing or clear — your choice; safest is leave unchanged if missing
         }
 
         alert(`✅ Restore successful for ${backupDivision}!`);
@@ -5889,32 +6226,88 @@ function initCollapsibleSections() {
 }
 function applyPrintFilters() {
   const selectedUnitText = document.getElementById("printUnitFilter").value.toLowerCase().trim();
-  const selectedPeriods = Array.from(document.querySelectorAll('#printPeriodFilters input[type="checkbox"]:checked'))
-    .map(input => Number(input.value));
-  const selectedMonths = Array.from(document.querySelectorAll('#printMonthFilters input[type="checkbox"]:checked'))
-    .map(input => input.value);
+  const selectedPeriods = Array.from(
+    document.querySelectorAll('#printPeriodFilters input[type="checkbox"]:checked')
+  ).map(input => Number(input.value));
+  const selectedMonths = Array.from(
+    document.querySelectorAll('#printMonthFilters input[type="checkbox"]:checked')
+  ).map(input => input.value);
 
   let html = `
     <html>
     <head>
       <title>${getCurrentConfig().name} Rotation Planner</title>
       <style>
-        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-        h1 { text-align: center; color: #1e40af; }
-        h2 { margin-top: 40px; border-bottom: 3px solid #2563eb; padding-bottom: 10px; color: #1e40af; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .day { border: 1px solid #ddd; border-radius: 8px; padding: 14px; page-break-inside: avoid; }
-        .note { font-style: italic; color: #555; }
-        .special { color: #7c3aed; font-weight: 600; }
+        * { box-sizing: border-box; }
+        body {
+          font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+          margin: 24px auto;
+          max-width: 800px;
+          line-height: 1.45;
+          color: #111827;
+        }
+        h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; }
+        .meta { text-align: center; color: #6b7280; font-size: 0.9rem; margin-bottom: 28px; }
+        h2 {
+          margin: 32px 0 12px;
+          padding-bottom: 6px;
+          border-bottom: 2px solid #2563eb;
+          color: #1e40af;
+          font-size: 1.25rem;
+        }
+        .day {
+          border: 1px solid #e5e7eb;
+          border-radius: 10px;
+          padding: 14px 16px;
+          margin-bottom: 12px;
+          background: #fafafa;
+          page-break-inside: avoid;
+        }
+        .day-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 8px; }
+        .special {
+          display: inline-block;
+          background: #f3e8ff;
+          color: #6b21a8;
+          font-weight: 600;
+          font-size: 0.85rem;
+          padding: 2px 8px;
+          border-radius: 999px;
+          margin: 0 6px 8px 0;
+        }
+        .general-note {
+          background: #eff6ff;
+          border-left: 3px solid #2563eb;
+          padding: 8px 10px;
+          margin: 8px 0;
+          border-radius: 0 6px 6px 0;
+          font-size: 0.92rem;
+        }
+        .period {
+          padding: 6px 0;
+          border-top: 1px solid #e5e7eb;
+          font-size: 0.95rem;
+        }
+        .period:first-of-type { border-top: none; }
+        .note {
+          display: block;
+          margin-top: 4px;
+          font-size: 0.88rem;
+          color: #4b5563;
+          font-style: italic;
+        }
+        .badge-test { color: #b91c1c; font-weight: 700; }
+        .badge-quiz { color: #1d4ed8; font-weight: 700; }
+        .no-test { margin-top: 8px; color: #166534; font-weight: 600; font-size: 0.9rem; }
+        @media print {
+          body { margin: 12px; max-width: none; }
+          .day { break-inside: avoid; background: #fff; }
+        }
       </style>
     </head>
-
     <body>
       <h1>${getCurrentConfig().name} Rotation Planner</h1>
-      <p style="text-align:center; color:#666;">Generated on ${new Date().toLocaleDateString()}</p>
+      <p class="meta">Generated ${new Date().toLocaleDateString()}</p>
   `;
-
-  
 
   const months = getCurrentMonths();
   const activeMonths = months.filter(monthObj => {
@@ -5924,64 +6317,110 @@ function applyPrintFilters() {
 
   let hasContent = false;
 
-  activeMonths.forEach(monthObj => {
-    const monthLabel = new Date(monthObj.year, monthObj.month - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
-    html += `<h2>${monthLabel}</h2>`;
-    html += `<div class="grid">`;
+  // Month jump links
+  html += `<nav class="month-nav">`;
+  activeMonths.forEach((monthObj, i) => {
+    const shortLabel = new Date(monthObj.year, monthObj.month - 1, 1).toLocaleDateString(
+      undefined,
+      { month: "short", year: "numeric" }
+    );
+    html += `<a href="#month-${i}">${shortLabel}</a>`;
+  });
+  html += `</nav>`;
+
+  activeMonths.forEach((monthObj, monthIndex) => {
+    const monthLabel = new Date(monthObj.year, monthObj.month - 1, 1).toLocaleDateString(
+      undefined,
+      { month: "long", year: "numeric" }
+    );
+    const openAttr = monthIndex === 0 ? " open" : "";
+
+    html += `<details class="month-block" id="month-${monthIndex}"${openAttr}>`;
+    html += `<summary class="month-summary">${monthLabel}</summary>`;
+    html += `<div class="month-body">`;
 
     monthObj.days.forEach(day => {
       const dateObj = new Date(day.date + "T12:00:00");
-      const weekdayName = dateObj.toLocaleDateString('en-US', { weekday: "long" });
+      const weekdayName = dateObj.toLocaleDateString("en-US", { weekday: "long" });
 
-      const periodsForDay = getPeriodsForDate(day.date, day.letter);
-      if (periodsForDay.length === 0) return;
-
+      const schoolDay = getRotationDayByDate(day.date) || day;
+      const periodsForDay = getPeriodsForDate(day.date, schoolDay.letter);
       const dayNotes = loadNotesForDate(day.date);
       const specialEntries = getUnifiedSpecialDaysForDate(day.date);
+      const hasGeneral = dayNotes.general && String(dayNotes.general).trim();
 
-      // Filter by selected periods
-      const filteredPeriods = periodsForDay.filter(p => selectedPeriods.length === 0 || selectedPeriods.includes(p));
-      if (filteredPeriods.length === 0) return;
+      if (periodsForDay.length === 0 && !hasGeneral) return;
 
-      html += `<div class="day"><strong>${day.date} — ${weekdayName} (${day.letter || 'No classes'})</strong><br>`;
+      const filteredPeriods = periodsForDay.filter(
+        p => selectedPeriods.length === 0 || selectedPeriods.includes(p)
+      );
+      if (filteredPeriods.length === 0 && !hasGeneral) return;
+
+      const letterLabel = schoolDay.letter || day.letter || "No classes";
+      html += `<div class="day">`;
+      html += `<div class="day-title">${day.date} — ${weekdayName} (${letterLabel})</div>`;
 
       if (specialEntries.length) {
-        html += `<div class="special">Special: ${specialEntries.map(e => e.label).join(", ")}</div>`;
+        specialEntries.forEach(e => {
+          html += `<span class="special">${e.label}</span>`;
+        });
+      }
+
+      if (hasGeneral) {
+        html += `<div class="general-note"><strong>Day notes:</strong> ${
+          typeof noteToHtml === "function" ? noteToHtml(dayNotes.general) : dayNotes.general
+        }</div>`;
       }
 
       filteredPeriods.forEach(periodNum => {
-        const unitInfo = getUnitProgress(periodNum, getDayCountsForDate(day.date, periodsForDay)[periodNum], day.date);
+        const unitInfo = getUnitProgress(
+          periodNum,
+          getDayCountsForDate(day.date, periodsForDay)[periodNum],
+          day.date
+        );
 
-        // Unit name filter
-        if (selectedUnitText && !unitInfo.unitName.toLowerCase().includes(selectedUnitText)) {
+        if (
+          selectedUnitText &&
+          !(unitInfo.unitName || "").toLowerCase().includes(selectedUnitText)
+        ) {
           return;
         }
 
         let line = `${periodNum}: ${unitInfo.courseName}`;
-
         if (unitInfo.unitName) line += ` — ${unitInfo.unitName}`;
-        if (unitInfo.dayInUnit && unitInfo.unitLength) line += ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})`;
-        if (dayNotes[periodNum]) line += `<br><span class="note">Note: ${dayNotes[periodNum]}</span>`;
-        if (unitInfo.hasTestToday || dayNotes[`test-${periodNum}`]) {
-          line += ` <strong style="color:#b91c1c;">(TEST)</strong>`;
-        } else if (unitInfo.hasQuizToday || dayNotes[`quiz-${periodNum}`]) {
-          line += ` <strong style="color:#1d4ed8;">(QUIZ)</strong>`;
+        if (unitInfo.dayInUnit && unitInfo.unitLength) {
+          line += ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})`;
         }
 
-        html += `<div>${line}</div>`;
+        html += `<div class="period">${line}`;
+        if (dayNotes[periodNum]) {
+          html += `<span class="note">Note: ${
+            typeof noteToHtml === "function"
+              ? noteToHtml(dayNotes[periodNum])
+              : dayNotes[periodNum]
+          }</span>`;
+        }
+        if (unitInfo.hasTestToday || dayNotes[`test-${periodNum}`]) {
+          html += ` <span class="badge-test">(TEST)</span>`;
+        } else if (unitInfo.hasQuizToday || dayNotes[`quiz-${periodNum}`]) {
+          html += ` <span class="badge-quiz">(QUIZ)</span>`;
+        }
+        html += `</div>`;
       });
 
-      if (dayNotes.noTest) html += `<div style="color:#166534; font-weight:600;">NO TEST TODAY</div>`;
+      if (dayNotes.noTest) {
+        html += `<div class="no-test">NO TEST TODAY</div>`;
+      }
 
       html += `</div>`;
       hasContent = true;
     });
 
-    html += `</div>`;
+    html += `</div></details>`;
   });
 
   if (!hasContent) {
-    html += `<p style="text-align:center; color:#666; font-style:italic;">No matching entries found for the selected filters.</p>`;
+    html += `<p style="text-align:center;color:#666;font-style:italic;">No matching entries found for the selected filters.</p>`;
   }
 
   html += `</body></html>`;
@@ -5995,7 +6434,7 @@ function applyPrintFilters() {
   URL.revokeObjectURL(url);
 
   closePrintFilterModal();
-  alert(`✅ Filter applied successfully! Exported with your selected filters.`);
+  alert("Filter applied successfully. Exported with your selected filters.");
 }
 
 function isValidClassDayForPeriod(date, period) {
@@ -6062,7 +6501,9 @@ function renderCycleColorPickers() {
     <div style="margin-top:8px;">
       <button type="button" id="saveCycleColorsBtn">Save Cycle Colors</button>
       <button type="button" id="resetCycleColorsBtn">Reset</button>
+
     </div>
+
   `;
 
   document.getElementById("saveCycleColorsBtn")?.addEventListener("click", () => {
@@ -6659,7 +7100,14 @@ function refreshAllData() {
 document.addEventListener("DOMContentLoaded", init);
 
 
-
+window.clearAllCustomDays = function() {
+  if (!confirm("Remove all day overrides and return to the built-in calendar?")) return;
+  customDays = {};
+  saveCustomDays();
+  renderCalendar();
+  renderSummary();
+  alert("All day overrides cleared.");
+};
 window.resolveConflict = function(index, action) {
   const warnings = getAssessmentWarnings();
   const conflict = warnings[index];
@@ -6755,7 +7203,8 @@ setInterval(() => {
       unitsSem1: JSON.parse(localStorage.getItem("hs-sem1-units") || "{}"),
       notes: {},
       cycleColors: getCycleColors(),
-      classColors: JSON.parse(localStorage.getItem("classColors") || "{}")
+      classColors: JSON.parse(localStorage.getItem("classColors") || "{}"),
+      customDays: JSON.parse(JSON.stringify(customDays || {})),
     };
 
     Object.keys(localStorage).forEach(key => {
