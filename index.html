@@ -2296,12 +2296,14 @@ function collectCurrentProfileData() {
 
     // lists
     knownClasses: JSON.parse(localStorage.getItem("knownClasses") || "[]"),
+    teacherScheduleSem1: JSON.parse(localStorage.getItem("hs-sem1teacherScheduleSem1") || "{}"),
+// plus whatever key renderPeriodSlots actually reads
 
     // notes by date
     notes,
 
     // legacy/named keys (keep compatibility)
-    teacherScheduleSem1: JSON.parse(localStorage.getItem("hs-sem1teacherScheduleSem1") || "{}"),
+    
     unitsSem1: JSON.parse(localStorage.getItem("hs-sem1-units") || "{}"),
 
     // future-ready empty slots (don't remove if already present on profile)
@@ -6037,63 +6039,112 @@ document.getElementById("backupBtn").addEventListener("click", () => {
 });
 
 document.getElementById("restoreBtn").addEventListener("click", () => {
-  if (backup.profiles) {
-  localStorage.setItem(LS_PROFILES, JSON.stringify(backup.profiles));
-}
-if (backup.currentProfileId) {
-  localStorage.setItem(LS_CURRENT_PROFILE, backup.currentProfileId);
-}
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.json';
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json,application/json";
 
   input.onchange = e => {
     const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = function(event) {
+    reader.onload = function (event) {
       try {
         const backup = JSON.parse(event.target.result);
 
-        const backupDivision = backup.division || "default";
+        // Profiles (optional)
+        if (backup.profiles) {
+          localStorage.setItem(LS_PROFILES, JSON.stringify(backup.profiles));
+        }
+        if (backup.currentProfileId) {
+          localStorage.setItem(LS_CURRENT_PROFILE, backup.currentProfileId);
+        }
 
-        console.log(`Restoring backup for division: ${backupDivision}`);
+        // Prefer full profile-style payload if present
+        if (backup.data && typeof applyProfileData === "function") {
+          applyProfileData(backup.data);
+        } else if (typeof applyProfileData === "function") {
+          // File is already a profile data object (from collectCurrentProfileData)
+          applyProfileData(backup);
+        } else {
+          // Manual restore
+          if (backup.teacherSchedule) {
+            teacherSchedule = backup.teacherSchedule;
+            if (typeof saveScheduleToStorage === "function") saveScheduleToStorage();
+          }
+          if (backup.units) {
+            units = backup.units;
+            if (typeof saveUnits === "function") saveUnits();
+          }
+          if (backup.unitsSem1) {
+            localStorage.setItem("hs-sem1-units", JSON.stringify(backup.unitsSem1));
+          }
+          if (backup.teacherScheduleSem1) {
+            localStorage.setItem(
+              "hs-sem1teacherScheduleSem1",
+              JSON.stringify(backup.teacherScheduleSem1)
+            );
+          }
+          if (backup.notes) {
+            Object.keys(backup.notes).forEach(key => {
+              localStorage.setItem(key, JSON.stringify(backup.notes[key]));
+            });
+          }
+          if (backup.cycleColors) {
+            localStorage.setItem("cycleColors", JSON.stringify(backup.cycleColors));
+          }
+          if (backup.classColors) {
+            localStorage.setItem("classColors", JSON.stringify(backup.classColors));
+          }
+          if (backup.customDays && typeof backup.customDays === "object") {
+            customDays = backup.customDays;
+            if (typeof saveCustomDays === "function") saveCustomDays();
+          }
+          if (backup.specialDays) {
+            specialDays = backup.specialDays;
+            if (typeof saveSpecialDays === "function") saveSpecialDays();
+          }
+        }
 
-        // Restore Units & Schedule
-        if (backup.unitsSem1) {
-          localStorage.setItem("hs-sem1-units", JSON.stringify(backup.unitsSem1));
+        // Always apply customDays if present at top level
+        if (backup.customDays && typeof backup.customDays === "object") {
+          customDays = backup.customDays;
+          if (typeof saveCustomDays === "function") saveCustomDays();
+        }
+
+                // === Always restore period names + known classes ===
+        if (backup.teacherSchedule && typeof backup.teacherSchedule === "object") {
+          teacherSchedule = backup.teacherSchedule;
+          if (typeof saveScheduleToStorage === "function") {
+            saveScheduleToStorage();
+          } else {
+            localStorage.setItem(
+              "hs-sem1teacherScheduleSem1",
+              JSON.stringify(backup.teacherSchedule)
+            );
+          }
         }
         if (backup.teacherScheduleSem1) {
-          localStorage.setItem("hs-sem1teacherScheduleSem1", JSON.stringify(backup.teacherScheduleSem1));
+          localStorage.setItem(
+            "hs-sem1teacherScheduleSem1",
+            JSON.stringify(backup.teacherScheduleSem1)
+          );
+        }
+        if (Array.isArray(backup.knownClasses)) {
+          localStorage.setItem("knownClasses", JSON.stringify(backup.knownClasses));
+        }
+        if (backup.units && typeof backup.units === "object") {
+          units = backup.units;
+          if (typeof saveUnits === "function") saveUnits();
         }
 
-        // Restore Notes
-        if (backup.notes) {
-          Object.keys(backup.notes).forEach(key => {
-            localStorage.setItem(key, JSON.stringify(backup.notes[key]));
-          });
-        }
+        if (typeof saveCurrentProfile === "function") saveCurrentProfile(false);
 
-        // Restore colors
-        if (backup.cycleColors) {
-          localStorage.setItem("cycleColors", JSON.stringify(backup.cycleColors));
-        }
-        if (backup.classColors) {
-          localStorage.setItem("classColors", JSON.stringify(backup.classColors));
-        }
-
-        if (data.customDays && typeof data.customDays === "object") {
-          customDays = data.customDays;
-          saveCustomDays();
-        } else {
-          // leave existing or clear — your choice; safest is leave unchanged if missing
-        }
-
-        alert(`✅ Restore successful for ${backupDivision}!`);
+        alert("Restore successful. Reloading…");
         location.reload();
       } catch (err) {
-        alert("❌ Restore failed: " + err.message);
+        alert("Restore failed: " + err.message);
+        console.error(err);
       }
     };
     reader.readAsText(file);
@@ -6101,6 +6152,7 @@ if (backup.currentProfileId) {
 
   input.click();
 });
+
 
 document.getElementById("printCalendarBtn").addEventListener("click", () => {
   openPrintFilterModal();
