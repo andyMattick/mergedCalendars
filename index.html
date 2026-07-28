@@ -5,19 +5,6 @@
   <title>HS Faculty Planner</title>
   <style>
 
-    .day-cell.day-off {
-  opacity: 0.75;
-  background: #f3f4f6;
-}
-.day-cell.day-off .day-date-line::after {
-  content: " · OFF";
-  font-weight: 600;
-  color: #6b7280;
-}
-body.dark .day-cell.day-off {
-  background: #2a2d31;
-}
-
     .collapse-header {
   width: 100%;
   text-align: left;
@@ -1352,7 +1339,48 @@ body.dark #printableArea, #printableArea {
 body.dark #printableArea h3, #printableArea h3 {
   color: #60a5fa;
 }
+.day-cell.off-day {
+  background: #4b5563 !important; /* lighter gray in light mode */
+  color: #f9fafb !important;
+}
 
+body.dark .day-cell.off-day {
+  background: #111827 !important; /* near-black, clearer than body */
+  color: #e5e7eb !important;
+  border-color: #374151 !important;
+}
+
+.day-cell.off-day .status-badge.off-badge {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 6px 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 999px;
+  background: #6b7280 !important;
+  color: #f9fafb !important;
+  border: 1px solid #9ca3af !important;
+  white-space: normal;
+  text-align: center;
+}
+
+body.dark .day-cell.off-day .status-badge.off-badge {
+  background: #4b5563 !important;
+  color: #f3f4f6 !important;
+  border-color: #9ca3af !important;
+}
+
+/* Date line a bit stronger on OFF cells */
+.day-cell.off-day .day-date-line {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #e5e7eb !important;
+}
+
+/* Special-day pills on OFF cells stay readable */
+body.dark .day-cell.off-day .status-badge:not(.off-badge) {
+  opacity: 0.95;
+}
 
   </style>
 </head>
@@ -1539,6 +1567,46 @@ body.dark #printableArea h3, #printableArea h3 {
 </main>
 
     <script>
+
+function toLocalISO(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function applyBulkOffRange(startISO, endISO, options = {}) {
+  const skipWeekends = options.skipWeekends !== false;
+  const label = (options.label || "").trim();
+
+  if (!startISO || !endISO) {
+    alert("Start and end dates are required.");
+    return 0;
+  }
+  if (startISO > endISO) {
+    alert("Start date must be on or before end date.");
+    return 0;
+  }
+
+  const startDate = new Date(startISO + "T12:00:00");
+  const endDate = new Date(endISO + "T12:00:00");
+  let count = 0;
+
+  for (let d = new Date(startDate.getTime()); d <= endDate; d.setDate(d.getDate() + 1)) {
+    if (skipWeekends && (d.getDay() === 0 || d.getDay() === 6)) continue;
+
+    const iso = toLocalISO(d);
+setCustomDay(iso, "OFF", label);
+    count++;
+ }
+
+  if (typeof saveCurrentProfile === "function") saveCurrentProfile(false);
+  if (typeof renderCalendar === "function") renderCalendar();
+  if (typeof renderSummary === "function") renderSummary();
+
+  console.log("Bulk OFF applied", count, "days", { startISO, endISO, label });
+  return count;
+}
 
 function isRotationLetter(letter) {
   if (!letter) return false;
@@ -3998,6 +4066,20 @@ function renderScheduleFields() {
 
     <label><strong>Period Assignments</strong></label>
     <div id="periodSlots" style="margin-top: 12px;"></div>
+
+    <div id="bulkOffPanel" style="margin:12px 0;padding:12px;border:1px solid #e5e7eb;border-radius:8px;">
+  <strong>Mark Bulk OFF Days</strong>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;align-items:end;">
+    <label>From <input type="date" id="bulkOffStart"></label>
+    <label>To <input type="date" id="bulkOffEnd"></label>
+    <label><input type="checkbox" id="bulkOffSkipWeekends" checked> Skip weekends</label>
+    <label>Label (optional) <input type="text" id="bulkOffLabel" placeholder="e.g. Christmas Break"></label>
+    <button type="button" id="bulkOffApplyBtn">Mark OFF</button>
+  </div>
+  <p class="small" style="margin:8px 0 0;color:#6b7280;">
+    Letters only. Tags, notes, and units stay on their dates. No push.
+  </p>
+</div>
   `;
 
   renderKnownClasses();
@@ -4211,45 +4293,62 @@ function renderCalendar() {
     monthGrid.appendChild(empty);
   }
 
-    for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
-    const iso = `${year}-${String(month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
-    const dateObj = new Date(year, month - 1, dayNum);
-    const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
+  const iso = `${year}-${String(month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+  const dateObj = new Date(year, month - 1, dayNum);
+  const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
 
-    const schoolDay = getRotationDayByDate(iso) || dayMap[iso] || null;
-    const cycleLetter = normalizeLetter(schoolDay?.letter);
-    const letter = schoolDay?.letter;
-    const isOff = !!(letter && String(letter).toUpperCase() === "OFF");
+  const schoolDay = getRotationDayByDate(iso) || dayMap[iso] || null;
+  const override = typeof getCustomDay === "function" ? getCustomDay(iso) : null;
+  const isOff = !!(override && String(override.letter).toUpperCase() === "OFF");
 
-    const periodsForDay = schoolDay && !isOff
+  const rawLetter = schoolDay?.letter || "";
+  const isNoSchool =
+    isOff ||
+    /no school|holiday|break|labor day|thanksgiving|christmas/i.test(String(rawLetter)) ||
+    (!!schoolDay && !normalizeLetter(rawLetter) && /no school|holiday|break/i.test(String(rawLetter)));
+
+  // For display letter: OFF overrides don't use cycle letter
+  const cycleLetter = isOff ? "" : normalizeLetter(schoolDay?.letter);
+  const letter = isOff ? "OFF" : schoolDay?.letter;
+
+  const periodsForDay =
+    schoolDay && !isOff && !isNoSchool
       ? getPeriodsForDate(iso, schoolDay.letter)
       : [];
 
-    const dayNotes = loadNotesForDate(iso);
-    const specialEntries = getUnifiedSpecialDaysForDate(iso);
+  const dayNotes = loadNotesForDate(iso);
+  const specialEntries = getUnifiedSpecialDaysForDate(iso);
 
-    const monthAbbrev = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month - 1];
-    const cleanDate = `${monthAbbrev}. ${dayNum}`;
-    const codedLabel = letter && !isOff ? ` - ${letter}` : "";
+  const monthAbbrev = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month - 1];
+  const cleanDate = `${monthAbbrev}. ${dayNum}`;
+  // short date line — no long "Labor Day - No school" in the title
+  const codedLabel =
+    !isOff && !isNoSchool && letter && normalizeLetter(letter)
+      ? ` - ${letter}`
+      : "";
 
-    const cell = document.createElement("div");
-    cell.className = `day-cell ${isWeekend ? "weekend" : ""} ${!schoolDay ? "empty" : ""}`;
-    cell.dataset.date = iso;
+  const cell = document.createElement("div");
+  cell.className = `day-cell ${isWeekend ? "weekend" : ""}`;
+  cell.dataset.date = iso;
 
-    if (isOff) {
-      cell.classList.add("empty");
-      cell.classList.add("day-off");
-    }
+  if (!schoolDay || isOff || isNoSchool) {
+    cell.classList.add("empty");
+  }
+  if (isOff || isNoSchool) {
+    cell.classList.add("off-day");
+  }
 
-    const hasCycle = !!(cycleLetter && getCurrentRotationRules()[cycleLetter]);
-    if (hasCycle) {
-      cell.classList.add(`cycle-${cycleLetter}`);
-    } else if (schoolDay) {
-      cell.classList.add("no-cycle");
-    }
-    if (iso === todayISO) cell.classList.add("today");
+  if (cycleLetter && getCurrentRotationRules()[cycleLetter] && !isOff && !isNoSchool) {
+    cell.classList.add(`cycle-${cycleLetter}`);
+  } else if (schoolDay && !isOff && !isNoSchool) {
+    cell.classList.add("no-cycle");
+  }
 
-        // === Smart Hover Agenda ===
+  if (iso === todayISO) cell.classList.add("today");
+
+  // ... hover, header, etc.
+
     const hoverAgenda = document.createElement("div");
     hoverAgenda.className = "hover-agenda";
 
@@ -4328,14 +4427,27 @@ function renderCalendar() {
 
     const badgeRow = document.createElement("div");
     badgeRow.className = "day-badge-row";
-
-    if (isOff) {
-      const offBadge = document.createElement("span");
-      offBadge.className = "status-badge no-test-day";
-      offBadge.textContent = "OFF";
-      badgeRow.appendChild(offBadge);
-    }
-
+if (isOff) {
+  const offBadge = document.createElement("span");
+  offBadge.className = "status-badge off-badge";
+  const label = (override?.label || "").trim();
+  offBadge.innerHTML = label
+    ? `NO SCHOOL<br><span class="off-badge-sub">${label}</span>`
+    : `NO SCHOOL`;
+  badgeRow.appendChild(offBadge);
+} else if (isNoSchool) {
+  const offBadge = document.createElement("span");
+  offBadge.className = "status-badge off-badge";
+  const name = String(rawLetter)
+    .replace(/[-–—]/g, " ")
+    .replace(/\bno school\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  offBadge.innerHTML = name
+    ? `NO SCHOOL<br><span class="off-badge-sub">${name}</span>`
+    : `NO SCHOOL`;
+  badgeRow.appendChild(offBadge);
+}
     if (!hideAllSpecialTags) {
       specialEntries.forEach(entry => {
         if (entry.appliesTo !== "day") return;
@@ -4845,6 +4957,13 @@ function handleClearNotes() {
 
 const LS_CUSTOM_DAYS_KEY = "-customDays";
 let customDays = {}; // { "YYYY-MM-DD": { letter: "A"|"OFF"|..., label?: "" } }
+
+let customDayLabels = JSON.parse(localStorage.getItem(getStorageKey("customDayLabels")) || "{}");
+
+function saveCustomDayLabels() {
+  localStorage.setItem(getStorageKey("customDayLabels"), JSON.stringify(customDayLabels));
+}
+
 
 function loadCustomDays() {
   const raw = localStorage.getItem(getStorageKey(LS_CUSTOM_DAYS_KEY));
@@ -6644,6 +6763,18 @@ document.getElementById("cancelProjectEditorBtn")
   .addEventListener("click", closeProjectEditor);
 document.getElementById("saveProjectEditorBtn")
   .addEventListener("click", saveProjectEditor);
+
+  document.getElementById("bulkOffApplyBtn")?.addEventListener("click", () => {
+  const start = document.getElementById("bulkOffStart").value;
+  const end = document.getElementById("bulkOffEnd").value;
+  const skipWeekends = document.getElementById("bulkOffSkipWeekends").checked;
+  const label = document.getElementById("bulkOffLabel")?.value?.trim() || "";
+  if (!start || !end) return alert("Pick start and end dates.");
+  if (!confirm(`Mark ${start} → ${end} as OFF${skipWeekends ? " (weekdays only)" : ""}?`)) return;
+
+  const n = applyBulkOffRange(start, end, { skipWeekends, label });
+  alert(`Marked ${n} day(s) OFF.`);
+});
 
   document.getElementById("addSpecialDayBtn").addEventListener("click", () => addSpecialDay());
 
