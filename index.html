@@ -4,6 +4,25 @@
   <meta charset="UTF-8" />
   <title>HS Faculty Planner</title>
   <style>
+  
+  /* Manual or unit test sitting on a No-Test day */
+.day-cell.has-test-on-no-test {
+  outline: 3px solid #000 !important;
+  box-shadow: 0 0 0 3px #000, 0 1px 2px rgba(0,0,0,0.15) !important;
+}
+
+.assessment-badge.test.on-no-test {
+  background: #000 !important;
+  color: #fff !important;
+  border: 1px solid #000 !important;
+  font-weight: 800;
+}
+
+.classes-list li.test-on-no-test {
+  outline: 2px solid #000;
+  background: #111 !important;
+  color: #fff !important;
+}
 
     .collapse-header {
   width: 100%;
@@ -2798,7 +2817,6 @@ function setCurrentProfileId(id) {
   localStorage.setItem(LS_CURRENT_PROFILE, id);
 }
 
-/** Collect EVERYTHING the live app is using right now */
 function collectCurrentProfileData() {
   const notes = {};
   Object.keys(localStorage).forEach(key => {
@@ -2811,113 +2829,104 @@ function collectCurrentProfileData() {
     }
   });
 
+  let known = [];
+  try {
+    known = JSON.parse(localStorage.getItem("knownClasses") || "[]");
+  } catch {
+    known = [];
+  }
+
   return {
-    // live memory objects
-    teacherSchedule: typeof teacherSchedule !== "undefined" ? teacherSchedule : {},
-    units: typeof units !== "undefined" ? units : {},
-specialDays: typeof getUserSpecialDaysForSave === "function"
-  ? getUserSpecialDaysForSave()
-  : (specialDays || []),
-hiddenSpecialEntryKeys: [...(hiddenSpecialEntryKeys || [])],
-hideAllSpecialTags: !!hideAllSpecialTags,
-    currentDivision: typeof currentDivision !== "undefined" ? currentDivision : "hs",
-    currentSemester: typeof currentSemester !== "undefined" ? currentSemester : "sem1",
-    customDays: typeof customDays !== "undefined" ? customDays : {},
-
-    // colors
-    cycleColors: typeof getCycleColors === "function" ? getCycleColors() : {},
-    classColors: JSON.parse(localStorage.getItem("classColors") || "{}"),
-
-    // lists
-    knownClasses: JSON.parse(localStorage.getItem("knownClasses") || "[]"),
-    teacherScheduleSem1: JSON.parse(localStorage.getItem("hs-sem1teacherScheduleSem1") || "{}"),
-// plus whatever key renderPeriodSlots actually reads
-
-    // notes by date
-    notes,
-
-    // legacy/named keys (keep compatibility)
-    
-    unitsSem1: JSON.parse(localStorage.getItem("hs-sem1-units") || "{}"),
-
-    // future-ready empty slots (don't remove if already present on profile)
-    periodCount: Number(localStorage.getItem("periodCount")) || 7,
-    rotationRules: JSON.parse(localStorage.getItem("rotationRules") || "null"),
-    calendar: JSON.parse(localStorage.getItem("plannerCalendar") || "null"),
-    events: JSON.parse(localStorage.getItem("plannerEvents") || "[]"),
-    settings: JSON.parse(localStorage.getItem("plannerSettings") || "{}"),
+    teacherSchedule: { ...(typeof teacherSchedule !== "undefined" ? teacherSchedule : {}) },
+    units: JSON.parse(JSON.stringify(typeof units !== "undefined" ? units : {})),
+    specialDays:
+      typeof getUserSpecialDaysForSave === "function"
+        ? getUserSpecialDaysForSave()
+        : (specialDays || []),
+    hiddenSpecialEntryKeys: [...(hiddenSpecialEntryKeys || [])],
+    hideAllSpecialTags: !!hideAllSpecialTags,
     customDays: JSON.parse(JSON.stringify(customDays || {})),
+    currentDivision: currentDivision || "hs",
+    currentSemester: currentSemester || "sem1",
+    knownClasses: Array.isArray(known) ? known : [],
+    classColors: JSON.parse(localStorage.getItem("classColors") || "{}"),
+    cycleColors: typeof getCycleColors === "function" ? getCycleColors() : {},
+    notes,
+    activePackId: typeof activePackId !== "undefined" ? activePackId : "builtin",
+    periodCount: Number(localStorage.getItem("periodCount")) || 7
   };
 }
 
-/** Write a profile data object back into the live app + localStorage */
 function applyProfileData(data) {
-  if (!data) return;
+  if (!data) data = {};
 
-  // memory
-  if (data.teacherSchedule) teacherSchedule = data.teacherSchedule;
-  if (data.units) units = data.units;
-  if (data.specialDays) specialDays = data.specialDays;
+  // ALWAYS replace (empty profile must clear previous)
+  teacherSchedule =
+    data.teacherSchedule && typeof data.teacherSchedule === "object"
+      ? { ...data.teacherSchedule }
+      : {};
+
+  units =
+    data.units && typeof data.units === "object"
+      ? JSON.parse(JSON.stringify(data.units))
+      : {};
+
+  specialDays = Array.isArray(data.specialDays) ? data.specialDays : [];
+  hiddenSpecialEntryKeys = new Set(
+    Array.isArray(data.hiddenSpecialEntryKeys) ? data.hiddenSpecialEntryKeys : []
+  );
+  hideAllSpecialTags = !!data.hideAllSpecialTags;
+
+  customDays =
+    data.customDays && typeof data.customDays === "object"
+      ? { ...data.customDays }
+      : {};
+
   if (data.currentDivision) currentDivision = data.currentDivision;
   if (data.currentSemester) currentSemester = data.currentSemester;
 
-  specialDays = Array.isArray(data.specialDays) ? data.specialDays : [];
-hiddenSpecialEntryKeys = new Set(
-  Array.isArray(data.hiddenSpecialEntryKeys) ? data.hiddenSpecialEntryKeys : []
-);
-hideAllSpecialTags = !!data.hideAllSpecialTags;
+  localStorage.setItem(
+    "knownClasses",
+    JSON.stringify(Array.isArray(data.knownClasses) ? data.knownClasses : [])
+  );
 
-  // colors
+  if (data.classColors) {
+    localStorage.setItem("classColors", JSON.stringify(data.classColors));
+  }
   if (data.cycleColors) {
     localStorage.setItem("cycleColors", JSON.stringify(data.cycleColors));
     if (typeof applyCycleColors === "function") applyCycleColors();
   }
-  if (data.classColors) {
-    localStorage.setItem("classColors", JSON.stringify(data.classColors));
-  }
 
-  // lists
-  if (data.knownClasses) {
-    localStorage.setItem("knownClasses", JSON.stringify(data.knownClasses));
-  }
-
-  // named keys
-  if (data.teacherScheduleSem1) {
-    localStorage.setItem("hs-sem1teacherScheduleSem1", JSON.stringify(data.teacherScheduleSem1));
-  }
-  if (data.unitsSem1) {
-    localStorage.setItem("hs-sem1-units", JSON.stringify(data.unitsSem1));
-  }
-
-customDays =
-  data.customDays && typeof data.customDays === "object"
-    ? data.customDays
-    : {};
-
+  // Keep active storage in sync with THIS profile only
+  if (typeof saveScheduleToStorage === "function") saveScheduleToStorage();
+  if (typeof saveUnits === "function") saveUnits();
   if (typeof saveCustomDays === "function") saveCustomDays();
+  if (typeof saveSpecialDays === "function") saveSpecialDays();
 
-  // notes: clear old notes_ keys then restore
   Object.keys(localStorage).forEach(key => {
     if (key.startsWith("notes_")) localStorage.removeItem(key);
   });
-  if (data.notes) {
+  if (data.notes && typeof data.notes === "object") {
     Object.keys(data.notes).forEach(key => {
-      localStorage.setItem(key, JSON.stringify(data.notes[key]));
+      const val = data.notes[key];
+      localStorage.setItem(
+        key,
+        typeof val === "string" ? val : JSON.stringify(val)
+      );
     });
   }
 
-if (typeof renderSpecialDays === "function") renderSpecialDays();
-if (typeof renderCalendar === "function") renderCalendar();
-
-  // future fields
-  if (data.periodCount) localStorage.setItem("periodCount", String(data.periodCount));
-  if (data.rotationRules) localStorage.setItem("rotationRules", JSON.stringify(data.rotationRules));
-  if (data.calendar) localStorage.setItem("plannerCalendar", JSON.stringify(data.calendar));
-  if (data.events) localStorage.setItem("plannerEvents", JSON.stringify(data.events));
-  if (data.settings) localStorage.setItem("plannerSettings", JSON.stringify(data.settings));
+  if (typeof hydrateScheduleForm === "function") hydrateScheduleForm();
+  if (typeof renderKnownClasses === "function") renderKnownClasses();
+  if (typeof renderUnits === "function") renderUnits();
+  if (typeof renderProjects === "function") renderProjects();
+  if (typeof renderSpecialDays === "function") renderSpecialDays();
+  if (typeof renderCalendar === "function") renderCalendar();
+  if (typeof renderSummary === "function") renderSummary();
 }
 
-function saveCurrentProfile() {
+function saveCurrentProfile(showToast = false) {
   const id = getCurrentProfileId();
   if (!id) return;
 
@@ -2925,8 +2934,14 @@ function saveCurrentProfile() {
   if (!profiles[id]) return;
 
   profiles[id].data = collectCurrentProfileData();
+  profiles[id].activePackId =
+    typeof activePackId !== "undefined" && activePackId ? activePackId : "builtin";
   profiles[id].updatedAt = new Date().toISOString();
   saveProfiles(profiles);
+
+  if (showToast) {
+    showProfileToast?.(`Profile "${profiles[id].name}" updated`);
+  }
 }
 
 function loadProfile(id) {
@@ -2934,15 +2949,11 @@ function loadProfile(id) {
   const profile = profiles[id];
   if (!profile) return false;
 
-  // save current first
   saveCurrentProfile(false);
 
   setCurrentProfileId(id);
   applyProfileData(profile.data || {});
-  loadCustomDays();
-  renderCalendar();
 
-  // Restore this profile's calendar (pack or builtin)
   activePackId = profile.activePackId || profile.data?.activePackId || "builtin";
 
   if (activePackId !== "builtin") {
@@ -2950,40 +2961,33 @@ function loadProfile(id) {
       typeof savedPacks !== "undefined"
         ? savedPacks.find(p => p.id === activePackId)
         : null;
-
     if (pack) {
       if (typeof ensurePackBaseLetters === "function") ensurePackBaseLetters(pack);
       if (typeof ensurePackRotationRules === "function") ensurePackRotationRules(pack);
     } else {
-      // Pack missing from library — keep id in memory for debugging, fall back display only
       console.warn("Profile pack not in library:", activePackId);
       activePackId = "builtin";
     }
   }
-  updateAppTitle();
-const sel =
+
+  const sel =
     document.getElementById("packSelect") ||
     document.getElementById("activePackSelect");
   if (sel) {
-    // Only set value if the option exists; don't rewrite profile here
     const opt = [...sel.options].some(o => o.value === String(activePackId));
     sel.value = opt ? activePackId : "builtin";
   }
 
-  if (typeof refreshAllData === "function") refreshAllData();
-  else {
-    if (typeof renderCalendar === "function") renderCalendar();
-    if (typeof renderUnits === "function") renderUnits();
-    if (typeof renderSummary === "function") renderSummary();
-    if (typeof renderPeriodSlots === "function") renderPeriodSlots();
-  }
+  // DO NOT call refreshAllData() here — it reloads shared schedule/units and undoes the profile
 
-  renderProfileSelector();
-    if (typeof updateAppTitle === "function") updateAppTitle();
+  if (typeof renderPeriodSlots === "function") renderPeriodSlots();
+  if (typeof renderKnownClasses === "function") renderKnownClasses();
+  if (typeof updateAppTitle === "function") updateAppTitle();
   if (typeof updateDivisionVisibility === "function") updateDivisionVisibility();
+  if (typeof renderProfileSelector === "function") renderProfileSelector();
+
   return true;
 }
-
 function createProfile(name, type = "teacher", fromCurrent = true) {
   const id = generateProfileId();
   const profiles = getProfiles();
@@ -5102,6 +5106,12 @@ for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
   const dayNotes = loadNotesForDate(iso);
   const specialEntries = getUnifiedSpecialDaysForDate(iso);
 
+  const dayIsNoTest =
+    !!dayNotes.noTest ||
+    (typeof isAutoNoTestDay === "function" && isAutoNoTestDay(iso));
+  let hasTestOnNoTest = false;
+  
+
   const monthAbbrev = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month - 1];
   const cleanDate = `${monthAbbrev}. ${dayNum}`;
   // short date line — no long "Labor Day - No school" in the title
@@ -5330,7 +5340,27 @@ if (!hideAllSpecialTags) {
 
         const hasModalTest = dayNotes[`test-${periodNum}`] === true;
         const hasModalQuiz = dayNotes[`quiz-${periodNum}`] === true;
+        const isTestToday = !!(unitInfo.hasTestToday || hasModalTest);
 
+        if (unitInfo.hasQuizToday || hasModalQuiz) {
+          const quizBadge = document.createElement("span");
+          quizBadge.className = "assessment-badge quiz";
+          quizBadge.textContent = "Quiz";
+          li.appendChild(quizBadge);
+        }
+
+        if (isTestToday) {
+          if (dayIsNoTest) {
+            hasTestOnNoTest = true;
+            li.classList.add("test-on-no-test");
+          }
+          const testBadge = document.createElement("span");
+          testBadge.className =
+            "assessment-badge test" + (dayIsNoTest ? " on-no-test" : "");
+          testBadge.textContent = dayIsNoTest ? "TEST (NO-TEST DAY)" : "Test";
+          li.appendChild(testBadge);
+        }
+    
         if (unitInfo.hasQuizToday || hasModalQuiz) {
           const quizBadge = document.createElement("span");
           quizBadge.className = "assessment-badge quiz";
@@ -5360,6 +5390,10 @@ if (!hideAllSpecialTags) {
       });
 
       cell.appendChild(ul);
+    }
+
+    if (hasTestOnNoTest) {
+      cell.classList.add("has-test-on-no-test");
     }
 
     cell.addEventListener("click", (e) => {
@@ -5881,6 +5915,48 @@ function handleSaveNotes() {
 
     if (typeof saveSpecialDays === "function") saveSpecialDays();
   }
+    // Warn if any period has Test checked on a No-Test day
+  const date = currentModalDay.date;
+  const dayIsNoTest =
+    !!notesObj.noTest ||
+    (typeof isAutoNoTestDay === "function" && isAutoNoTestDay(date));
+
+  if (dayIsNoTest) {
+    const testedPeriods = [];
+    const periods =
+      typeof getPeriodsForDate === "function"
+        ? getPeriodsForDate(
+            date,
+            currentModalDay.letter ||
+              (typeof getRotationDayByDate === "function"
+                ? getRotationDayByDate(date)?.letter
+                : "") ||
+              ""
+          )
+        : [];
+
+    periods.forEach(p => {
+      if (notesObj[`test-${p}`] === true) testedPeriods.push(p);
+    });
+
+    // also catch checkboxes if not yet copied into notesObj
+    periods.forEach(p => {
+      const cb = document.getElementById(`test-period-${p}`);
+      if (cb && cb.checked && !testedPeriods.includes(p)) testedPeriods.push(p);
+    });
+
+    if (testedPeriods.length) {
+      const ok = confirm(
+        "You tried to schedule a test on a No Test day.\n\n" +
+          "Periods: " +
+          testedPeriods.map(p => "P" + p).join(", ") +
+          "\n\nYou can continue, but this day is marked No Test.\n\nContinue anyway?"
+      );
+      if (!ok) return; // user cancelled — don't save
+    }
+  }
+
+  saveNotesForDate(date, notesObj);
 
   saveNotesForDate(currentModalDay.date, notesObj);
   console.log("✅ Saved notes for", currentModalDay.date, notesObj);
