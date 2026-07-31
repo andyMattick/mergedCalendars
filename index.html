@@ -1440,6 +1440,7 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
         <option value="">Profile actions…</option>
         <option value="new">New Profile</option>
         <option value="rename">Rename Profile</option>
+        <option value="duplicate">Duplicate profile…</option>
         <option value="delete">Delete Profile</option>
       </select>
       
@@ -2312,6 +2313,53 @@ function noteToHtml(note) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/\n/g, "<br>");
+}
+
+function duplicateCurrentProfile() {
+  const profiles = getProfiles();
+  const srcId = getCurrentProfileId();
+  const src = profiles[srcId];
+  if (!src) {
+    alert("No profile to duplicate.");
+    return;
+  }
+
+  // Snapshot current live state into source first
+  if (typeof saveCurrentProfile === "function") {
+    saveCurrentProfile(false);
+  }
+
+  const name = prompt(
+    "Name for the duplicated profile:",
+    (src.name || "Profile") + " copy"
+  );
+  if (!name || !name.trim()) return;
+
+  const newId = "profile-" + Date.now();
+  const fresh = getProfiles(); // re-read after save
+  const source = fresh[srcId] || src;
+
+  fresh[newId] = {
+    id: newId,
+    name: name.trim(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    activePackId: source.activePackId || "builtin",
+    data: JSON.parse(JSON.stringify(source.data || {}))
+  };
+
+  saveProfiles(fresh);
+
+  // Optional: switch to the copy
+  if (typeof loadProfile === "function") {
+    loadProfile(newId);
+  } else {
+    setCurrentProfileId(newId);
+    applyProfileData(fresh[newId].data);
+  }
+
+  if (typeof renderProfileSelector === "function") renderProfileSelector();
+  showProfileToast?.(`Duplicated as "${name.trim()}"`);
 }
 
 function saveCurrentProfile(showToast = false) {
@@ -4792,6 +4840,9 @@ function wireProfileUI() {
         createProfile(name, true);
         showProfileToast?.(`Created profile "${name}"`);
       }
+      if (action === "duplicate") {
+  duplicateCurrentProfile();
+}
 
       if (action === "rename") {
         const id = getCurrentProfileId();
