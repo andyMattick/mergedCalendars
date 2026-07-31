@@ -3037,36 +3037,57 @@ function loadProfile(id) {
 
   return true;
 }
-function createProfile(name, type = "teacher", fromCurrent = true) {
+function emptyProfileData() {
+  return {
+    teacherSchedule: {},
+    units: {},
+    projects: {},
+    notes: {},
+    cycleColors: {},
+    classColors: {},
+    knownClasses: [],
+    specialDays: [],
+    hiddenSpecialEntryKeys: [],
+    hideAllSpecialTags: false,
+    events: [],
+    periodCount: 7,
+    settings: {},
+    customDays: {},
+    currentDivision: currentDivision || "hs",
+    currentSemester: currentSemester || "sem1",
+    activePackId: "builtin"
+  };
+}
+
+function createProfile(name, type = "teacher", fromCurrent = false) {
   const id = generateProfileId();
   const profiles = getProfiles();
 
   profiles[id] = {
     id,
     name: name || "New Profile",
-    type,
+    type: type || "teacher",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    data: fromCurrent ? collectCurrentProfileData() : {
-      teacherSchedule: {},
-      units: {},
-      notes: {},
-      cycleColors: {},
-      classColors: {},
-      knownClasses: [],
-      specialDays: [],
-      events: [],
-      periodCount: 7,
-      settings: {},
-      customDays: {},
-    }
+    activePackId: fromCurrent
+      ? (typeof activePackId !== "undefined" ? activePackId : "builtin")
+      : "builtin",
+    data: fromCurrent
+      ? collectCurrentProfileData()
+      : emptyProfileData()
   };
 
   saveProfiles(profiles);
-  setCurrentProfileId(id);
-  applyProfileData(profiles[id].data);
-  renderProfileSelector();
-  if (typeof refreshAllData === "function") refreshAllData();
+
+  // Switch into the new profile so the UI matches
+  if (typeof loadProfile === "function") {
+    loadProfile(id);
+  } else {
+    setCurrentProfileId(id);
+    applyProfileData(profiles[id].data);
+  }
+
+  if (typeof renderProfileSelector === "function") renderProfileSelector();
   return id;
 }
 
@@ -4837,8 +4858,8 @@ function wireProfileUI() {
         const name = prompt("Name for new profile?", "New Profile");
         if (!name) return;
         saveCurrentProfile(false);
-        createProfile(name, true);
-        showProfileToast?.(`Created profile "${name}"`);
+        createProfile(name.trim(), "teacher", false);  // empty profile
+        showProfileToast?.(`Created profile "${name.trim()}"`);
       }
       if (action === "duplicate") {
   duplicateCurrentProfile();
