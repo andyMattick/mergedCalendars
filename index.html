@@ -230,6 +230,9 @@ body.dark .period-label {
   font-weight: 600;
 }
 
+body.dark .unit-row > .small {
+  color: #e5e7eb;
+}
 /* Period assignment row */
 body.dark .period-assignment-row {
   background: var(--card-bg);
@@ -5171,7 +5174,6 @@ function handleScheduleSubmit(event) {
   renderCalendar();
   renderKnownClasses(); // refresh pool
 }
-// --- UI: calendar ---
 function renderCalendar() {
   const calendarRoot = document.getElementById("calendarGrid");
   const monthTitle = document.getElementById("monthTitle");
@@ -5191,20 +5193,23 @@ function renderCalendar() {
   const todayISO = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   classCounts = countScheduledClassesBefore(monthStart);
-  const rotationDayCounts = countRotationDaysBefore(monthStart);
 
-  monthTitle.textContent = new Date(year, month - 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  monthTitle.textContent = new Date(year, month - 1).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric"
+  });
 
   const dayMap = {};
-  days.forEach(d => dayMap[d.date] = d);
+  days.forEach(d => {
+    dayMap[d.date] = d;
+  });
 
   const last = new Date(year, month, 0);
   const totalDays = last.getDate();
 
-  // Weekday headers - Sunday first
   const weekdayHeaderRow = document.createElement("div");
   weekdayHeaderRow.className = "calendar-weekdays";
-  ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach(w => {
+  ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].forEach(w => {
     const wd = document.createElement("div");
     wd.textContent = w;
     weekdayHeaderRow.appendChild(wd);
@@ -5215,76 +5220,68 @@ function renderCalendar() {
   monthGrid.className = "calendar-grid";
 
   const firstDay = new Date(year, month - 1, 1).getDay();
-  const leadingBlanks = firstDay;
-
-  for (let i = 0; i < leadingBlanks; i++) {
+  for (let i = 0; i < firstDay; i++) {
     const empty = document.createElement("div");
     empty.className = "day-cell empty";
     monthGrid.appendChild(empty);
   }
 
-for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
-  const iso = `${year}-${String(month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
-  const dateObj = new Date(year, month - 1, dayNum);
-  const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+  for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
+    const iso = `${year}-${String(month).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+    const dateObj = new Date(year, month - 1, dayNum);
+    const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
 
-  const schoolDay = getRotationDayByDate(iso) || dayMap[iso] || null;
-  const override = typeof getCustomDay === "function" ? getCustomDay(iso) : null;
-  const isOff = !!(override && String(override.letter).toUpperCase() === "OFF");
+    const schoolDay = getRotationDayByDate(iso) || dayMap[iso] || null;
+    const override = typeof getCustomDay === "function" ? getCustomDay(iso) : null;
+    const isOff = !!(override && String(override.letter).toUpperCase() === "OFF");
 
-  const rawLetter = schoolDay?.letter || "";
-  const isNoSchool =
-    isOff ||
-    /no school|holiday|break|labor day|thanksgiving|christmas/i.test(String(rawLetter)) ||
-    (!!schoolDay && !normalizeLetter(rawLetter) && /no school|holiday|break/i.test(String(rawLetter)));
+    const rawLetter = schoolDay?.letter || "";
+    const isNoSchool =
+      isOff ||
+      /no school|holiday|break|labor day|thanksgiving|christmas/i.test(String(rawLetter)) ||
+      (!!schoolDay && !normalizeLetter(rawLetter) && /no school|holiday|break/i.test(String(rawLetter)));
 
-  // For display letter: OFF overrides don't use cycle letter
-  const cycleLetter = isOff ? "" : normalizeLetter(schoolDay?.letter);
-  const letter = isOff ? "OFF" : schoolDay?.letter;
+    const cycleLetter = isOff ? "" : normalizeLetter(schoolDay?.letter);
+    const letter = isOff ? "OFF" : schoolDay?.letter;
 
-  const periodsForDay =
-    schoolDay && !isOff && !isNoSchool
-      ? getPeriodsForDate(iso, schoolDay.letter)
-      : [];
+    const periodsForDay =
+      schoolDay && !isOff && !isNoSchool
+        ? getPeriodsForDate(iso, schoolDay.letter)
+        : [];
 
-  const dayNotes = loadNotesForDate(iso);
-  const specialEntries = getUnifiedSpecialDaysForDate(iso);
+    const dayNotes = loadNotesForDate(iso);
+    const specialEntries = getUnifiedSpecialDaysForDate(iso);
 
-  const dayIsNoTest =
-    !!dayNotes.noTest ||
-    (typeof isAutoNoTestDay === "function" && isAutoNoTestDay(iso));
-  let hasTestOnNoTest = false;
-  
+    const dayIsNoTest =
+      !!dayNotes.noTest ||
+      (typeof isAutoNoTestDay === "function" && isAutoNoTestDay(iso));
 
-  const monthAbbrev = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month - 1];
-  const cleanDate = `${monthAbbrev}. ${dayNum}`;
-  // short date line — no long "Labor Day - No school" in the title
-  const codedLabel =
-    !isOff && !isNoSchool && letter && normalizeLetter(letter)
-      ? ` - ${letter}`
-      : "";
+    let hasTestOnNoTest = false;
+    const dayAssessmentBadges = [];
 
-  const cell = document.createElement("div");
-  cell.className = `day-cell ${isWeekend ? "weekend" : ""}`;
-  cell.dataset.date = iso;
+    const monthAbbrev = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][month - 1];
+    const cleanDate = `${monthAbbrev}. ${dayNum}`;
+    const codedLabel =
+      !isOff && !isNoSchool && letter && normalizeLetter(letter)
+        ? ` - ${letter}`
+        : "";
 
-  if (!schoolDay || isOff || isNoSchool) {
-    cell.classList.add("empty");
-  }
-  if (isOff || isNoSchool) {
-    cell.classList.add("off-day");
-  }
+    const cell = document.createElement("div");
+    cell.className = `day-cell ${isWeekend ? "weekend" : ""}`;
+    cell.dataset.date = iso;
 
-  if (cycleLetter && getCurrentRotationRules()[cycleLetter] && !isOff && !isNoSchool) {
-    cell.classList.add(`cycle-${cycleLetter}`);
-  } else if (schoolDay && !isOff && !isNoSchool) {
-    cell.classList.add("no-cycle");
-  }
+    if (!schoolDay || isOff || isNoSchool) cell.classList.add("empty");
+    if (isOff || isNoSchool) cell.classList.add("off-day");
 
-  if (iso === todayISO) cell.classList.add("today");
+    if (cycleLetter && getCurrentRotationRules()[cycleLetter] && !isOff && !isNoSchool) {
+      cell.classList.add(`cycle-${cycleLetter}`);
+    } else if (schoolDay && !isOff && !isNoSchool) {
+      cell.classList.add("no-cycle");
+    }
 
-  // ... hover, header, etc.
+    if (iso === todayISO) cell.classList.add("today");
 
+    // Hover agenda
     const hoverAgenda = document.createElement("div");
     hoverAgenda.className = "hover-agenda";
 
@@ -5299,7 +5296,7 @@ for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
 
     if (dayNotes.general && String(dayNotes.general).trim()) {
       hasContent = true;
-      hoverContent += `${typeof noteToPlain === "function" ? noteToHtml(dayNotes.general) : dayNotes.general}<br><br>`;
+      hoverContent += `${typeof noteToHtml === "function" ? noteToHtml(dayNotes.general) : dayNotes.general}<br><br>`;
     }
 
     if (dayNotes.noTest) {
@@ -5314,11 +5311,7 @@ for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
 
     if (!isOff && periodsForDay.length) {
       periodsForDay.forEach(periodNum => {
-        const unitInfo = getUnitProgress(
-          periodNum,
-          (classCounts[periodNum] || 0) + 1,
-          iso
-        );
+        const unitInfo = getUnitProgress(periodNum, (classCounts[periodNum] || 0) + 1, iso);
         hasContent = true;
         hoverContent += `<strong>${periodNum}: ${unitInfo.courseName}</strong>`;
         if (unitInfo.unitName) hoverContent += ` — ${unitInfo.unitName}`;
@@ -5352,7 +5345,7 @@ for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
       cell.appendChild(hoverAgenda);
     }
 
-    // --- Header ---
+    // Header
     const header = document.createElement("div");
     header.className = "day-cell-header";
 
@@ -5363,42 +5356,43 @@ for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
 
     const badgeRow = document.createElement("div");
     badgeRow.className = "day-badge-row";
-if (isOff) {
-  const offBadge = document.createElement("span");
-  offBadge.className = "status-badge off-badge";
-  const label = (override?.label || "").trim();
-  offBadge.innerHTML = label
-    ? `NO SCHOOL<br><span class="off-badge-sub">${label}</span>`
-    : `NO SCHOOL`;
-  badgeRow.appendChild(offBadge);
-} else if (isNoSchool) {
-  const offBadge = document.createElement("span");
-  offBadge.className = "status-badge off-badge";
-  const name = String(rawLetter)
-    .replace(/[-–—]/g, " ")
-    .replace(/\bno school\b/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  offBadge.innerHTML = name
-    ? `NO SCHOOL<br><span class="off-badge-sub">${name}</span>`
-    : `NO SCHOOL`;
-  badgeRow.appendChild(offBadge);
-}
-if (!hideAllSpecialTags) {
-  specialEntries.forEach(entry => {
-    if (entry.appliesTo && entry.appliesTo !== "day") return;
 
-    const badge = document.createElement("span");
-    badge.className = "special-day-badge";
-    badge.textContent = entry.label || entry.badgeText || "SD";
-    badge.title = [entry.badgeText, entry.label].filter(Boolean).join(" · ");
-    badge.style.background = hexToRgba(entry.color || "#e9d5ff", 0.45);
-    badge.style.borderColor = entry.color || "#e9d5ff";
-    badgeRow.appendChild(badge);
-  });
-}
+    if (isOff) {
+      const offBadge = document.createElement("span");
+      offBadge.className = "status-badge off-badge";
+      const label = (override?.label || "").trim();
+      offBadge.innerHTML = label
+        ? `NO SCHOOL<br><span class="off-badge-sub">${label}</span>`
+        : `NO SCHOOL`;
+      badgeRow.appendChild(offBadge);
+    } else if (isNoSchool) {
+      const offBadge = document.createElement("span");
+      offBadge.className = "status-badge off-badge";
+      const name = String(rawLetter)
+        .replace(/[-–—]/g, " ")
+        .replace(/\bno school\b/gi, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      offBadge.innerHTML = name
+        ? `NO SCHOOL<br><span class="off-badge-sub">${name}</span>`
+        : `NO SCHOOL`;
+      badgeRow.appendChild(offBadge);
+    }
 
-    if (dayNotes.noTest && !isAutoNoTestDay(iso)) {
+    if (!hideAllSpecialTags) {
+      specialEntries.forEach(entry => {
+        if (entry.appliesTo && entry.appliesTo !== "day") return;
+        const badge = document.createElement("span");
+        badge.className = "special-day-badge";
+        badge.textContent = entry.label || entry.badgeText || "SD";
+        badge.title = [entry.badgeText, entry.label].filter(Boolean).join(" · ");
+        badge.style.background = hexToRgba(entry.color || "#e9d5ff", 0.45);
+        badge.style.borderColor = entry.color || "#e9d5ff";
+        badgeRow.appendChild(badge);
+      });
+    }
+
+    if (dayNotes.noTest && !(typeof isAutoNoTestDay === "function" && isAutoNoTestDay(iso))) {
       const noTestBadge = document.createElement("span");
       noTestBadge.className = "status-badge no-test-day";
       noTestBadge.textContent = "NO TEST TODAY";
@@ -5415,12 +5409,7 @@ if (!hideAllSpecialTags) {
       badgeRow.appendChild(projDayBadge);
     }
 
-    if (badgeRow.childElementCount > 0) {
-      header.appendChild(badgeRow);
-    }
-    cell.appendChild(header);
-
-    // --- Class list (not on OFF) ---
+    // Class list
     if (periodsForDay.length) {
       const ul = document.createElement("ul");
       ul.className = "classes-list";
@@ -5446,24 +5435,33 @@ if (!hideAllSpecialTags) {
           li.style.fontWeight = "600";
         }
 
-        const classPrefix = `${periodNum}: ${unitInfo.courseName} (${periodDayCount})`;
-        let classLine = `${periodNum}: ${unitInfo.courseName}`;
+        const hasModalTest = dayNotes[`test-${periodNum}`] === true;
+        const hasModalQuiz = dayNotes[`quiz-${periodNum}`] === true;
+        const isTestToday = !!(unitInfo.hasTestToday || hasModalTest);
+        const isQuizToday = !!(unitInfo.hasQuizToday || hasModalQuiz);
 
-        if (unitInfo.unitIndex !== null) {
-          const unitLabel = unitInfo.unitName || `Unit ${unitInfo.unitIndex + 1}`;
-          const topicSuffix = unitInfo.topicName ? `: ${unitInfo.topicName}` : "";
-          const dayCounter =
-            unitInfo.dayInUnit && unitInfo.unitLength
-              ? ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})`
-              : "";
-          classLine = `${classPrefix} • ${unitLabel}${topicSuffix}${dayCounter}`;
-        } else if (unitInfo.unitName) {
-          const topicSuffix = unitInfo.topicName ? `: ${unitInfo.topicName}` : "";
-          const dayCounter =
-            unitInfo.dayInUnit && unitInfo.unitLength
-              ? ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})`
-              : "";
-          classLine = `${classLine} — ${unitInfo.unitName}${topicSuffix}${dayCounter}`;
+        const courseName = unitInfo.courseName || `Period ${periodNum}`;
+        const unitName = unitInfo.unitName || "";
+        const topicSuffix = unitInfo.topicName ? `: ${unitInfo.topicName}` : "";
+        const dayCounter =
+          unitInfo.dayInUnit && unitInfo.unitLength
+            ? ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})`
+            : "";
+
+        // ONE classLine only
+        let classLine = `${periodNum}: ${courseName} (${periodDayCount})`;
+
+        if (isTestToday) {
+          classLine = unitName
+            ? `${periodNum}: ${courseName} — TEST — ${unitName}${topicSuffix}${dayCounter}`
+            : `${periodNum}: ${courseName} — TEST${dayCounter}`;
+        } else if (isQuizToday) {
+          classLine = unitName
+            ? `${periodNum}: ${courseName} — QUIZ — ${unitName}${topicSuffix}${dayCounter}`
+            : `${periodNum}: ${courseName} — QUIZ${dayCounter}`;
+        } else if (unitInfo.unitIndex !== null || unitName) {
+          const unitLabel = unitName || `Unit ${(unitInfo.unitIndex ?? 0) + 1}`;
+          classLine = `${periodNum}: ${courseName} (${periodDayCount}) • ${unitLabel}${topicSuffix}${dayCounter}`;
         }
 
         li.appendChild(document.createTextNode(classLine));
@@ -5482,15 +5480,8 @@ if (!hideAllSpecialTags) {
           li.appendChild(specialBadge);
         }
 
-        const hasModalTest = dayNotes[`test-${periodNum}`] === true;
-        const hasModalQuiz = dayNotes[`quiz-${periodNum}`] === true;
-        const isTestToday = !!(unitInfo.hasTestToday || hasModalTest);
-
-        if (unitInfo.hasQuizToday || hasModalQuiz) {
-          const quizBadge = document.createElement("span");
-          quizBadge.className = "assessment-badge quiz";
-          quizBadge.textContent = "Quiz";
-          li.appendChild(quizBadge);
+        if (isQuizToday) {
+          dayAssessmentBadges.push({ type: "quiz", label: `P${periodNum}: QUIZ` });
         }
 
         if (isTestToday) {
@@ -5498,12 +5489,13 @@ if (!hideAllSpecialTags) {
             hasTestOnNoTest = true;
             li.classList.add("test-on-no-test");
           }
-          const testBadge = document.createElement("span");
-          testBadge.className =
-            "assessment-badge test" + (dayIsNoTest ? " on-no-test" : "");
-          testBadge.textContent = dayIsNoTest ? "TEST (NO-TEST DAY)" : "Test";
-          li.appendChild(testBadge);
+          dayAssessmentBadges.push({
+            type: "test",
+            label: dayIsNoTest ? `P${periodNum}: TEST (NO-TEST)` : `P${periodNum}: TEST`
+          });
+          
         }
+
         getProjectsForPeriod(periodNum)
           .filter(p => p.dueDate === iso)
           .forEach(p => {
@@ -5521,14 +5513,31 @@ if (!hideAllSpecialTags) {
       cell.appendChild(ul);
     }
 
+    // Top-of-day assessment badges
+    dayAssessmentBadges.forEach(item => {
+      const b = document.createElement("span");
+      b.className = "assessment-badge " + (item.type === "test" ? "test" : "quiz");
+      if (item.type === "test" && dayIsNoTest) b.classList.add("on-no-test");
+      b.textContent = item.label;
+      badgeRow.appendChild(b);
+    });
+
+    if (badgeRow.childElementCount > 0) {
+      header.appendChild(badgeRow);
+    }
+
+    // Put header at top of cell (after hover if present)
+    if (cell.firstChild && cell.firstChild.classList?.contains("hover-agenda")) {
+      cell.insertBefore(header, cell.children[1] || null);
+    } else {
+      cell.insertBefore(header, cell.firstChild);
+    }
+
     if (hasTestOnNoTest) {
       cell.classList.add("has-test-on-no-test");
     }
 
-    cell.addEventListener("click", (e) => {
-  const iso = cell.dataset.date;
-  if (!iso) return;
-
+    cell.addEventListener("click", () => {
       openDayModal({
         date: iso,
         letter: schoolDay
@@ -7149,7 +7158,13 @@ if (window.pendingUnitDuplicate) {
 }
 
 window.removeUnit = function(period, index) {
-  units[period].splice(index, 1);
+  const list = getUnitsForPeriod(period);
+  const unit = list[index];
+  const name = (unit && unit.name) ? unit.name : `Unit ${index + 1}`;
+
+  if (!confirm(`Delete unit "${name}" from Period ${period}?`)) return;
+
+  list.splice(index, 1);
   saveUnits();
   renderUnits();
   renderCalendar();
