@@ -355,17 +355,19 @@ body.dark {
 }
 
 .day-cell .hover-agenda {
-  position: fixed;              /* screen-based, not cell-based */
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: min(420px, 90vw);
-  max-height: 70vh;
-  overflow: auto;
-
   display: none;
   opacity: 0;
   pointer-events: none;
+
+  position: fixed;
+  left: 50%;
+  top: 12px;                    /* top of screen, not center */
+  bottom: auto;
+  transform: translateX(-50%);  /* only center horizontally */
+
+  width: min(520px, 92vw);
+  max-height: 40vh;
+  overflow: auto;
 
   z-index: 2000;
   background: var(--card-bg);
@@ -374,21 +376,28 @@ body.dark {
   padding: 0.75rem 1rem;
   font-size: 0.85rem;
   border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
-
-
-/* Delayed hover so Show more is clickable */
 .day-cell:hover .hover-agenda {
   display: block;
-  animation: hoverAgendaIn 0s 0.45s forwards;
+  animation: hoverAgendaIn 0s 0.75s forwards; /* shorter delay if you want */
 }
 
 @keyframes hoverAgendaIn {
-  to { opacity: 1; }
+  to {
+    opacity: 1;
+  }
 }
 
+/* No hover agenda while day modal is open */
+body.modal-open .day-cell:hover .hover-agenda,
+body.modal-open .hover-agenda {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  animation: none !important;
+}
 
 body.dark .day-cell .day-expand-btn {
   background: rgba(255,255,255,0.25);
@@ -1476,10 +1485,7 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
     <span class="config-chevron">▼</span>
     <span>Rotation Rules</span>
   </button>
-<button type="button" id="clearCustomDaysBtn" class="secondary"
-  onclick = "window.clearAllCustomDays && window.clearAllCustomDays();">
-  Clear day overrides
-</button>
+
   <div class="config-section-body">
     <div id="rotationRulesLegend" class="small"></div>
 
@@ -1505,8 +1511,59 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
         
       </div>
     </div>
+    <div class="config-section" data-section-key="custom-calendar">
+      <button class="config-section-toggle" type="button">
+        <span class="config-chevron">▼</span>
+        <span>Create a custom calendar</span>
+      </button>
 
+      <div class="config-section-body">
+        <p class="small" style="margin-top:0;">
+          Build a school year schedule, then click <strong>Use this calendar</strong> to apply it to the current profile.
+        </p>
 
+        <label>Name <input id="packName" type="text" value="My School Year"></label>
+        <label>Start <input id="packStart" type="date"></label>
+        <label>End <input id="packEnd" type="date"></label>
+        <label>Letters <input id="packLetters" type="text" value="A,B,C,D,E,F,G"></label>
+        <label><input id="packSkipWeekends" type="checkbox" checked> Skip weekends in cycle</label>
+
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
+          <button type="button" id="packGenerateDraftBtn">Generate draft</button>
+          <button type="button" id="packSaveBtn">Save calendar</button>
+          <button type="button" id="packDeleteBtn" class="secondary">Delete selected</button>
+          <button type="button" id="editPackPeriodMapBtn">Edit period map</button>
+        </div>
+
+        <div style="margin-top:12px;">
+          <label>Calendar
+            <select id="packSelect">
+              <option value="builtin">Wesleyan (built-in HS/MS/LS)</option>
+            </select>
+          </label>
+          <button type="button" id="packUseBtn">Use this calendar</button>
+        </div>
+
+        <hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb;">
+
+        <strong>Mark bulk OFF days</strong>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;align-items:end;">
+          <label>From <input type="date" id="bulkOffStart"></label>
+          <label>To <input type="date" id="bulkOffEnd"></label>
+          <label><input type="checkbox" id="bulkOffSkipWeekends" checked> Skip weekends</label>
+          <label>Label (optional) <input type="text" id="bulkOffLabel" placeholder="e.g. Christmas Break"></label>
+          <button type="button" id="bulkOffApplyBtn">Mark OFF</button>
+        </div>
+        <p class="small" style="margin:8px 0 0;color:#6b7280;">
+          Sets those dates to OFF on the active custom calendar. Notes and units stay on their dates.
+        </p>
+
+        <button type="button" id="clearCustomDaysBtn" class="secondary" style="margin-top:12px;"
+          onclick="window.clearAllCustomDays && window.clearAllCustomDays();">
+          Clear day overrides
+        </button>
+      </div>
+    </div>
 
     <div class="config-section" data-section-key="units">
       <button class="config-section-toggle" type="button">
@@ -1567,12 +1624,36 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
 </main>
 
     <script>
+// One draft only in this slice (multi-pack later)
+let calendarDraft = null;
+// {
+//   name: "My 2026 Sem1",
+//   start: "2026-08-12",
+//   end: "2026-12-18",
+//   letters: ["A","B","C","D","E","F","G"],
+//   skipWeekends: true,
+//   days: [{ date: "2026-08-12", letter: "A" }, ...]
+// }
+let savedPacks = JSON.parse(localStorage.getItem("plannerSavedPacks") || "[]");
+// [{ id, name, start, end, letters, skipWeekends, days }, ...]
+
+let activePackId = localStorage.getItem("plannerActivePackId") || "builtin";
+// "builtin" | pack id
+
 
 function toLocalISO(d) {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+function getCustomDaysStorageKey() {
+  const profileId =
+    (typeof getCurrentProfileId === "function" && getCurrentProfileId()) ||
+    (typeof currentProfileId !== "undefined" && currentProfileId) ||
+    "default";
+  return `profile:${profileId}:${getStorageKey("customDays")}`;
 }
 
 function applyBulkOffRange(startISO, endISO, options = {}) {
@@ -1616,6 +1697,379 @@ function isRotationLetter(letter) {
 
 function getLetterCycle() {
   return Object.keys(getCurrentRotationRules()); // e.g. ["A","B",...,"G"]
+}
+
+function getPlannerContextId() {
+  if (activePackId && activePackId !== "builtin") return String(activePackId);
+  // builtin: keep division/semester if you already use them
+  const div = typeof currentDivision !== "undefined" ? currentDivision : "hs";
+  const sem = typeof currentSemester !== "undefined" ? currentSemester : "sem1";
+  return `builtin-${div}-${sem}`;
+}
+
+function unitsStorageKey() {
+  return `plannerUnits:${getPlannerContextId()}`;
+}
+
+function scheduleStorageKey() {
+  return `plannerSchedule:${getPlannerContextId()}`;
+}
+
+function profileHasUnits() {
+  if (typeof units === "undefined" || !units) return false;
+  return Object.values(units).some(
+    list => Array.isArray(list) && list.length > 0
+  );
+}
+
+function getProfileCalendarLabel() {
+  if (!activePackId || activePackId === "builtin") return "Built-in Wesleyan";
+  const pack =
+    typeof savedPacks !== "undefined"
+      ? savedPacks.find(p => p.id === activePackId)
+      : null;
+  return pack?.name ? `Pack: ${pack.name}` : "Custom pack";
+}
+
+function savePackLibrary() {
+  localStorage.setItem("plannerSavedPacks", JSON.stringify(savedPacks));
+  localStorage.setItem("plannerActivePackId", activePackId);
+}
+function saveDraftAsPack() {
+  if (!calendarDraft || !calendarDraft.days?.length) {
+    alert("Generate a draft first.");
+    return;
+  }
+  const id = "pack-" + Date.now();
+  const pack = { ...calendarDraft, id, days: JSON.parse(JSON.stringify(calendarDraft.days)) };
+  // ★ HERE — before push
+  const dup = savedPacks.find(
+    p => p.name === name && p.days?.length === pack.days.length
+  );
+  if (dup && !confirm(`A pack named "${name}" already exists. Save another copy?`)) {
+    return;
+  }
+  savedPacks.push(pack);
+  savePackLibrary();
+
+  if (typeof refreshPackSelect === "function") {
+    refreshPackSelect();
+  }
+
+  alert(`Saved pack "${pack.name}" (${pack.days.length} days). Still on built-in until you click Use.`);
+}
+
+function deleteSelectedPack() {
+  const sel = document.getElementById("packSelect");
+  const id = sel?.value;
+  if (!id || id === "builtin") {
+    alert("Select a saved pack to delete.");
+    return;
+  }
+  const pack = savedPacks.find(p => p.id === id);
+  if (!pack || !confirm(`Delete pack "${pack.name}"?`)) return;
+
+  savedPacks = savedPacks.filter(p => p.id !== id);
+  if (activePackId === id) activePackId = "builtin";
+  
+  savePackLibrary();
+  refreshPackSelect();
+  if (typeof usePack === "function") usePack("builtin");
+  else renderCalendar();
+}
+
+function persistProfileCalendar() {
+  saveCurrentProfile(false);
+}
+
+function openPackPeriodMapEditor() {
+  const pack = getActivePack();
+  if (!pack) {
+    alert("Select and use a custom pack first.");
+    return;
+  }
+  ensurePackRotationRules(pack);
+
+  const letters = Object.keys(pack.rotationRules);
+  const pc = pack.periodCount || 7;
+
+  const modal = document.createElement("div");
+  modal.className = "modal";
+  modal.style.cssText =
+    "position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:200;";
+  modal.innerHTML = `
+    <div style="background:#fff;padding:1.25rem;border-radius:8px;max-width:640px;max-height:90vh;overflow:auto;min-width:320px;">
+      <h3>Period map — ${pack.name || "Pack"}</h3>
+      <p class="small">Which periods meet on each letter day.</p>
+      <div id="periodMapRows"></div>
+      <div style="margin-top:1rem;display:flex;gap:8px;justify-content:flex-end;">
+        <button type="button" id="periodMapCancel">Cancel</button>
+        <button type="button" id="periodMapSave">Save</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const rows = modal.querySelector("#periodMapRows");
+  letters.forEach(L => {
+    const set = new Set((pack.rotationRules[L] || []).map(Number));
+    const row = document.createElement("div");
+    row.style.marginBottom = "10px";
+    row.innerHTML = `<strong>${L}</strong> `;
+    for (let p = 1; p <= pc; p++) {
+      const id = `pm-${L}-${p}`;
+      row.innerHTML += `<label style="margin-left:8px;font-weight:normal;">
+        <input type="checkbox" data-letter="${L}" data-period="${p}" id="${id}" ${
+        set.has(p) ? "checked" : ""
+      }> ${p}
+      </label>`;
+    }
+    rows.appendChild(row);
+  });
+
+  modal.querySelector("#periodMapCancel").onclick = () => modal.remove();
+  modal.querySelector("#periodMapSave").onclick = () => {
+    letters.forEach(L => {
+      const checked = [
+        ...modal.querySelectorAll(`input[data-letter="${L}"]:checked`),
+      ].map(el => Number(el.dataset.period));
+      pack.rotationRules[L] = checked;
+    });
+    const idx = savedPacks.findIndex(p => p.id === pack.id);
+    if (idx !== -1) {
+      savedPacks[idx] = JSON.parse(JSON.stringify(pack));
+      savePackLibrary();
+    }
+    modal.remove();
+    renderCalendar();
+    renderSummary?.();
+    alert("Period map saved.");
+  };
+}
+
+document.getElementById("editPackPeriodMapBtn")?.addEventListener("click", openPackPeriodMapEditor);
+
+function refreshPackSelect() {
+  const sel = document.getElementById("packSelect");
+  if (!sel) return;
+  sel.innerHTML =
+    '<option value="builtin">Built-in (HS/MS/LS)</option>' +
+    savedPacks.map(p =>
+      `<option value="${p.id}">${p.name} (${p.days?.length || 0} days)</option>`
+    ).join("");
+  sel.value = activePackId || "builtin";
+}
+
+function usePack(id) {
+  const nextId = id === "builtin" || !id ? "builtin" : String(id);
+  const currentId = String(activePackId || "builtin");
+
+  // Same calendar → reload only
+  if (nextId === currentId) {
+    if (nextId !== "builtin") {
+      const pack = savedPacks.find(p => p.id === nextId);
+      if (!pack) {
+        alert("Pack not found.");
+        return;
+      }
+      if (typeof ensurePackRotationRules === "function") ensurePackRotationRules(pack);
+      if (typeof ensurePackBaseLetters === "function") ensurePackBaseLetters(pack);
+    }
+    activePackId = nextId;
+    if (typeof savePackLibrary === "function") savePackLibrary();
+    if (typeof persistProfileCalendar === "function") persistProfileCalendar();
+    currentMonthIndex = 0;
+    if (typeof refreshAllData === "function") refreshAllData();
+    else renderCalendar();
+
+    // ★ HERE — same calendar path
+    if (typeof updateAppTitle === "function") updateAppTitle();
+    if (typeof updateDivisionVisibility === "function") updateDivisionVisibility();
+    return;
+  }
+
+  // Different calendar + units → warn
+  if (typeof profileHasUnits === "function" && profileHasUnits()) {
+    const label =
+      typeof getProfileCalendarLabel === "function"
+        ? getProfileCalendarLabel()
+        : currentId;
+    const ok = confirm(
+      "This profile already has units planned on:\n\n" +
+        label +
+        "\n\nSwitching calendars does not move units. Dates may not match.\n" +
+        "Recommended: create a new profile for a different calendar.\n\n" +
+        "Switch calendar anyway?"
+    );
+    if (!ok) {
+      const sel =
+        document.getElementById("packSelect") ||
+        document.getElementById("activePackSelect");
+      if (sel) sel.value = currentId;
+      return;
+    }
+  }
+
+  // After activePackId is set: clear USER tags if custom (this profile only)
+if (activePackId !== "builtin") {
+  specialDays = [];
+  hiddenSpecialEntryKeys = new Set();
+  hideAllSpecialTags = false;
+
+  // Do NOT call saveSpecialDays() if it still hits a shared key only
+  if (typeof saveCurrentProfile === "function") {
+    saveCurrentProfile(false);
+  }
+}
+
+  // Perform switch
+  if (nextId === "builtin") {
+    activePackId = "builtin";
+  } else {
+    const pack = savedPacks.find(p => p.id === nextId);
+    if (!pack) {
+      alert("Pack not found.");
+      return;
+    }
+    if (typeof ensurePackRotationRules === "function") ensurePackRotationRules(pack);
+    if (typeof ensurePackBaseLetters === "function") ensurePackBaseLetters(pack);
+    activePackId = nextId;
+  }
+
+  // ★ HERE — after activePackId is set: clear tags if custom
+  if (activePackId !== "builtin") {
+    if (typeof specialDays !== "undefined") {
+      if (Array.isArray(specialDays)) specialDays.length = 0;
+      else specialDays = [];
+    }
+    if (typeof saveSpecialDays === "function") saveSpecialDays();
+    if (typeof renderSpecialDays === "function") renderSpecialDays();
+  }
+
+  if (typeof savePackLibrary === "function") savePackLibrary();
+  if (typeof persistProfileCalendar === "function") persistProfileCalendar();
+
+  currentMonthIndex = 0;
+  if (typeof refreshAllData === "function") refreshAllData();
+  else {
+    if (typeof renderUnits === "function") renderUnits();
+    renderCalendar();
+    if (typeof renderSummary === "function") renderSummary();
+  }
+
+  if (typeof renderSpecialDays === "function") renderSpecialDays();
+  if (typeof updateAppTitle === "function") updateAppTitle();
+  if (typeof updateDivisionVisibility === "function") updateDivisionVisibility();
+}
+
+function ensurePackBaseLetters(pack) {
+  if (!pack || !pack.days) return;
+  pack.days.forEach(d => {
+    if (d.baseLetter === undefined) d.baseLetter = d.letter || "";
+  });
+}
+
+function getActiveLetters() {
+  const pack = typeof getActivePack === "function" ? getActivePack() : null;
+  if (pack) {
+    if (Array.isArray(pack.letters) && pack.letters.length) {
+      return pack.letters.map(L => String(L).toUpperCase());
+    }
+    if (pack.rotationRules) {
+      return Object.keys(pack.rotationRules).map(L => String(L).toUpperCase());
+    }
+  }
+  // builtin
+  return Object.keys(getCurrentRotationRules() || {});
+}
+
+function getActivePack() {
+  if (!activePackId || activePackId === "builtin") return null;
+  return savedPacks.find(p => p.id === activePackId) || null;
+}
+
+function applyPackDayLetter(dateISO, choice) {
+  const pack = typeof getActivePack === "function" ? getActivePack() : null;
+  if (!pack) return;
+
+  ensurePackBaseLetters(pack);
+
+  const day = pack.days.find(d => d.date === dateISO);
+  if (!day) return;
+
+  const c = String(choice || "").trim();
+
+  // Restore this day's original cycle letter only
+  if (c === "DEFAULT" || c === "default") {
+    day.letter = day.baseLetter || "";
+    return;
+  }
+
+  // OFF may affect later days only if user picks PUSH
+  if (c.toUpperCase() === "OFF") {
+    applyOffWithPushSkip(dateISO);
+    return;
+  }
+
+  // Any other letter (A–G, blank, etc.): THIS DAY ONLY
+  day.letter = c === "" ? "" : c.toUpperCase();
+}
+
+function applyOffWithPushSkip(dateISO) {
+  const pack = typeof getActivePack === "function" ? getActivePack() : null;
+  if (!pack) return;
+
+  ensurePackBaseLetters(pack);
+
+  const days = pack.days;
+  const idx = days.findIndex(d => d.date === dateISO);
+  if (idx < 0) return;
+
+  const ans = prompt(
+    `OFF on ${dateISO}\n\nSKIP = only this day OFF (recommended)\nPUSH = move this day's letter onto later days\n\nType SKIP or PUSH:`,
+    "SKIP"
+  );
+  if (ans === null) return;
+
+  const day = days[idx];
+  const movedLetter =
+    day.letter && day.letter.toUpperCase() !== "OFF"
+      ? day.letter
+      : (day.baseLetter || "");
+
+  day.letter = "OFF";
+
+  // SKIP: stop here — no other days change
+  if (String(ans).trim().toUpperCase() !== "PUSH") return;
+
+  // PUSH: cascade letters forward
+  if (!movedLetter) return;
+
+  let carry = movedLetter;
+  for (let i = idx + 1; i < days.length; i++) {
+    const d = days[i];
+    if ((d.letter || "").toUpperCase() === "OFF") continue;
+    if (d.letter === "" && !d.baseLetter) continue; // empty weekend slot
+
+    const was = d.letter || d.baseLetter || "";
+    d.letter = carry;
+    carry = was;
+  }
+}
+
+function saveActivePackEdits() {
+  const pack = getActivePack();
+  if (!pack) {
+    alert("No custom pack active.");
+    return;
+  }
+  const idx = savedPacks.findIndex(p => p.id === pack.id);
+  if (idx === -1) return;
+  savedPacks[idx] = JSON.parse(JSON.stringify(pack));
+  savePackLibrary();
+  if (typeof refreshPackSelect === "function") refreshPackSelect();
+  renderCalendar();
+  alert(`Saved letter edits to "${pack.name}".`);
 }
 
 /** Next school day after iso that is a weekday and not OFF in customDays (unless we only care about calendar walk) */
@@ -1859,6 +2313,13 @@ function saveCurrentProfile(showToast = false) {
   if (typeof collectCurrentProfileData === "function") {
     profiles[id].data = collectCurrentProfileData();
   }
+
+  // Remember which calendar this profile is using
+  profiles[id].activePackId =
+    typeof activePackId !== "undefined" && activePackId
+      ? activePackId
+      : "builtin";
+
   profiles[id].updatedAt = new Date().toISOString();
   if (typeof saveProfiles === "function") saveProfiles(profiles);
 
@@ -2354,9 +2815,14 @@ function collectCurrentProfileData() {
     // live memory objects
     teacherSchedule: typeof teacherSchedule !== "undefined" ? teacherSchedule : {},
     units: typeof units !== "undefined" ? units : {},
-    specialDays: typeof specialDays !== "undefined" ? specialDays : [],
+specialDays: typeof getUserSpecialDaysForSave === "function"
+  ? getUserSpecialDaysForSave()
+  : (specialDays || []),
+hiddenSpecialEntryKeys: [...(hiddenSpecialEntryKeys || [])],
+hideAllSpecialTags: !!hideAllSpecialTags,
     currentDivision: typeof currentDivision !== "undefined" ? currentDivision : "hs",
     currentSemester: typeof currentSemester !== "undefined" ? currentSemester : "sem1",
+    customDays: typeof customDays !== "undefined" ? customDays : {},
 
     // colors
     cycleColors: typeof getCycleColors === "function" ? getCycleColors() : {},
@@ -2395,6 +2861,12 @@ function applyProfileData(data) {
   if (data.currentDivision) currentDivision = data.currentDivision;
   if (data.currentSemester) currentSemester = data.currentSemester;
 
+  specialDays = Array.isArray(data.specialDays) ? data.specialDays : [];
+hiddenSpecialEntryKeys = new Set(
+  Array.isArray(data.hiddenSpecialEntryKeys) ? data.hiddenSpecialEntryKeys : []
+);
+hideAllSpecialTags = !!data.hideAllSpecialTags;
+
   // colors
   if (data.cycleColors) {
     localStorage.setItem("cycleColors", JSON.stringify(data.cycleColors));
@@ -2417,11 +2889,11 @@ function applyProfileData(data) {
     localStorage.setItem("hs-sem1-units", JSON.stringify(data.unitsSem1));
   }
 
-  if (data.customDays && typeof data.customDays === "object") {
-    customDays = data.customDays;
-  } else {
-    customDays = {};
-  }
+customDays =
+  data.customDays && typeof data.customDays === "object"
+    ? data.customDays
+    : {};
+
   if (typeof saveCustomDays === "function") saveCustomDays();
 
   // notes: clear old notes_ keys then restore
@@ -2433,6 +2905,9 @@ function applyProfileData(data) {
       localStorage.setItem(key, JSON.stringify(data.notes[key]));
     });
   }
+
+if (typeof renderSpecialDays === "function") renderSpecialDays();
+if (typeof renderCalendar === "function") renderCalendar();
 
   // future fields
   if (data.periodCount) localStorage.setItem("periodCount", String(data.periodCount));
@@ -2461,10 +2936,39 @@ function loadProfile(id) {
 
   // save current first
   saveCurrentProfile(false);
-  
 
   setCurrentProfileId(id);
   applyProfileData(profile.data || {});
+  loadCustomDays();
+  renderCalendar();
+
+  // Restore this profile's calendar (pack or builtin)
+  activePackId = profile.activePackId || profile.data?.activePackId || "builtin";
+
+  if (activePackId !== "builtin") {
+    const pack =
+      typeof savedPacks !== "undefined"
+        ? savedPacks.find(p => p.id === activePackId)
+        : null;
+
+    if (pack) {
+      if (typeof ensurePackBaseLetters === "function") ensurePackBaseLetters(pack);
+      if (typeof ensurePackRotationRules === "function") ensurePackRotationRules(pack);
+    } else {
+      // Pack missing from library — keep id in memory for debugging, fall back display only
+      console.warn("Profile pack not in library:", activePackId);
+      activePackId = "builtin";
+    }
+  }
+  updateAppTitle();
+const sel =
+    document.getElementById("packSelect") ||
+    document.getElementById("activePackSelect");
+  if (sel) {
+    // Only set value if the option exists; don't rewrite profile here
+    const opt = [...sel.options].some(o => o.value === String(activePackId));
+    sel.value = opt ? activePackId : "builtin";
+  }
 
   if (typeof refreshAllData === "function") refreshAllData();
   else {
@@ -2475,6 +2979,8 @@ function loadProfile(id) {
   }
 
   renderProfileSelector();
+    if (typeof updateAppTitle === "function") updateAppTitle();
+  if (typeof updateDivisionVisibility === "function") updateDivisionVisibility();
   return true;
 }
 
@@ -2540,6 +3046,46 @@ function deleteProfile(id) {
     if (typeof refreshAllData === "function") refreshAllData();
   }
   renderProfileSelector();
+}
+
+function defaultRotationRules(periodCount, letters) {
+  const n = Math.max(1, Number(periodCount) || 7);
+  const all = Array.from({ length: n }, (_, i) => i + 1);
+  const rules = {};
+  (letters || ["A", "B", "C", "D", "E", "F", "G"]).forEach(L => {
+    rules[String(L).toUpperCase()] = all.slice();
+  });
+  return rules;
+}
+
+function ensurePackRotationRules(pack) {
+  if (!pack) return;
+
+const letters =
+  Array.isArray(pack.letters) && pack.letters.length
+    ? pack.letters.map(L => String(L).toUpperCase())
+    : Object.keys(pack.rotationRules || {});
+
+  const pc = Math.max(1, Number(pack.periodCount) || 7);
+  pack.periodCount = pc;
+
+  if (!pack.rotationRules || typeof pack.rotationRules !== "object") {
+    pack.rotationRules = {};
+  }
+
+  // Add missing letters only
+  letters.forEach(L => {
+    if (!Array.isArray(pack.rotationRules[L])) {
+      pack.rotationRules[L] = Array.from({ length: pc }, (_, i) => i + 1);
+    }
+  });
+
+  // Drop rules for letters not in this pack (removes D–G if pack is A–C)
+  Object.keys(pack.rotationRules).forEach(L => {
+    if (!letters.includes(String(L).toUpperCase())) {
+      delete pack.rotationRules[L];
+    }
+  });
 }
 
 /** First run: wrap existing data into a default profile */
@@ -2653,20 +3199,24 @@ function updateAppTitle() {
   const titleEl = document.getElementById("mainTitle");
   if (!titleEl) return;
 
-  const savedTitle = localStorage.getItem("appTitle");
-  if (savedTitle) {
-    titleEl.textContent = savedTitle; // respect custom title
-  } else {
-    // fallback only if no custom title
-    let titleText = "Planner";
-    if (currentDivision === "hs") titleText = "Wesleyan HS 26-27 Planner";
-    else if (currentDivision === "ms") titleText = "Wesleyan MS 26-27 Planner";
-    else if (currentDivision === "ls") titleText = "Wesleyan LS 26-27 Planner";
-    else if (currentDivision === "other") titleText = "Custom Planner";
-    titleEl.textContent = titleText;
+  // Custom calendar active → ALWAYS use pack name (ignore division)
+  if (typeof activePackId !== "undefined" && activePackId && activePackId !== "builtin") {
+    const pack =
+      typeof getActivePack === "function"
+        ? getActivePack()
+        : (typeof savedPacks !== "undefined"
+            ? savedPacks.find(p => p.id === activePackId)
+            : null);
+    titleEl.textContent = (pack && pack.name) ? pack.name : "Custom calendar";
+    return;
   }
-}
 
+  // Built-in only
+  if (currentDivision === "hs") titleEl.textContent = "Wesleyan HS 26-27 Planner";
+  else if (currentDivision === "ms") titleEl.textContent = "Wesleyan MS 26-27 Planner";
+  else if (currentDivision === "ls") titleEl.textContent = "Wesleyan LS 26-27 Planner";
+  else titleEl.textContent = "Planner";
+}
 
 function getStorageKey(base) {
   return `${currentDivision}-${currentSemester}${base}`;
@@ -2676,12 +3226,103 @@ function getCurrentConfig() {
   return DIVISIONS[currentDivision] || DIVISIONS.hs;
 }
 
+function toLocalISO(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * Fill instructional days with a repeating letter cycle.
+ * Weekends: letter "" if skipWeekends; still included if you want full grid later.
+ */
+function generateCycleDays(startISO, endISO, letters, skipWeekends = true) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startISO) || !/^\d{4}-\d{2}-\d{2}$/.test(endISO)) {
+    alert("Invalid start/end dates.");
+    return [];
+  }
+  if (startISO > endISO) {
+    alert("Start must be on or before end.");
+    return [];
+  }
+  const cycle = (letters || []).map(l => String(l).trim().toUpperCase()).filter(Boolean);
+  if (!cycle.length) {
+    alert("Provide at least one rotation letter (e.g. A,B,C,D,E,F,G).");
+    return [];
+  }
+
+  const start = new Date(startISO + "T12:00:00");
+  const end = new Date(endISO + "T12:00:00");
+  if (isNaN(start) || isNaN(end)) {
+    alert("Invalid date.");
+    return [];
+  }
+
+  const days = [];
+  let li = 0;
+
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const iso = toLocalISO(d);
+    const dow = d.getDay(); // 0 Sun … 6 Sat
+    const isWeekend = dow === 0 || dow === 6;
+
+    if (skipWeekends && isWeekend) {
+      days.push({ date: iso, letter: "" });
+      continue;
+    }
+
+const L = cycle[li % cycle.length];
+    days.push({ date: iso, letter: L, baseLetter: L });
+    li += 1;
+  }
+
+  return days;
+}
+
+function buildCalendarDraftFromForm() {
+  const name = (document.getElementById("packName")?.value || "Custom pack").trim();
+  const start = document.getElementById("packStart")?.value;
+  const end = document.getElementById("packEnd")?.value;
+  const lettersRaw = document.getElementById("packLetters")?.value || "A,B,C,D,E,F,G";
+  const letters = lettersRaw.split(/[\s,]+/).filter(Boolean);
+  const skipWeekends = document.getElementById("packSkipWeekends")?.checked !== false;
+
+  const days = generateCycleDays(start, end, letters, skipWeekends);
+  if (!days.length) return null;
+
+  calendarDraft = { name, start, end, letters, skipWeekends, days };
+  console.log("Draft pack:", calendarDraft.name, days.length, "days", days.slice(0, 5));
+  alert(`Draft OK: ${days.length} days.\nFirst: ${days[0].date} ${days[0].letter}\nLast: ${days[days.length - 1].date} ${days[days.length - 1].letter}\n\nNot applied to calendar yet.`);
+  return calendarDraft;
+}
+
 function getCurrentRotationData() {
+  if (activePackId && activePackId !== "builtin") {
+    const pack = savedPacks.find(p => p.id === activePackId);
+    if (pack && Array.isArray(pack.days)) return pack.days;
+  }  
   return getCurrentConfig().rotationData[currentSemester] || [];
 }
 
 function getCurrentRotationRules() {
-  return getCurrentConfig().rotationRules || {};
+  const pack = typeof getActivePack === "function" ? getActivePack() : null;
+  if (pack) {
+    if (typeof ensurePackRotationRules === "function") ensurePackRotationRules(pack);
+    return pack.rotationRules || {};
+  }
+
+  if (typeof ROTATION_RULES !== "undefined") return ROTATION_RULES;
+
+  return {
+    A: [1, 2, 3, 4, 5],
+    B: [6, 7, 1, 2, 3],
+    C: [4, 5, 6, 7, 1],
+    D: [2, 3, 4, 5, 6],
+    E: [7, 1, 2, 3, 4],
+    F: [5, 6, 7, 1, 2],
+    G: [3, 4, 5, 6, 7],
+  };
 }
 
 function getCurrentPeriodCount() {
@@ -2705,8 +3346,6 @@ function createDateRangeEntries(startDate, endDate, divisions, label) {
   }
   return rows;
 }
-
-
 
 const STATIC_SPECIAL_DAY_ROWS = [
   ["2026-08-12", ["ls"], "First day (A-K)"],
@@ -3003,6 +3642,30 @@ function createShiftDayPlan() {
   };
 }
 
+function updateDivisionVisibility() {
+  const onCustom =
+    typeof activePackId !== "undefined" &&
+    activePackId &&
+    activePackId !== "builtin";
+
+  // wrap your division controls in one container if possible
+  const divControls =
+    document.getElementById("divisionControls") ||
+    document.getElementById("divisionSemesterBar");
+
+  if (divControls) {
+    divControls.style.display = onCustom ? "none" : "";
+  }
+
+  // or hide individual radios/selects:
+  document.querySelectorAll(
+    '[name="division"], #divisionSelect, #semesterSelect, .division-toggle'
+  ).forEach(el => {
+    const row = el.closest("label, .control-row, .toolbar-group") || el;
+    row.style.display = onCustom ? "none" : "";
+  });
+}
+
 function insertShiftDaysByInstructionalNumber(days, selectedInstructionalDays) {
   const updated = (Array.isArray(days) ? days : []).map(dayPlan => ({ ...dayPlan }));
   const targets = Array.from(new Set(
@@ -3031,6 +3694,80 @@ function insertShiftDaysByInstructionalNumber(days, selectedInstructionalDays) {
   return updated;
 }
 
+function isCustomCalendarActive() {
+  return typeof activePackId !== "undefined" &&
+    !!activePackId &&
+    activePackId !== "builtin";
+}
+
+/** Rows safe to persist (never static/generated). */
+function getUserSpecialDaysForSave() {
+  return (Array.isArray(specialDays) ? specialDays : []).filter(d => {
+    if (!d) return false;
+    if (d.source === "generated") return false;
+    if (d.id && String(d.id).startsWith("static-special-")) return false;
+    return true;
+  });
+}
+
+/** Single source for panel + calendar badges. */
+function getVisibleSpecialDayEntries() {
+  const unified = [];
+  const seen = new Set();
+
+  function pushEntry(entry) {
+    const key = buildSpecialEntryKey(entry.date, entry.badgeText, entry.label);
+    if (hiddenSpecialEntryKeys.has(key)) return;
+    if (seen.has(key)) return;
+    seen.add(key);
+    unified.push({ ...entry, key });
+  }
+
+  // User tags (this profile)
+  getUserSpecialDaysForSave().forEach(specialDay => {
+    pushEntry({
+      id: specialDay.id,
+      date: specialDay.date,
+      label: specialDay.label || "Special Day",
+      badgeText: specialDay.badgeText || "SD",
+      color: specialDay.color || "#e9d5ff",
+      source: "special"
+    });
+  });
+
+  // School + holiday tags ONLY on built-in
+  if (!isCustomCalendarActive()) {
+    getGeneratedSpecialDays().forEach(day => {
+      pushEntry({
+        id: day.id,
+        date: day.date,
+        label: day.label,
+        badgeText: day.badgeText,
+        color: day.color,
+        source: "generated"
+      });
+    });
+
+    if (typeof getCurrentRotationData === "function" && typeof isHolidayLabel === "function") {
+      getCurrentRotationData().forEach(day => {
+        if (!isHolidayLabel(day.letter)) return;
+        pushEntry({
+          date: day.date,
+          label: day.letter,
+          badgeText: "HOL",
+          color: "#d1d5db",
+          source: "generated"
+        });
+      });
+    }
+  }
+
+  unified.sort(
+    (a, b) => a.date.localeCompare(b.date) || String(a.label).localeCompare(String(b.label))
+  );
+  return unified;
+}
+
 function normalizeSpecialDay(day) {
   const appliesTo = day?.appliesTo === "periods" ? "periods" : "day";
   const parsedPeriods = Array.isArray(day?.periods)
@@ -3056,30 +3793,8 @@ function getGeneratedSpecialDays() {
   const staticDays = STATIC_SPECIAL_DAYS.filter(day => day.semesters.includes(currentSemester) && (day.divisions.includes("all") || day.divisions.includes(currentDivision)));
   return [...staticDays, ...getAutoNoTestSpecialDays()];
 }
-
 function getUnifiedSpecialDaysForDate(date) {
-  const visible = [];
-  const seen = new Set();
-
-  // User-created special days first
-  specialDays.forEach(day => {
-    if (day.date !== date) return;
-    const key = buildSpecialEntryKey(day.date, day.badgeText, day.label);
-    if (hiddenSpecialEntryKeys.has(key) || seen.has(key)) return;
-    seen.add(key);
-    visible.push(day);
-  });
-
-  // Generated special days
-  getGeneratedSpecialDays().forEach(day => {
-    if (day.date !== date) return;
-    const key = buildSpecialEntryKey(day.date, day.badgeText, day.label);
-    if (hiddenSpecialEntryKeys.has(key) || seen.has(key)) return;
-    seen.add(key);
-    visible.push(day);
-  });
-
-  return visible;   // Now returns ALL special entries for the day
+  return getVisibleSpecialDayEntries().filter(e => e.date === date);
 }
 
 function getPrimarySpecialDayForDate(date) {
@@ -3170,7 +3885,19 @@ function getPeriodOccurrenceDates(periodNum) {
 }
 
 function getPeriodsForDate(date, letterLike) {
-  // No letter / explicit OFF → no periods
+  const pack = typeof getActivePack === "function" ? getActivePack() : null;
+
+  // Custom pack: day-level OFF or period override
+  if (pack && date) {
+    const d = pack.days.find(x => x.date === date);
+    if (d) {
+      if (String(d.letter || "").toUpperCase() === "OFF") return [];
+      if (Array.isArray(d.periods)) {
+        return d.periods.map(Number).filter(n => n > 0);
+      }
+    }
+  }
+
   if (
     letterLike == null ||
     letterLike === "" ||
@@ -3179,14 +3906,12 @@ function getPeriodsForDate(date, letterLike) {
     return [];
   }
 
-  // Division-specific overrides (existing behavior)
   const overrides =
     DIVISION_SPECIFIC_PERIOD_OVERRIDES[currentDivision]?.[currentSemester] || {};
   if (overrides[date]) {
     return overrides[date];
   }
 
-  // Full-period dates (existing behavior)
   const fullPeriodDates =
     DIVISION_SPECIFIC_ALL_PERIOD_DATES[currentDivision]?.[currentSemester] ||
     new Set();
@@ -3194,7 +3919,6 @@ function getPeriodsForDate(date, letterLike) {
     return getPeriodNumbers();
   }
 
-  // Normal rotation letter
   const letter = normalizeLetter(letterLike);
   if (!letter || letter === "OFF") {
     return [];
@@ -3202,6 +3926,7 @@ function getPeriodsForDate(date, letterLike) {
 
   return getCurrentRotationRules()[letter] || [];
 }
+
 function applyUnitSchedule(periodNum, periodUnits, showAlert = false) {
   const unitsToSchedule = periodUnits.map((unit, index) => normalizeUnit(unit, index));
   const occurrenceDates = getPeriodOccurrenceDates(periodNum);
@@ -3711,23 +4436,41 @@ function countClassDaysUntil(periodNum, dueDate, fromDate = getLocalTodayISO()) 
 function loadSpecialDays() {
   const raw = localStorage.getItem(getStorageKey(LS_SPECIAL_DAYS_KEY));
   if (!raw) {
-    specialDays = DEFAULT_SPECIAL_DAYS.map(normalizeSpecialDay);
-    saveSpecialDays();
+    specialDays = [];
     return;
   }
-
   try {
-    specialDays = JSON.parse(raw).map(normalizeSpecialDay);
+    const parsed = JSON.parse(raw).map(normalizeSpecialDay);
+    // Drop any generated/static rows that were wrongly saved in the past
+    specialDays = parsed.filter(d => {
+      if (d.source === "generated") return false;
+      if (d.id && String(d.id).startsWith("static-special-")) return false;
+      return true;
+    });
   } catch (e) {
     console.warn("Failed to parse special days", e);
-    specialDays = DEFAULT_SPECIAL_DAYS.map(normalizeSpecialDay);
-    saveSpecialDays();
+    specialDays = [];
   }
 }
 
 function saveSpecialDays() {
+  specialDays = typeof getUserSpecialDaysForSave === "function"
+    ? getUserSpecialDaysForSave()
+    : (Array.isArray(specialDays) ? specialDays : []);
+
   specialDays = specialDays.map(normalizeSpecialDay);
-  localStorage.setItem(getStorageKey(LS_SPECIAL_DAYS_KEY), JSON.stringify(specialDays));
+
+  // Prefer profile isolation
+  if (typeof saveCurrentProfile === "function") {
+    saveCurrentProfile(false);
+    return;
+  }
+
+  // Fallback: still write storage, but only user list
+  localStorage.setItem(
+    getStorageKey(LS_SPECIAL_DAYS_KEY),
+    JSON.stringify(specialDays)
+  );
 }
 
 function countScheduledClassesBefore(dateLimit) {
@@ -4067,19 +4810,6 @@ function renderScheduleFields() {
     <label><strong>Period Assignments</strong></label>
     <div id="periodSlots" style="margin-top: 12px;"></div>
 
-    <div id="bulkOffPanel" style="margin:12px 0;padding:12px;border:1px solid #e5e7eb;border-radius:8px;">
-  <strong>Mark Bulk OFF Days</strong>
-  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;align-items:end;">
-    <label>From <input type="date" id="bulkOffStart"></label>
-    <label>To <input type="date" id="bulkOffEnd"></label>
-    <label><input type="checkbox" id="bulkOffSkipWeekends" checked> Skip weekends</label>
-    <label>Label (optional) <input type="text" id="bulkOffLabel" placeholder="e.g. Christmas Break"></label>
-    <button type="button" id="bulkOffApplyBtn">Mark OFF</button>
-  </div>
-  <p class="small" style="margin:8px 0 0;color:#6b7280;">
-    Letters only. Tags, notes, and units stay on their dates. No push.
-  </p>
-</div>
   `;
 
   renderKnownClasses();
@@ -4204,8 +4934,8 @@ function renderRotationLegend() {
   const key = document.getElementById("rotationKey");
   if (!legend || !key) return;
 
-  const rules = getCurrentRotationRules();
-  const letters = Object.keys(rules);
+  const rules = getCurrentRotationRules() || {};
+  const letters = Object.keys(rules).sort();
 
   if (!letters.length) {
     legend.textContent = `${getCurrentConfig().name} does not use rotation rules.`;
@@ -4213,14 +4943,28 @@ function renderRotationLegend() {
     return;
   }
 
-  legend.innerHTML = Object.entries(rules)
-    .map(([letter, periods]) => `${letter}: ${periods.join(",")}`)
+  legend.innerHTML = letters
+    .map(letter => `${letter}: ${(rules[letter] || []).join(",")}`)
     .join("<br/>");
 
+  const colors = typeof getCycleColors === "function" ? getCycleColors() : {};
+
+  key.innerHTML = "";
+  letters.forEach(letter => {
+    const swatch = document.createElement("span");
+    swatch.className = "rotation-key-item";
+    swatch.textContent = letter;
+    swatch.style.background = colors[letter] || `var(--cycle-${letter}, #e5e7eb)`;
+    swatch.style.color = "#1f2937";
+    swatch.style.display = "inline-block";
+    swatch.style.margin = "2px 4px 2px 0";
+    swatch.style.padding = "2px 8px";
+    swatch.style.borderRadius = "4px";
+    swatch.style.fontSize = "0.75rem";
+    swatch.style.fontWeight = "600";
+    key.appendChild(swatch);
+  });
 }
-
-    // --- UI: schedule form ---
-
 
 function hydrateScheduleForm() {
   // No longer needed for inputs, but keep for compatibility
@@ -4448,17 +5192,19 @@ if (isOff) {
     : `NO SCHOOL`;
   badgeRow.appendChild(offBadge);
 }
-    if (!hideAllSpecialTags) {
-      specialEntries.forEach(entry => {
-        if (entry.appliesTo !== "day") return;
-        const badge = document.createElement("span");
-        badge.className = "special-day-badge";
-        badge.textContent = entry.label;
-        badge.style.background = hexToRgba(entry.color, 0.45);
-        badge.style.borderColor = entry.color;
-        badgeRow.appendChild(badge);
-      });
-    }
+if (!hideAllSpecialTags) {
+  specialEntries.forEach(entry => {
+    if (entry.appliesTo && entry.appliesTo !== "day") return;
+
+    const badge = document.createElement("span");
+    badge.className = "special-day-badge";
+    badge.textContent = entry.label || entry.badgeText || "SD";
+    badge.title = [entry.badgeText, entry.label].filter(Boolean).join(" · ");
+    badge.style.background = hexToRgba(entry.color || "#e9d5ff", 0.45);
+    badge.style.borderColor = entry.color || "#e9d5ff";
+    badgeRow.appendChild(badge);
+  });
+}
 
     if (dayNotes.noTest && !isAutoNoTestDay(iso)) {
       const noTestBadge = document.createElement("span");
@@ -4578,7 +5324,10 @@ if (isOff) {
       cell.appendChild(ul);
     }
 
-    cell.addEventListener("click", () => {
+    cell.addEventListener("click", (e) => {
+  const iso = cell.dataset.date;
+  if (!iso) return;
+
       openDayModal({
         date: iso,
         letter: schoolDay
@@ -4635,37 +5384,154 @@ function openDayModal(day) {
 
   body.innerHTML = "";
 
+  // === Letter editor: ONE control — pack OR built-in, never both ===
+  const activePack = typeof getActivePack === "function" ? getActivePack() : null;
+
+  if (activePack) {
+    ensurePackBaseLetters(activePack);
+
+    const dayEntry = activePack.days.find(d => d.date === day.date);
+    const cur = (dayEntry && dayEntry.letter) || "";
+    const base = (dayEntry && dayEntry.baseLetter) || "";
+    const letterList =
+      activePack.letters && activePack.letters.length
+        ? activePack.letters
+        : ["A", "B", "C", "D", "E", "F", "G"];
+
+    if (letterLabel) {
+      letterLabel.textContent = `Pack: ${activePack.name} · ${cur || "—"}`;
+    }
+
+    const packLetterBlock = document.createElement("div");
+    packLetterBlock.className = "note-block";
+    packLetterBlock.style.marginBottom = "12px";
+    packLetterBlock.innerHTML = `
+      <strong>Pack letter (this day only)</strong>
+      <select id="modalPackLetter" style="display:block; margin-top:6px; min-width:12rem;">
+        <option value="DEFAULT">Default (${base || "none"})</option>
+        <option value="OFF">OFF</option>
+        ${letterList
+          .map(L => {
+            const v = String(L).toUpperCase();
+            return `<option value="${v}">${v}</option>`;
+          })
+          .join("")}
+        <option value="">(blank)</option>
+      </select>
+      <p class="small" style="margin:6px 0 0;">
+        OFF asks SKIP or PUSH. Default restores this day’s original cycle letter.
+        A–G changes only this day.
+      </p>
+    `;
+    body.appendChild(packLetterBlock);
+
+    const sel = packLetterBlock.querySelector("#modalPackLetter");
+    if (sel) {
+      const curU = String(cur).toUpperCase();
+      if (curU === "OFF") sel.value = "OFF";
+      else if (cur === "" || cur == null) sel.value = "";
+      else if (letterList.map(L => String(L).toUpperCase()).includes(curU)) sel.value = curU;
+      else sel.value = "DEFAULT";
+    }
+  } else {
+    const currentLetter = override ? override.letter : (day.letter || "");
+    const letters = Object.keys(getCurrentRotationRules());
+
+    if (letterLabel) {
+      letterLabel.textContent = currentLetter
+        ? `Letter: ${currentLetter}`
+        : `No ${getCurrentConfig().name} classes`;
+    }
+
+    const builtinLetterBlock = document.createElement("div");
+    builtinLetterBlock.className = "note-block";
+    builtinLetterBlock.style.marginBottom = "12px";
+    builtinLetterBlock.innerHTML = `
+      <label for="modalDayLetter"><strong>Day letter / schedule</strong></label>
+      <select id="modalDayLetter" style="display:block; margin-top:6px; min-width:12rem;">
+        <option value="DEFAULT" ${!override ? "selected" : ""}>Default (built-in calendar)</option>
+        ${letters
+          .map(
+            L =>
+              `<option value="${L}" ${
+                override && currentLetter === L ? "selected" : ""
+              }>${L}</option>`
+          )
+          .join("")}
+        <option value="OFF" ${
+          override && String(currentLetter).toUpperCase() === "OFF" ? "selected" : ""
+        }>OFF — No classes</option>
+      </select>
+      <div class="small" style="margin-top:4px;">
+        Default uses the school rotation list. Override only changes this date.
+      </div>
+    `;
+    body.appendChild(builtinLetterBlock);
+  }
+
+  // === Limit periods today (custom pack, not OFF) ===
+  if (activePack) {
+    const dayEntry = activePack.days.find(d => d.date === day.date);
+    const isOff = String(dayEntry?.letter || "").toUpperCase() === "OFF";
+
+    if (!isOff) {
+      if (typeof ensurePackRotationRules === "function") {
+        ensurePackRotationRules(activePack);
+      }
+
+      const pc = activePack.periodCount || 7;
+      const letterKey = normalizeLetter(dayEntry?.letter || day.letter || "");
+      const defaultPeriods =
+        (letterKey && activePack.rotationRules?.[letterKey]) ||
+        Array.from({ length: pc }, (_, i) => i + 1);
+
+      const usingOverride = Array.isArray(dayEntry?.periods);
+      const selected = new Set(
+        (usingOverride ? dayEntry.periods : defaultPeriods).map(Number)
+      );
+
+      const limitBlock = document.createElement("div");
+      limitBlock.className = "note-block";
+      limitBlock.style.marginBottom = "12px";
+      limitBlock.innerHTML = `
+        <label>
+          <input type="checkbox" id="modalLimitPeriods" ${usingOverride ? "checked" : ""}>
+          Limit periods today (special / half day)
+        </label>
+        <div id="modalPeriodChecks" style="margin-top:8px;${
+          usingOverride ? "" : "display:none;"
+        }"></div>
+        <p class="small">When checked, only selected periods meet. Unchecked = normal letter map.</p>
+      `;
+
+      const checks = limitBlock.querySelector("#modalPeriodChecks");
+      for (let p = 1; p <= pc; p++) {
+        const lab = document.createElement("label");
+        lab.style.marginRight = "10px";
+        lab.innerHTML = `<input type="checkbox" class="modal-period-cb" value="${p}" ${
+          selected.has(p) ? "checked" : ""
+        }> ${p}`;
+        checks.appendChild(lab);
+      }
+
+      body.appendChild(limitBlock);
+
+      limitBlock.querySelector("#modalLimitPeriods").addEventListener("change", e => {
+        checks.style.display = e.target.checked ? "block" : "none";
+      });
+    }
+  }
   const existingNotes = loadNotesForDate(day.date);
   const autoNoTest = isAutoNoTestDay(day.date);
   const specialEntries = getUnifiedSpecialDaysForDate(day.date);
 
-  // Use effective letter so OFF / override shows correct periods
   const periods = getPeriodsForDate(day.date, effectiveLetter);
   const dayCounts = getDayCountsForDate(day.date, periods);
 
   const shiftAllBtn = document.getElementById("shiftAllUnitsBtn");
   if (shiftAllBtn) shiftAllBtn.style.display = periods.length ? "inline-block" : "none";
 
-  const currentLetter = override ? override.letter : (day.letter || "");
-  const letters = Object.keys(getCurrentRotationRules());
-
-  const letterBlock = document.createElement("div");
-  letterBlock.className = "note-block";
-  letterBlock.innerHTML = `
-    <label for="modalDayLetter">Day letter / schedule</label>
-    <select id="modalDayLetter">
-      <option value="DEFAULT" ${!override ? "selected" : ""}>Default (built-in calendar)</option>
-      ${letters.map(L =>
-        `<option value="${L}" ${override && currentLetter === L ? "selected" : ""}>${L}</option>`
-      ).join("")}
-      <option value="OFF" ${override && currentLetter === "OFF" ? "selected" : ""}>OFF — No classes</option>
-    </select>
-    <div class="small" style="margin-top:4px;">
-      Default uses the school rotation list. Override only changes this date.
-    </div>
-  `;
-  body.appendChild(letterBlock);
-
+  
   // === NEW: GENERAL DAY NOTES ===
 const generalBlock = document.createElement("div");
 generalBlock.className = "note-block general-day-notes";
@@ -4829,16 +5695,17 @@ block.appendChild(
     specialPeriodsWrap.style.display = specialApplies.value === "periods" ? "block" : "none";
   });
 
+document.body.classList.add("modal-open");
   backdrop.style.display = "flex";
-
   
 }
 
 function closeDayModal() {
-      const backdrop = document.getElementById("modalBackdrop");
-      backdrop.style.display = "none";
-      currentModalDay = null;
-    }
+  document.body.classList.remove("modal-open");
+  const backdrop = document.getElementById("modalBackdrop");
+  if (backdrop) backdrop.style.display = "none";
+  currentModalDay = null;
+}
 
 function handleSaveNotes() {
   if (!currentModalDay) return;
@@ -4846,19 +5713,19 @@ function handleSaveNotes() {
   const body = document.getElementById("modalBody");
   const notesObj = { general: "" };
 
-// Rich note editors
+  // Rich note editors
   body.querySelectorAll(".note-doc").forEach(doc => {
     const period = doc.dataset.period;
     if (!period) return;
     notesObj[period] = doc.innerHTML.trim();
   });
 
+  // Built-in day letter override (only when #modalDayLetter exists)
   const letterSelect = document.getElementById("modalDayLetter");
   if (letterSelect) {
     const newVal = letterSelect.value;
     const date = currentModalDay.date;
 
-    // What letter was this day BEFORE this save?
     const previous = getCustomDay(date);
     const builtIn = getCurrentRotationData().find(d => d.date === date);
     const oldLetter = previous
@@ -4871,43 +5738,66 @@ function handleSaveNotes() {
       setCustomDay(date, newVal);
     }
 
-    // Phase 2: OFF + had a real letter → ask push / skip / this day only
     const goingOff = newVal === "OFF";
     const hadLetter = isRotationLetter(oldLetter);
 
     if (goingOff && hadLetter) {
-    const choice = prompt(
-      `This day was ${normalizeLetter(oldLetter)}.\n\n` +
-      `Type one of:\n` +
-      `  push — slide letters to following school days\n` +
-      `  skip — drop this letter; leave later days as-is\n`,
-            "skip"
-    );
-
-      alert(
-    "Letters updated.\n\n" +
-    "Special tags, notes, units, and projects were NOT moved.\n" +
-    "Adjust those manually if needed."
-  );
+      const choice = prompt(
+        `This day was ${normalizeLetter(oldLetter)}.\n\n` +
+          `Type one of:\n` +
+          `  push — slide letters to following school days\n` +
+          `  skip — drop this letter; leave later days as-is\n`,
+        "skip"
+      );
 
       const mode = (choice || "none").trim().toLowerCase();
       if (mode === "push" || mode === "skip") {
         reflowLettersFrom(date, oldLetter, mode);
+        alert(
+          "Letters updated.\n\n" +
+            "Special tags, notes, units, and projects were NOT moved.\n" +
+            "Adjust those manually if needed."
+        );
       }
     }
   }
 
-  if (letterSelect) {
-    const val = letterSelect.value;
-    if (val === "DEFAULT") {
-      setCustomDay(currentModalDay.date, "DEFAULT");
-    } else {
-      setCustomDay(currentModalDay.date, val);
+  // Custom pack: letter + optional period limit
+  if (typeof getActivePack === "function" && getActivePack()) {
+    const pack = getActivePack();
+    const letterSel = document.getElementById("modalPackLetter");
+    if (letterSel) {
+      applyPackDayLetter(currentModalDay.date, letterSel.value);
+    }
+
+    const dayEntry = pack.days.find(d => d.date === currentModalDay.date);
+    if (dayEntry && String(dayEntry.letter || "").toUpperCase() !== "OFF") {
+      const limit = document.getElementById("modalLimitPeriods");
+      if (limit && limit.checked) {
+        dayEntry.periods = [
+          ...document.querySelectorAll(".modal-period-cb:checked"),
+        ].map(el => Number(el.value));
+      } else if (dayEntry && Object.prototype.hasOwnProperty.call(dayEntry, "periods")) {
+        delete dayEntry.periods;
+      }
+    }
+
+    const idx = savedPacks.findIndex(p => p.id === pack.id);
+    if (idx !== -1) {
+      savedPacks[idx] = JSON.parse(JSON.stringify(pack));
+      savePackLibrary();
     }
   }
 
-  // Save Test + Quiz checkboxes
-  const periods = getPeriodsForDate(currentModalDay.date, currentModalDay.letter);
+  // Letter to use for which test/quiz boxes exist
+  const pack = typeof getActivePack === "function" ? getActivePack() : null;
+  const packDay = pack?.days?.find(d => d.date === currentModalDay.date);
+  const letterForPeriods =
+    (packDay && packDay.letter) ||
+    (letterSelect && letterSelect.value !== "DEFAULT" ? letterSelect.value : null) ||
+    currentModalDay.letter;
+
+  const periods = getPeriodsForDate(currentModalDay.date, letterForPeriods);
   periods.forEach(periodNum => {
     const testCheckbox = document.getElementById(`test-period-${periodNum}`);
     if (testCheckbox) notesObj[`test-${periodNum}`] = testCheckbox.checked;
@@ -4916,16 +5806,50 @@ function handleSaveNotes() {
     if (quizCheckbox) notesObj[`quiz-${periodNum}`] = quizCheckbox.checked;
   });
 
-  // No Test toggle
   const noTestToggle = document.getElementById("modalNoTestToggle");
   notesObj.noTest = noTestToggle ? noTestToggle.checked : false;
+
+  // === Add special tag from modal ===
+  const specialEnabled = document.getElementById("modalSpecialDayEnabled");
+  if (specialEnabled && specialEnabled.checked) {
+    const label = (document.getElementById("modalSpecialDayLabel")?.value || "Special Day").trim();
+    const badge = (document.getElementById("modalSpecialDayBadge")?.value || "SD").trim();
+    const color = document.getElementById("modalSpecialDayColor")?.value || "#e9d5ff";
+    const appliesTo = document.getElementById("modalSpecialDayAppliesTo")?.value || "day";
+
+    let periods = [];
+    if (appliesTo === "periods") {
+      periods = [
+        ...document.querySelectorAll("#modalSpecialDayPeriods input[type=checkbox]:checked")
+      ].map(cb => Number(cb.value)).filter(n => !Number.isNaN(n));
+    }
+
+    const newSpecial = {
+      id: "user-" + Date.now(),
+      date: currentModalDay.date,
+      label,
+      badgeText: badge,
+      color,
+      appliesTo,
+      periods,
+      source: "special"
+    };
+
+    specialDays.push(
+      typeof normalizeSpecialDay === "function"
+        ? normalizeSpecialDay(newSpecial)
+        : newSpecial
+    );
+
+    if (typeof saveSpecialDays === "function") saveSpecialDays();
+  }
 
   saveNotesForDate(currentModalDay.date, notesObj);
   console.log("✅ Saved notes for", currentModalDay.date, notesObj);
 
   renderCalendar();
-  renderSpecialDays();
-  renderSummary();
+  if (typeof renderSpecialDays === "function") renderSpecialDays();
+  if (typeof renderSummary === "function") renderSummary();
   closeDayModal();
 }
 
@@ -4966,7 +5890,7 @@ function saveCustomDayLabels() {
 
 
 function loadCustomDays() {
-  const raw = localStorage.getItem(getStorageKey(LS_CUSTOM_DAYS_KEY));
+  const raw = localStorage.getItem(getCustomDaysStorageKey());
   if (!raw) {
     customDays = {};
     return;
@@ -4980,16 +5904,22 @@ function loadCustomDays() {
 }
 
 function saveCustomDays() {
-  localStorage.setItem(getStorageKey(LS_CUSTOM_DAYS_KEY), JSON.stringify(customDays));
+  localStorage.setItem(getCustomDaysStorageKey(), JSON.stringify(customDays));
 }
 
-function setCustomDay(date, letter, label = "") {
+function setCustomDay(date, letter, label) {
   if (!date) return;
-  if (!letter || letter === "DEFAULT") {
-    delete customDays[date];
-  } else {
-    customDays[date] = { letter, label: label || "" };
+
+  if (letter === "DEFAULT" || letter == null || letter === "") {
+    delete customDays[date];   // must delete — do not store "DEFAULT"
+    saveCustomDays();
+    return;
   }
+
+  customDays[date] = {
+    letter: String(letter),
+    label: label || (customDays[date] && customDays[date].label) || ""
+  };
   saveCustomDays();
 }
 
@@ -5173,49 +6103,7 @@ function renderSpecialDays() {
     return;
   }
 
-  const unifiedEntries = [];
-  const seen = new Set();
-
-  function pushEntry(entry) {
-    const key = buildSpecialEntryKey(entry.date, entry.badgeText, entry.label);
-    if (hiddenSpecialEntryKeys.has(key)) return;
-    if (seen.has(key)) return;
-    seen.add(key);
-    unifiedEntries.push({ ...entry, key });
-  }
-
-  specialDays.forEach(specialDay => {
-    pushEntry({
-      id: specialDay.id,
-      date: specialDay.date,
-      label: specialDay.label || "Special Day",
-      badgeText: specialDay.badgeText || "SD",
-      color: specialDay.color || "#e9d5ff",
-      source: "special"
-    });
-  });
-
-  getGeneratedSpecialDays().forEach(day => {
-    pushEntry({
-      id: day.id,
-      date: day.date,
-      label: day.label,
-      badgeText: day.badgeText,
-      color: day.color,
-      source: "generated"
-    });
-  });
-
-  getCurrentRotationData().forEach(day => {
-    if (!isHolidayLabel(day.letter)) return;
-    pushEntry({
-      date: day.date,
-      label: day.letter,
-      badgeText: "HOL",
-      color: "#d1d5db",
-      source: "generated"
-    });
-  });
+const unifiedEntries = getVisibleSpecialDayEntries();
 
   unifiedEntries.sort((a, b) => a.date.localeCompare(b.date) || a.label.localeCompare(b.label));
 
@@ -6663,18 +7551,47 @@ function renderCycleColorPickers() {
 
   const colors = getCycleColors();
 
-  wrap.innerHTML = Object.keys(CYCLE_COLOR_DEFAULTS).map(letter => `
+  let letters = [];
+  const pack = typeof getActivePack === "function" ? getActivePack() : null;
+
+  if (pack) {
+    if (Array.isArray(pack.letters) && pack.letters.length) {
+      letters = pack.letters.map(L => String(L).toUpperCase());
+    } else if (pack.rotationRules) {
+      letters = Object.keys(pack.rotationRules).map(L => String(L).toUpperCase());
+    }
+  }
+
+  if (!letters.length && typeof getCurrentRotationRules === "function") {
+    letters = Object.keys(getCurrentRotationRules() || {});
+  }
+
+  if (!letters.length && typeof CYCLE_COLOR_DEFAULTS !== "undefined") {
+    letters = Object.keys(CYCLE_COLOR_DEFAULTS);
+  }
+
+  letters = [...new Set(letters.map(L => String(L).toUpperCase()))].sort();
+
+  wrap.innerHTML =
+    letters
+      .map(letter => {
+        const value =
+          colors[letter] ||
+          (typeof CYCLE_COLOR_DEFAULTS !== "undefined" &&
+            CYCLE_COLOR_DEFAULTS[letter]) ||
+          "#e5e7eb";
+        return `
     <div style="display:inline-flex; align-items:center; gap:6px; margin:6px 12px 6px 0;">
       <strong>${letter}</strong>
-      <input type="color" data-cycle="${letter}" value="${colors[letter]}">
-    </div>
-  `).join("") + `
+      <input type="color" data-cycle="${letter}" value="${value}">
+    </div>`;
+      })
+      .join("") +
+    `
     <div style="margin-top:8px;">
       <button type="button" id="saveCycleColorsBtn">Save Cycle Colors</button>
       <button type="button" id="resetCycleColorsBtn">Reset</button>
-
     </div>
-
   `;
 
   document.getElementById("saveCycleColorsBtn")?.addEventListener("click", () => {
@@ -6873,6 +7790,14 @@ modal.innerHTML = `
   document.body.appendChild(modal);
 });
 
+document.getElementById("packSaveBtn")?.addEventListener("click", saveDraftAsPack);
+document.getElementById("packUseBtn")?.addEventListener("click", () => {
+  const id = document.getElementById("packSelect")?.value || "builtin";
+  usePack(id);
+});
+refreshPackSelect();
+document.getElementById("packDeleteBtn")?.addEventListener("click", deleteSelectedPack);
+
 function groupAssessmentsByClass(events) {
   const byClass = {};
 
@@ -6899,8 +7824,6 @@ function groupAssessmentsByClass(events) {
 
   return byClass;
 }
-
-
 
 function buildAssessmentsHTML(byClass) {
   let html = '';
@@ -6990,6 +7913,10 @@ document.getElementById("divisionSelector")
       updateMaxDaysHints();
     });
   });
+
+  document.getElementById("packGenerateDraftBtn")?.addEventListener("click", () => {
+  buildCalendarDraftFromForm();
+});
 
   document.querySelectorAll('input[name="semester"]').forEach(radio => {
     radio.addEventListener("change", () => {
@@ -7108,17 +8035,19 @@ document.getElementById("divisionSelector")
       }
     });
 
-  document.getElementById("prevMonthBtn")
-    .addEventListener("click", () => {
-      currentMonthIndex = Math.max(0, currentMonthIndex - 1);
-      renderCalendar();
-    });
+document.getElementById("prevMonthBtn")?.addEventListener("click", () => {
+  const months = getCurrentMonths();
+  if (!months.length) return;
+  currentMonthIndex = Math.max(0, currentMonthIndex - 1);
+  renderCalendar();
+});
 
-  document.getElementById("nextMonthBtn")
-    .addEventListener("click", () => {
-      currentMonthIndex = Math.min(getCurrentMonths().length - 1, currentMonthIndex + 1);
-      renderCalendar();
-    });
+document.getElementById("nextMonthBtn")?.addEventListener("click", () => {
+  const months = getCurrentMonths();
+  if (!months.length) return;
+  currentMonthIndex = Math.min(months.length - 1, currentMonthIndex + 1);
+  renderCalendar();
+});
 
   document.getElementById("jumpTodayBtn")
     .addEventListener("click", openTodayAgendaModal);
@@ -7150,19 +8079,19 @@ document.getElementById("divisionSelector")
     if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
 
     switch (e.key.toLowerCase()) {
-      case "t":
+      case "1":
         openTodayAgendaModal();
         break;
-      case "n":
+      case "2":
         // Open modal for today
         const todayISO = getLocalTodayISO();
         const todayDay = getRotationDayByDate(todayISO);
         if (todayDay) openDayModal({ date: todayISO, letter: todayDay.letter });
         break;
-      case "p":
+      case "3":
         document.getElementById("printCalendarBtn").click();
         break;
-      case "b":
+      case "4":
         document.getElementById("backupBtn").click();
         break;
       case "?":
@@ -7635,7 +8564,7 @@ setInterval(() => {
   <div class="help-content">
 
     <section class="help-section active" data-help-section="welcome">
-      <h2>Welcome to Wesleyan HS Planner</h2>
+      <h2>Welcome to Your Digital Planner</h2>
       <p>This tool helps you plan your classes with rotation days, units, notes, and test days — all saved locally in your browser.</p>
       <ul>
         <li>Enter your class names on the left sidebar</li>
