@@ -8739,95 +8739,127 @@ setInterval(() => {
     </div>
   </div>
 
-  <div class="modal-backdrop" id="helpBackdrop">
-    <div class="modal" style="width:680px; max-width:96vw;">
-      <div class="modal-header">
-        <div>
-          <div>Planner Help</div>
-          <div class="small">Quick guidance for first-time setup and daily use.</div>
-        </div>
-        <button class="secondary" id="closeHelpBtn">Close</button>
+<div class="modal-backdrop" id="helpBackdrop">
+  <div class="modal" style="width:680px; max-width:96vw;">
+    <div class="modal-header">
+      <div>
+        <div>Planner Help</div>
+        <div class="small">Quick guidance for setup and daily use.</div>
       </div>
-      <div class="modal-body">
-  <div class="help-tabs" id="helpTabs">
-    <button class="help-tab-btn active" data-help-section="welcome">Welcome</button>
-    <button class="help-tab-btn" data-help-section="units">Units</button>
-    <button class="help-tab-btn" data-help-section="snow">Snow Days</button>
-    <button class="help-tab-btn" data-help-section="special">Special Days</button>
-    <button class="help-tab-btn" data-help-section="notes">Notes & Assessments</button>
-    <button class="help-tab-btn" data-help-section="printing">Printing & Export</button>
+      <button class="secondary" id="closeHelpBtn">Close</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="help-tabs" id="helpTabs">
+        <button class="help-tab-btn active" data-help-section="welcome">Welcome</button>
+        <button class="help-tab-btn" data-help-section="units">Units</button>
+        <button class="help-tab-btn" data-help-section="snow">Snow Days</button>
+        <button class="help-tab-btn" data-help-section="special">Special Days</button>
+        <button class="help-tab-btn" data-help-section="notes">Notes & Assessments</button>
+        <button class="help-tab-btn" data-help-section="printing">Printing & Export</button>
+        <button class="help-tab-btn" data-help-section="backup">Backup & Profiles</button>
+      </div>
+
+      <div class="help-content">
+
+        <!-- WELCOME -->
+        <section class="help-section active" data-help-section="welcome">
+          <h2>Welcome to Your Digital Planner</h2>
+          <p>This tool helps you plan classes with rotation days, units, notes, and assessments — all saved locally in your browser.</p>
+          <ul>
+            <li>Enter class names in the left sidebar</li>
+            <li>Create units with length and daily topics</li>
+            <li>Click any day on the calendar to add notes or mark tests</li>
+            <li>Switch divisions / semesters using the header selector</li>
+            <li>Use <strong>Backup / Restore</strong> or Profiles to keep your work safe</li>
+          </ul>
+          <p>Everything works offline.</p>
+        </section>
+
+        <!-- UNITS -->
+        <section class="help-section" data-help-section="units">
+          <h2>Units & Pacing</h2>
+          <p>Units automatically calculate pacing on the calendar.</p>
+          <ul>
+            <li>Add a unit with a name and length (in days)</li>
+            <li>Use <strong>Edit Days</strong> to set topics, quizzes, and tests for each day</li>
+            <li>The calendar shows unit name + progress (e.g. Day 4/10)</li>
+            <li>Max days are calculated from the start of the semester (Unit 1) or the next available day after the previous unit ends</li>
+            <li>You can shift a single unit or that unit + all following units</li>
+          </ul>
+        </section>
+
+        <!-- SNOW DAYS -->
+        <section class="help-section" data-help-section="snow">
+          <h2>Snow Days & Shifting</h2>
+          <p>To adjust for snow days or pacing changes:</p>
+          <ul>
+            <li>In the unit list, use <strong>+1 Day (Snow)</strong> or <strong>-1 Day</strong></li>
+            <li>Choose whether to shift only that unit or that unit + all following units</li>
+            <li>You can also open the Snow Day picker to select specific missed day numbers</li>
+            <li>The app warns you if a test would land on a No-Test day</li>
+          </ul>
+        </section>
+
+        <!-- SPECIAL DAYS -->
+        <section class="help-section" data-help-section="special">
+          <h2>Special Days & Multiple Tags</h2>
+          <p>You can add <strong>multiple special tags</strong> on the same day (e.g. Chapel + Parent Night).</p>
+          <ul>
+            <li>Open a day → enable Special Day and add a label / badge / color</li>
+            <li>Special days automatically block tests (you can override per period)</li>
+            <li>Use the <strong>Toggle All Special Tags</strong> button to show or hide them on the calendar</li>
+          </ul>
+        </section>
+
+        <!-- NOTES & ASSESSMENTS -->
+        <section class="help-section" data-help-section="notes">
+          <h2>Notes & Assessments</h2>
+          <ul>
+            <li>Click any day → add per-period notes and a general day note</li>
+            <li>Mark <strong>TEST TODAY</strong> for individual periods</li>
+            <li>Mark <strong>NO TEST TODAY</strong> for the whole day</li>
+            <li>Unit-planned tests and manual tests both appear in the Assessments Overview</li>
+            <li>Copy/Paste Day lets you quickly reuse notes from another day</li>
+          </ul>
+        </section>
+
+        <!-- PRINTING & EXPORT -->
+        <section class="help-section" data-help-section="printing">
+          <h2>Printing & Export</h2>
+          <p>Use <strong>Print with Filters</strong> for a clean, printable calendar.</p>
+          <ul>
+            <li>Filter by month, period, and unit</li>
+            <li>Includes class notes, special tags, and “NO TEST” flags</li>
+            <li>Shows the full weekday name (Monday, Tuesday, etc.)</li>
+            <li>Two-column layout for easier printing</li>
+            <li><strong>Export Tests/Quizzes by Class</strong> opens an Assessments Overview you can print or copy</li>
+          </ul>
+        </section>
+
+        <!-- BACKUP & PROFILES -->
+        <section class="help-section" data-help-section="backup">
+          <h2>Backup & Profiles</h2>
+          <ul>
+            <li><strong>Backup Data</strong> — downloads a .json file of the current division</li>
+            <li><strong>Restore Data</strong> — loads a previous backup</li>
+            <li>Auto-backup runs every 5 minutes (see the status badge in the bottom-right)</li>
+            <li>Profiles let you keep separate setups (different teachers, years, or divisions)</li>
+            <li>Switch profiles from the header dropdown</li>
+          </ul>
+        </section>
+
+      </div>
+
+      <div class="help-footer">
+        <label class="welcome-checkbox">
+          <input type="checkbox" id="hideWelcomeCheckbox">
+          Don't show welcome again
+        </label>
+        <button id="startPlanningBtn">Start Planning</button>
+      </div>
+    </div>
   </div>
-<div class="help-modal">
-  <div class="help-content">
-
-    <section class="help-section active" data-help-section="welcome">
-      <h2>Welcome to Your Digital Planner</h2>
-      <p>This tool helps you plan your classes with rotation days, units, notes, and test days — all saved locally in your browser.</p>
-      <ul>
-        <li>Enter your class names on the left sidebar</li>
-        <li>Create units per period with length and daily topics</li>
-        <li>Click any day on the calendar to add notes or mark test days</li>
-        <li>Use <strong>Backup / Restore</strong> to save your work safely</li>
-        <li>Switch between divisions/semesters using the header selector</li>
-      </ul>
-      <p>Everything works offline.</p>
-    </section>
-
-    <section class="help-section" data-help-section="units">
-      <h2>Units & Pacing</h2>
-      <p>Units automatically calculate pacing on the calendar.</p>
-      <ul>
-        <li>Add units with name and length (days)</li>
-        <li>Use "Edit Days" to set topics, quizzes, and tests per day</li>
-        <li>Calendar shows unit name + progress (e.g. Day 4/10)</li>
-      </ul>
-    </section>
-
-    <section class="help-section" data-help-section="snow">
-      <h2>Snow Days & Shifting</h2>
-      <p>To adjust for snow days or pacing changes:</p>
-      <ul>
-        <li>In the unit list, use <strong>+1 Day (Snow)</strong> or <strong>-1 Day</strong></li>
-        <li>You can shift just that unit or that unit + all following units</li>
-        <li>The app warns you if tests would land on No Test days</li>
-      </ul>
-    </section>
-
-    <section class="help-section" data-help-section="special">
-      <h2>Special Days & Multiple Tags</h2>
-      <p>You can now add **multiple special tags** on the same day.</p>
-      <p>Special days automatically block tests (you can override per period).</p>
-    </section>
-
-    <section class="help-section" data-help-section="notes">
-      <h2>Notes & Test Days</h2>
-      <ul>
-        <li>Click any day → add per-period notes</li>
-        <li>Check <strong>TEST TODAY</strong> per period</li>
-        <li>Use <strong>NO TEST TODAY</strong> for the whole day</li>
-        <li>Unit-planned tests + manual tests both appear in the export</li>
-      </ul>
-    </section>
-
-    <section class="help-section" data-help-section="backup">
-      <h2>Backup & Restore</h2>
-      <ul>
-        <li><strong>Backup Data</strong> — saves current division to a .json file</li>
-        <li><strong>Restore Data</strong> — loads a previous backup</li>
-        <li>Auto-backup runs quietly every 5 minutes (bottom-right corner shows last save time)</li>
-      </ul>
-    </section>
-
-  </div>
-
-  <div class="help-footer">
-    <label class="welcome-checkbox">
-      <input type="checkbox" id="hideWelcomeCheckbox">
-      Don't show welcome again
-    </label>
-    <button id="startPlanningBtn">Start Planning</button>
-  </div>
-</div>
 </div>
 
 <div id="profileToast"></div>
