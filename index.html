@@ -2837,8 +2837,8 @@ function collectCurrentProfileData() {
   }
 
   return {
-    teacherSchedule: { ...(typeof teacherSchedule !== "undefined" ? teacherSchedule : {}) },
-    units: JSON.parse(JSON.stringify(typeof units !== "undefined" ? units : {})),
+teacherSchedule: { ...(teacherSchedule || {}) },
+units: JSON.parse(JSON.stringify(units || {})),
     specialDays:
       typeof getUserSpecialDaysForSave === "function"
         ? getUserSpecialDaysForSave()
@@ -2899,6 +2899,7 @@ function applyProfileData(data) {
   }
 
   // Keep active storage in sync with THIS profile only
+  
   if (typeof saveScheduleToStorage === "function") saveScheduleToStorage();
   if (typeof saveUnits === "function") saveUnits();
   if (typeof saveCustomDays === "function") saveCustomDays();
