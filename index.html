@@ -5504,21 +5504,6 @@ if (!hideAllSpecialTags) {
           testBadge.textContent = dayIsNoTest ? "TEST (NO-TEST DAY)" : "Test";
           li.appendChild(testBadge);
         }
-    
-        if (unitInfo.hasQuizToday || hasModalQuiz) {
-          const quizBadge = document.createElement("span");
-          quizBadge.className = "assessment-badge quiz";
-          quizBadge.textContent = "Quiz";
-          li.appendChild(quizBadge);
-        }
-
-        if (unitInfo.hasTestToday || hasModalTest) {
-          const testBadge = document.createElement("span");
-          testBadge.className = "assessment-badge test";
-          testBadge.textContent = "Test";
-          li.appendChild(testBadge);
-        }
-
         getProjectsForPeriod(periodNum)
           .filter(p => p.dueDate === iso)
           .forEach(p => {
