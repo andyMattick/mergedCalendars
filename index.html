@@ -4473,6 +4473,33 @@ function saveSpecialDays() {
   );
 }
 
+function ensureKnownClassesFromSchedule() {
+  let known = [];
+  try {
+    known = JSON.parse(localStorage.getItem("knownClasses") || "[]");
+  } catch (e) {
+    known = [];
+  }
+  if (!Array.isArray(known)) known = [];
+
+  const fromSchedule = Object.values(teacherSchedule || {})
+    .map(v => String(v || "").trim())
+    .filter(v => v && !/^Period\s+\d+$/i.test(v));
+
+  let changed = false;
+  fromSchedule.forEach(name => {
+    if (!known.includes(name)) {
+      known.push(name);
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    localStorage.setItem("knownClasses", JSON.stringify(known));
+  }
+  return known;
+}
+
 function countScheduledClassesBefore(dateLimit) {
   const counts = {};
 
@@ -4859,43 +4886,54 @@ function renderPeriodSlots() {
   if (!container) return;
   container.innerHTML = "";
 
-  const knownClasses = JSON.parse(localStorage.getItem("knownClasses") || "[]");
+  const knownClasses = ensureKnownClassesFromSchedule();
 
   for (let p = 1; p <= getCurrentPeriodCount(); p++) {
-    const currentClass = teacherSchedule[p] || `Period ${p}`;
+    const currentClass = String(teacherSchedule[p] || "").trim();
     const currentColor = getColorForPeriod(p);
 
-    const slot = document.createElement("div");
-    slot.style.cssText = "display:flex; align-items:center; gap:12px; margin-bottom:12px; padding:10px; border:1px solid #ddd; border-radius:8px; background:#fff;";
+    const names = knownClasses.slice();
+    if (currentClass && !names.includes(currentClass) && !/^Period\s+\d+$/i.test(currentClass)) {
+      names.unshift(currentClass);
+    }
 
     let optionsHTML = `<option value="">— Unassigned —</option>`;
-    knownClasses.forEach(cls => {
-      optionsHTML += `<option value="${cls}" ${cls === currentClass ? 'selected' : ''}>${cls}</option>`;
+    names.forEach(cls => {
+      const selected = cls === currentClass ? "selected" : "";
+      optionsHTML += `<option value="${cls}" ${selected}>${cls}</option>`;
     });
 
+    const slot = document.createElement("div");
+    slot.style.cssText =
+      "display:flex; align-items:center; gap:12px; margin-bottom:12px; padding:10px; border:1px solid #ddd; border-radius:8px; background:#fff;";
+
+    const safeColor = /^#[0-9A-Fa-f]{6}$/.test(currentColor) ? currentColor : "#3b82f6";
+
     slot.innerHTML = `
-<strong class="period-label" style="width:90px; flex-shrink:0;">Period ${p}</strong>      <select onchange="assignPeriodClass(${p}, this.value)" 
+      <strong class="period-label" style="width:90px; flex-shrink:0;">Period ${p}</strong>
+      <select onchange="assignPeriodClass(${p}, this.value)"
               style="flex:1; padding:8px; border-radius:6px; border:1px solid #ccc;">
         ${optionsHTML}
       </select>
-      
       <input type="color"
-             value="${currentColor}"
+             value="${safeColor}"
              title="Color for this class"
              onchange="setClassColorForPeriod(${p}, this.value)"
              style="width:42px; height:34px; border:none; background:transparent; cursor:pointer;">
     `;
     container.appendChild(slot);
   }
+
+  if (typeof renderKnownClasses === "function") renderKnownClasses();
 }
+
 
 // Helper
 window.assignPeriodClass = function(period, className) {
-  if (className) {
-    teacherSchedule[period] = className;
-    saveScheduleToStorage();
-    renderCalendar();
-  }
+  if (className) teacherSchedule[period] = className;
+  else delete teacherSchedule[period];
+  saveScheduleToStorage();
+  renderCalendar();
 };
 
 window.setClassColorForPeriod = function(period, color) {
@@ -5902,6 +5940,8 @@ function loadCustomDays() {
     customDays = {};
   }
 }
+
+
 
 function saveCustomDays() {
   localStorage.setItem(getCustomDaysStorageKey(), JSON.stringify(customDays));
@@ -7653,6 +7693,10 @@ if (projectsToggle) {
   const profiles = getProfiles();
   const id = getCurrentProfileId();
   if (profiles[id]) applyProfileData(profiles[id].data);
+  loadScheduleFromStorage();
+    ensureKnownClassesFromSchedule();
+    hydrateScheduleForm(); // → renderPeriodSlots
+    renderKnownClasses();
 
 
 // call this in init()
@@ -8205,6 +8249,10 @@ function refreshAllData() {
   renderSpecialDays();
   renderCalendar();
   renderSummary();
+  loadScheduleFromStorage();
+  ensureKnownClassesFromSchedule();
+  hydrateScheduleForm(); // → renderPeriodSlots
+  renderKnownClasses();
   
 }
 
