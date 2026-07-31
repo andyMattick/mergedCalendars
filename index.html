@@ -1596,14 +1596,15 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
       </div>
     </div>
 
-<div id="projectsPanel" class="collapse-panel collapsed">
-  <button type="button" id="projectsToggleBtn" class="collapse-header">
-    ▶ Projects
+<div class="config-section" data-section-key="projects">
+  <button class="config-section-toggle" type="button">
+    <span class="config-chevron">▼</span>
+    <span>Projects</span>
   </button>
-  <div id="projectsList" class="collapse-body"></div>
+  <div class="config-section-body">
+    <div id="projectsList"></div>
+  </div>
 </div>
-
-    
 
     <div class="config-section" data-section-key="special">
       <button class="config-section-toggle" type="button">
@@ -1611,13 +1612,31 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
         <span>Special Days</span>
       </button>
       <div class="config-section-body">
+        <div class="special-color-key" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; font-size:0.75rem;">
+          <span style="display:inline-flex; align-items:center; gap:4px;">
+            <span style="width:12px; height:12px; border-radius:999px; background:#bfdbfe; border:1px solid #93c5fd;"></span>
+            All-school
+          </span>
+          <span style="display:inline-flex; align-items:center; gap:4px;">
+            <span style="width:12px; height:12px; border-radius:999px; background:#fecdd3; border:1px solid #fda4af;"></span>
+            High School
+          </span>
+          <span style="display:inline-flex; align-items:center; gap:4px;">
+            <span style="width:12px; height:12px; border-radius:999px; background:#fed7aa; border:1px solid #fdba74;"></span>
+            Middle School
+          </span>
+          <span style="display:inline-flex; align-items:center; gap:4px;">
+            <span style="width:12px; height:12px; border-radius:999px; background:#bbf7d0; border:1px solid #86efac;"></span>
+            Lower School
+          </span>
+        </div>
+
         <div id="specialDaysContainer"></div>
         <button id="addSpecialDayBtn">+ Add Special Day</button>
         <div class="small" style="margin-top:0.4rem;">Any row can be removed from this list.</div>
       </div>
     </div>
 
-    
     <div class="config-section" data-section-key="summary">
       <button class="config-section-toggle" type="button">
         <span class="config-chevron">▼</span>
@@ -2173,6 +2192,30 @@ function reflowLettersFrom(fromDate, displacedLetter, mode) {
   }
 
   saveCustomDays();
+}
+
+function getUnitNameForProject(periodNum, project) {
+  // Prefer an explicitly saved unit name
+  if (project.unitName && String(project.unitName).trim()) {
+    return String(project.unitName).trim();
+  }
+
+  // Otherwise match due date to the scheduled unit window
+  const periodUnits = getUnitsForPeriod(periodNum);
+  if (!periodUnits.length || !project.dueDate) return "No unit";
+
+  const schedule = applyUnitSchedule(periodNum, periodUnits, false);
+  const window = (schedule.windows || []).find(w =>
+    w.startDate && w.endDate &&
+    project.dueDate >= w.startDate &&
+    project.dueDate <= w.endDate
+  );
+
+  if (window && periodUnits[window.unitIndex]) {
+    return periodUnits[window.unitIndex].name || `Unit ${window.unitIndex + 1}`;
+  }
+
+  return "No unit";
 }
 
 let editingProject = null; // { periodNum, projectId } or null for new
@@ -3809,32 +3852,42 @@ function getVisibleSpecialDayEntries() {
     });
   });
 
-  // School + holiday tags ONLY on built-in
-  if (!isCustomCalendarActive()) {
-    getGeneratedSpecialDays().forEach(day => {
+// School + holiday tags ONLY on built-in
+if (!isCustomCalendarActive()) {
+  getGeneratedSpecialDays().forEach(day => {
+    pushEntry({
+      id: day.id,
+      date: day.date,
+      label: day.label,
+      badgeText: day.badgeText,
+      color: day.color,
+      source: "generated"
+    });
+  });
+
+  // Do NOT push pure no-school / holiday letters as special tags.
+  // Those already render as the big "NO SCHOOL" off-badge.
+  // (Only push if you want non-off labels like "Late Start", "Chapel", etc.)
+  if (typeof getCurrentRotationData === "function" && typeof isHolidayLabel === "function") {
+    getCurrentRotationData().forEach(day => {
+      const letter = String(day.letter || "");
+      if (!isHolidayLabel(letter)) return;
+
+      // Skip full no-school / break days — already shown as OFF
+      if (/no school|holiday|break|thanksgiving|christmas|labor day/i.test(letter)) {
+        return;
+      }
+
       pushEntry({
-        id: day.id,
         date: day.date,
-        label: day.label,
-        badgeText: day.badgeText,
-        color: day.color,
+        label: letter,
+        badgeText: "HOL",
+        color: "#d1d5db",
         source: "generated"
       });
     });
-
-    if (typeof getCurrentRotationData === "function" && typeof isHolidayLabel === "function") {
-      getCurrentRotationData().forEach(day => {
-        if (!isHolidayLabel(day.letter)) return;
-        pushEntry({
-          date: day.date,
-          label: day.letter,
-          badgeText: "HOL",
-          color: "#d1d5db",
-          source: "generated"
-        });
-      });
-    }
   }
+}
 
   unified.sort(
     (a, b) => a.date.localeCompare(b.date) || String(a.label).localeCompare(String(b.label))
@@ -4747,17 +4800,34 @@ function renderProjects() {
     const course = teacherSchedule[periodNum] || `Period ${periodNum}`;
     const list = getProjectsForPeriod(periodNum);
 
-    const card = document.createElement("div");
-    card.className = "unit-card";
-    card.innerHTML = `<div class="unit-heading">P${periodNum}: ${course}</div>`;
+    const details = document.createElement("details");
+    details.className = "unit-card";
+    details.style.marginBottom = "8px";
+    details.open = false; // collapsed by default; set true if you prefer open
+
+    const summary = document.createElement("summary");
+    summary.style.cssText = "cursor:pointer; font-weight:700; font-size:0.95rem; padding:4px 0;";
+    summary.textContent = `P${periodNum}: ${course} (${list.length})`;
+    details.appendChild(summary);
+
+    if (!list.length) {
+      const empty = document.createElement("div");
+      empty.className = "small";
+      empty.style.margin = "6px 0";
+      empty.textContent = "No projects yet.";
+      details.appendChild(empty);
+    }
 
     list.forEach(p => {
       const row = document.createElement("div");
       row.className = "project-row";
-      row.style.cssText = "border-top:1px solid var(--card-border); padding:8px 0; margin-top:6px;";
+      row.style.cssText = "border-top:1px solid var(--card-border); padding:8px 0; margin-top:4px;";
 
       const calDays = countCalendarDaysUntil(p.dueDate);
       const classDays = countClassDaysUntil(periodNum, p.dueDate);
+      const unitName = typeof getUnitNameForProject === "function"
+        ? getUnitNameForProject(periodNum, p)
+        : "";
 
       row.innerHTML = `
         <div style="font-size:0.85rem;">
@@ -4765,6 +4835,7 @@ function renderProjects() {
           <span class="small">Due ${p.dueDate}
             · ${calDays} day${calDays === 1 ? "" : "s"}
             · ${classDays} class day${classDays === 1 ? "" : "s"}
+            ${unitName && unitName !== "No unit" ? ` · ${unitName}` : ""}
           </span>
           ${p.notes ? `<div class="small" style="margin-top:4px;"><em>Notes:</em> ${escapeHtml(p.notes)}</div>` : ""}
           ${p.rubric ? `<div class="small"><em>Rubric:</em> ${escapeHtml(p.rubric)}</div>` : ""}
@@ -4782,7 +4853,7 @@ function renderProjects() {
         window.editProject(periodNum, p.id);
       });
 
-      card.appendChild(row);
+      details.appendChild(row);
     });
 
     const addBtn = document.createElement("button");
@@ -4790,9 +4861,9 @@ function renderProjects() {
     addBtn.textContent = "+ Add Project";
     addBtn.style.marginTop = "8px";
     addBtn.addEventListener("click", () => window.addProject(periodNum));
-    card.appendChild(addBtn);
+    details.appendChild(addBtn);
 
-    root.appendChild(card);
+    root.appendChild(details);
   });
 }
 
@@ -6279,12 +6350,11 @@ window.togglePeriod = function(period) {
   }
 };
 
-
 function renderSpecialDays() {
   const container = document.getElementById("specialDaysContainer");
   container.innerHTML = "";
 
-    if (hideAllSpecialTags) {
+  if (hideAllSpecialTags) {
     const hiddenMsg = document.createElement("div");
     hiddenMsg.className = "small";
     hiddenMsg.textContent = "All special tags are currently hidden.";
@@ -6292,9 +6362,9 @@ function renderSpecialDays() {
     return;
   }
 
-const unifiedEntries = getVisibleSpecialDayEntries();
-
-  unifiedEntries.sort((a, b) => a.date.localeCompare(b.date) || a.label.localeCompare(b.label));
+  const unifiedEntries = getVisibleSpecialDayEntries()
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date) || String(a.label).localeCompare(String(b.label)));
 
   if (!unifiedEntries.length) {
     const empty = document.createElement("div");
@@ -6304,64 +6374,125 @@ const unifiedEntries = getVisibleSpecialDayEntries();
     return;
   }
 
-  unifiedEntries.forEach(entry => {
-      const row = document.createElement("div");
-      row.className = "special-day-row";
+  const userEntries = unifiedEntries.filter(e => e.source === "special");
+  const generatedEntries = unifiedEntries.filter(e => e.source !== "special");
 
-      const dateCell = document.createElement("div");
-      dateCell.className = "special-day-row-date";
-      dateCell.textContent = entry.date || "(No date)";
-      if (entry.date) {
-        dateCell.classList.add("clickable");
-        dateCell.title = "Open this day";
-        dateCell.addEventListener("click", () => {
-          const schoolDay = getRotationDayByDate(entry.date);
-          openDayModal({
-            date: entry.date,
-            letter: schoolDay ? schoolDay.letter : `No ${getCurrentConfig().name} classes`
-          });
+  function buildRow(entry) {
+    const row = document.createElement("div");
+    row.className = "special-day-row";
+
+    // Main label (what the tag represents)
+    const labelWrap = document.createElement("div");
+    labelWrap.className = "special-day-label-wrap";
+    labelWrap.style.flex = "1";
+    labelWrap.style.minWidth = "0";
+
+    const badge = document.createElement("span");
+    badge.className = "special-day-badge";
+    badge.style.background = hexToRgba(entry.color || "#e9d5ff", 0.45);
+    badge.style.borderColor = entry.color || "#e9d5ff";
+    badge.style.color = "#1f2937";
+    badge.textContent = entry.badgeText || "SD";
+
+    const label = document.createElement("span");
+    label.className = "special-day-row-label";
+    label.style.fontWeight = "600";
+    label.textContent = entry.label || "Special Day";
+
+    labelWrap.appendChild(badge);
+    labelWrap.appendChild(label);
+
+    // Date + scope under the label
+    const meta = document.createElement("div");
+    meta.className = "small";
+    meta.style.marginTop = "2px";
+    meta.style.color = "#6b7280";
+
+    const dateText = entry.date || "(No date)";
+    let scopeText = "";
+    if (entry.appliesTo === "periods" && Array.isArray(entry.periods) && entry.periods.length) {
+      scopeText = ` · Periods ${entry.periods.join(", ")}`;
+    } else {
+      scopeText = " · Whole day";
+    }
+    meta.textContent = `${dateText}${scopeText}`;
+
+    // Make date clickable to open the day
+    if (entry.date) {
+      meta.style.cursor = "pointer";
+      meta.title = "Open this day";
+      meta.addEventListener("click", () => {
+        const schoolDay = getRotationDayByDate(entry.date);
+        openDayModal({
+          date: entry.date,
+          letter: schoolDay ? schoolDay.letter : `No ${getCurrentConfig().name} classes`
         });
-      }
-
-      const labelWrap = document.createElement("div");
-      labelWrap.className = "special-day-label-wrap";
-
-      const badge = document.createElement("span");
-      badge.className = "special-day-badge";
-      badge.style.background = hexToRgba(entry.color, 0.45);
-      badge.style.borderColor = entry.color;
-      badge.style.color = "#1f2937";
-      badge.textContent = entry.badgeText || "SD";
-
-      const label = document.createElement("span");
-      label.className = "special-day-row-label";
-      label.textContent = entry.label || "Special Day";
-
-      labelWrap.appendChild(badge);
-      labelWrap.appendChild(label);
-
-      const swatch = document.createElement("span");
-      swatch.className = "special-day-swatch";
-      swatch.style.background = entry.color || "#e9d5ff";
-
-      const removeBtn = document.createElement("button");
-      removeBtn.className = "secondary";
-      removeBtn.textContent = "Remove";
-      removeBtn.addEventListener("click", () => {
-        if (entry.source === "special") {
-          removeSpecialDay(entry.id);
-          return;
-        }
-        hideSpecialEntryByKey(entry.key);
-        renderSpecialDays();
       });
+    }
 
-      row.appendChild(dateCell);
-      row.appendChild(labelWrap);
-      row.appendChild(swatch);
-      row.appendChild(removeBtn);
-      container.appendChild(row);
+    const left = document.createElement("div");
+    left.style.flex = "1";
+    left.style.minWidth = "0";
+    left.appendChild(labelWrap);
+    left.appendChild(meta);
+
+    const swatch = document.createElement("span");
+    swatch.className = "special-day-swatch";
+    swatch.style.background = entry.color || "#e9d5ff";
+
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "secondary";
+    removeBtn.textContent = "Remove";
+    removeBtn.addEventListener("click", () => {
+      if (entry.source === "special") {
+        removeSpecialDay(entry.id);
+        return;
+      }
+      hideSpecialEntryByKey(entry.key);
+      renderSpecialDays();
     });
+
+    row.appendChild(left);
+    row.appendChild(swatch);
+    row.appendChild(removeBtn);
+    return row;
+  }
+
+  // Custom tags — always visible
+  if (userEntries.length) {
+    const customHeader = document.createElement("div");
+    customHeader.className = "small";
+    customHeader.style.fontWeight = "600";
+    customHeader.style.margin = "4px 0";
+    customHeader.textContent = `Your tags (${userEntries.length})`;
+    container.appendChild(customHeader);
+    userEntries.forEach(entry => container.appendChild(buildRow(entry)));
+  } else {
+    const none = document.createElement("div");
+    none.className = "small";
+    none.textContent = "No custom tags yet.";
+    container.appendChild(none);
+  }
+
+  // Built-in school tags — collapsed by default
+  if (generatedEntries.length) {
+    const details = document.createElement("details");
+    details.style.marginTop = "10px";
+
+    const summary = document.createElement("summary");
+    summary.className = "small";
+    summary.style.cursor = "pointer";
+    summary.style.fontWeight = "600";
+    summary.textContent = `School calendar tags (${generatedEntries.length}) — click to expand`;
+    details.appendChild(summary);
+
+    const listWrap = document.createElement("div");
+    listWrap.style.marginTop = "6px";
+    generatedEntries.forEach(entry => listWrap.appendChild(buildRow(entry)));
+    details.appendChild(listWrap);
+
+    container.appendChild(details);
+  }
 }
 
 window.clearAllCustomDays = function() {
@@ -7436,9 +7567,10 @@ function applyDarkModePreference() {
 
 function initCollapsibleSections() {
   const defaultCollapsed = {
-    schedule: false,
+    schedule: true,
+    "custom-calendar": true,
     rotation: true,
-    units: false,
+    units: true,
     special: true,
     summary: true
   };
