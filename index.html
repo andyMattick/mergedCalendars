@@ -4,6 +4,39 @@
   <meta charset="UTF-8" />
   <title>HS Faculty Planner</title>
   <style>
+
+.month-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin: 12px 0 28px;
+}
+.month-nav a {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: #1e3a8a;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.month-nav a:hover {
+  background: #dbeafe;
+}
+
+.month-summary {
+  display: block;
+  margin: 28px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #2563eb;
+  color: #1e40af;
+  font-size: 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+}
   
   /* Manual or unit test sitting on a No-Test day */
 .day-cell.has-test-on-no-test {
@@ -228,6 +261,14 @@ body.dark strong,
 body.dark .period-label {
   color: #e5e7eb !important;
   font-weight: 600;
+}
+
+body.hide-hover-agenda .day-cell:hover .hover-agenda,
+body.hide-hover-agenda .hover-agenda {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  animation: none !important;
 }
 
 body.dark .unit-row > .small {
@@ -1437,6 +1478,7 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
         <option value="mobile">Toggle Desktop / Mobile View</option>
         <option value="special">Toggle Special Tags On / Off</option>
         <option value="dark">Toggle Light / Dark Mode</option>
+        <option value="hover">Toggle Hover Agenda On / Off</option>
       </select>
 
               <select id="profileActions" class="header-select" aria-label="Profile actions">
@@ -1771,6 +1813,38 @@ function getProfileCalendarLabel() {
       ? savedPacks.find(p => p.id === activePackId)
       : null;
   return pack?.name ? `Pack: ${pack.name}` : "Custom pack";
+}
+
+function applyHoverAgendaPreference() {
+  const hidden = localStorage.getItem("hideHoverAgenda") === "true";
+  document.body.classList.toggle("hide-hover-agenda", hidden);
+}
+
+function toggleHoverAgenda() {
+  const currentlyHidden = localStorage.getItem("hideHoverAgenda") === "true";
+  const nextHidden = !currentlyHidden;
+
+  localStorage.setItem("hideHoverAgenda", nextHidden ? "true" : "false");
+  applyHoverAgendaPreference();
+
+  const message = nextHidden
+    ? "Hover agenda: OFF"
+    : "Hover agenda: ON";
+
+  // Simple alert
+  alert(message);
+
+  // Optional: toast instead of alert (comment out alert above if you prefer this)
+  /*
+  const notice = document.createElement("div");
+  notice.style.cssText =
+    "position:fixed;bottom:20px;left:50%;transform:translateX(-50%);" +
+    "background:#1f2933;color:#fff;padding:10px 20px;border-radius:6px;" +
+    "z-index:300;font-size:0.9rem;";
+  notice.textContent = message;
+  document.body.appendChild(notice);
+  setTimeout(() => notice.remove(), 2000);
+  */
 }
 
 function savePackLibrary() {
@@ -2947,12 +3021,19 @@ units: JSON.parse(JSON.stringify(units || {})),
     cycleColors: typeof getCycleColors === "function" ? getCycleColors() : {},
     notes,
     activePackId: typeof activePackId !== "undefined" ? activePackId : "builtin",
+    projects: JSON.parse(JSON.stringify(projects || {})),
     periodCount: Number(localStorage.getItem("periodCount")) || 7
   };
 }
 
 function applyProfileData(data) {
   if (!data) data = {};
+  projects =
+  data.projects && typeof data.projects === "object"
+    ? JSON.parse(JSON.stringify(data.projects))
+    : {};
+
+if (typeof saveProjects === "function") saveProjects();
 
   // ALWAYS replace (empty profile must clear previous)
   teacherSchedule =
@@ -3048,6 +3129,7 @@ function loadProfile(id) {
 
   setCurrentProfileId(id);
   applyProfileData(profile.data || {});
+  loadProjects();
 
   activePackId = profile.activePackId || profile.data?.activePackId || "builtin";
 
@@ -4015,6 +4097,15 @@ function getPeriodOccurrenceDates(periodNum) {
 }
 
 function getPeriodsForDate(date, letterLike) {
+  // Built-in special schedule / day override
+  if (date && typeof customDays === "object" && customDays[date]) {
+    const cd = customDays[date];
+    if (String(cd.letter || "").toUpperCase() === "OFF") return [];
+    if (Array.isArray(cd.periods)) {
+      return cd.periods.map(Number).filter(n => n > 0);
+    }
+  }
+
   const pack = typeof getActivePack === "function" ? getActivePack() : null;
 
   // Custom pack: day-level OFF or period override
@@ -4701,46 +4792,53 @@ function getAssessmentSchedule() {
     });
   });
 
-  // === MANUAL PER-PERIOD TEST CHECKBOXES ===
-  console.log("=== Scanning for manual tests ===");
+  // Manual per-period test / quiz flags
   Object.keys(localStorage).forEach(key => {
     if (!key.startsWith("notes_")) return;
 
     const date = key.replace("notes_", "");
-    const notesStr = localStorage.getItem(key);
-    if (!notesStr) return;
-
     let notes;
     try {
-      notes = JSON.parse(notesStr);
-    } catch(e) {
+      notes = JSON.parse(localStorage.getItem(key) || "{}");
+    } catch (e) {
       return;
     }
 
-    const periods = getPeriodsForDate(date, getRotationDayByDate(date)?.letter || "");
+    const letter = getRotationDayByDate(date)?.letter || "";
+    const periods = getPeriodsForDate(date, letter);
+
     periods.forEach(periodNum => {
-      if (notes[`test-${periodNum}`] === true) {
-        const periodNote = notes[periodNum] || "";
+      const hasTest = notes[`test-${periodNum}`] === true;
+      const hasQuiz = notes[`quiz-${periodNum}`] === true;
+      if (!hasTest && !hasQuiz) return;
 
-        console.log(`✅ FOUND manual test on ${date} Period ${periodNum}`);
-
-    events.push({
-      date: date,
-      letter: getRotationDayByDate(date)?.letter || "",
-      periodNum: periodNum,
-      courseName: teacherSchedule[periodNum] || `Period ${periodNum}`,
-      unitInfo: {
-        hasTestToday: true,
-        hasQuizToday: false,
-        unitName: periodNote || ""
-      }
-    });
-      }
+      events.push({
+        date,
+        letter,
+        periodNum,
+        courseName: teacherSchedule[periodNum] || `Period ${periodNum}`,
+        unitInfo: {
+          hasTestToday: hasTest,
+          hasQuizToday: hasQuiz,
+          unitName: ""
+        },
+        isNoTestDay:
+          (typeof isAutoNoTestDay === "function" && isAutoNoTestDay(date)) ||
+          !!notes.noTest
+      });
     });
   });
-  console.log(`Total events found: ${events.length}`);
-
-  return events.sort((a, b) => a.date.localeCompare(b.date) || a.periodNum - b.periodNum);
+    // Dedupe by date + period + kind
+  const seen = new Set();
+  const deduped = [];
+  for (const e of events) {
+    const kind = e.unitInfo?.hasTestToday ? "test" : e.unitInfo?.hasQuizToday ? "quiz" : "other";
+    const key = `${e.date}|${e.periodNum}|${kind}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(e);
+  }
+  return deduped.sort((a, b) => a.date.localeCompare(b.date) || a.periodNum - b.periodNum);
 }
 
 function getAssessmentWarnings() {
@@ -4761,26 +4859,25 @@ function getAssessmentWarnings() {
     }
   });
 
-  // Check modal tests on No Test days
+  // Manual tests on No Test days
   Object.keys(localStorage).forEach(key => {
-    if (!key.startsWith(getStorageKey(LS_NOTES_KEY_PREFIX))) return;
-    const date = key.replace(getStorageKey(LS_NOTES_KEY_PREFIX) + "-", "");
+    if (!key.startsWith("notes_")) return;
+    const date = key.replace("notes_", "");
     const notes = loadNotesForDate(date);
 
-    if (notes.noTest || isAutoNoTestDay(date)) {
-      getPeriodsForDate(date, getRotationDayByDate(date)?.letter || "").forEach(periodNum => {
-        if (notes[`test-${periodNum}`] === true) {
-          warnings.push({
-            date,
-            periodNum,
-            courseName: teacherSchedule[periodNum] || `Period ${periodNum}`,
-            unitInfo: { hasTestToday: true },
-            unitInfo: { hasQuizToday: true },
-            type: "modal"
-          });
-        }
-      });
-    }
+    if (!(notes.noTest || isAutoNoTestDay(date))) return;
+
+    getPeriodsForDate(date, getRotationDayByDate(date)?.letter || "").forEach(periodNum => {
+      if (notes[`test-${periodNum}`] === true) {
+        warnings.push({
+          date,
+          periodNum,
+          courseName: teacherSchedule[periodNum] || `Period ${periodNum}`,
+          unitInfo: { hasTestToday: true, hasQuizToday: false },
+          type: "modal"
+        });
+      }
+    });
   });
 
   return warnings;
@@ -5409,6 +5506,14 @@ function renderCalendar() {
       badgeRow.appendChild(projDayBadge);
     }
 
+    if (hasSpecialSchedule(iso)) {
+  const b = document.createElement("span");
+  b.className = "status-badge";
+  b.textContent = "Special Schedule";
+  b.title = `Periods: ${(customDays[iso].periods || []).join(", ")}`;
+  badgeRow.appendChild(b);
+}
+
     // Class list
     if (periodsForDay.length) {
       const ul = document.createElement("ul");
@@ -5449,7 +5554,7 @@ function renderCalendar() {
             : "";
 
         // ONE classLine only
-        let classLine = `${periodNum}: ${courseName} (${periodDayCount})`;
+        let classLine = `${periodNum}: ${courseName}`;
 
         if (isTestToday) {
           classLine = unitName
@@ -5635,6 +5740,60 @@ function openDayModal(day) {
     `;
     body.appendChild(packLetterBlock);
 
+        // === Special schedule (built-in calendar) ===
+    {
+      const isOff =
+        override && String(override.letter || "").toUpperCase() === "OFF";
+
+      if (!isOff) {
+        const usingOverride = Array.isArray(override?.periods);
+        const defaultPeriods = getPeriodNumbers();
+        const selected = new Set(
+          (usingOverride ? override.periods : defaultPeriods).map(Number)
+        );
+
+        const limitBlock = document.createElement("div");
+        limitBlock.className = "note-block";
+        limitBlock.style.marginBottom = "12px";
+        limitBlock.innerHTML = `
+          <label>
+            <input type="checkbox" id="modalSpecialScheduleEnabled" ${
+              usingOverride ? "checked" : ""
+            }>
+            Special schedule (choose which periods meet)
+          </label>
+          <div id="modalSpecialSchedulePeriods" style="margin-top:8px;${
+            usingOverride ? "" : "display:none;"
+          }"></div>
+          <p class="small">When checked, only selected periods meet this day. Unchecked = normal letter map.</p>
+        `;
+
+        const checks = limitBlock.querySelector("#modalSpecialSchedulePeriods");
+        defaultPeriods.forEach(p => {
+          const lab = document.createElement("label");
+          lab.style.marginRight = "10px";
+          lab.innerHTML = `<input type="checkbox" class="modal-ss-period-cb" value="${p}" ${
+            selected.has(p) ? "checked" : ""
+          }> ${p}`;
+          checks.appendChild(lab);
+        });
+
+        body.appendChild(limitBlock);
+
+        limitBlock
+          .querySelector("#modalSpecialScheduleEnabled")
+          .addEventListener("change", e => {
+            checks.style.display = e.target.checked ? "block" : "none";
+            if (e.target.checked) {
+              const any = checks.querySelector("input:checked");
+              if (!any) {
+                checks.querySelectorAll("input").forEach(cb => (cb.checked = true));
+              }
+            }
+          });
+      }
+    }
+
     const sel = packLetterBlock.querySelector("#modalPackLetter");
     if (sel) {
       const curU = String(cur).toUpperCase();
@@ -5676,8 +5835,57 @@ function openDayModal(day) {
         Default uses the school rotation list. Override only changes this date.
       </div>
     `;
-    body.appendChild(builtinLetterBlock);
-  }
+        body.appendChild(builtinLetterBlock);
+
+    // === Special schedule (built-in calendar) ===
+    const ssOff =
+      override && String(override.letter || "").toUpperCase() === "OFF";
+    if (!ssOff) {
+      const usingOverride = Array.isArray(override?.periods);
+      const defaultPeriods = getPeriodNumbers();
+      const selected = new Set(
+        (usingOverride ? override.periods : defaultPeriods).map(Number)
+      );
+
+      const limitBlock = document.createElement("div");
+      limitBlock.className = "note-block";
+      limitBlock.style.marginBottom = "12px";
+      limitBlock.innerHTML = `
+        <label>
+          <input type="checkbox" id="modalSpecialScheduleEnabled" ${
+            usingOverride ? "checked" : ""
+          }>
+          Special schedule (choose which periods meet)
+        </label>
+        <div id="modalSpecialSchedulePeriods" style="margin-top:8px;${
+          usingOverride ? "" : "display:none;"
+        }"></div>
+        <p class="small">When checked, only selected periods meet this day.</p>
+      `;
+
+      const checks = limitBlock.querySelector("#modalSpecialSchedulePeriods");
+      defaultPeriods.forEach(p => {
+        const lab = document.createElement("label");
+        lab.style.marginRight = "10px";
+        lab.innerHTML = `<input type="checkbox" class="modal-ss-period-cb" value="${p}" ${
+          selected.has(p) ? "checked" : ""
+        }> ${p}`;
+        checks.appendChild(lab);
+      });
+
+      body.appendChild(limitBlock);
+
+      limitBlock
+        .querySelector("#modalSpecialScheduleEnabled")
+        .addEventListener("change", e => {
+          checks.style.display = e.target.checked ? "block" : "none";
+          if (e.target.checked && !checks.querySelector("input:checked")) {
+            checks.querySelectorAll("input").forEach(cb => (cb.checked = true));
+          }
+        });
+    }
+  }  // ← else closes HERE, after Special Schedule
+  
 
   // === Limit periods today (custom pack, not OFF) ===
   if (activePack) {
@@ -5972,6 +6180,21 @@ function handleSaveNotes() {
     }
   }
 
+  // Built-in special schedule (which periods meet)
+  if (!getActivePack || !getActivePack()) {
+    const ssEnabled = document.getElementById("modalSpecialScheduleEnabled")?.checked;
+    if (ssEnabled) {
+      const periods = Array.from(
+        document.querySelectorAll(".modal-ss-period-cb:checked")
+      ).map(el => Number(el.value));
+      setSpecialSchedule(currentModalDay.date, periods);
+    } else if (
+      typeof hasSpecialSchedule === "function" &&
+      hasSpecialSchedule(currentModalDay.date)
+    ) {
+      clearSpecialSchedule(currentModalDay.date);
+    }
+  }
   // Custom pack: letter + optional period limit
   if (typeof getActivePack === "function" && getActivePack()) {
     const pack = getActivePack();
@@ -6154,8 +6377,41 @@ function loadCustomDays() {
     customDays = {};
   }
 }
+function setSpecialSchedule(date, periods, label = "Special Schedule") {
+  if (!date) return;
 
+  const existing = customDays[date] || {};
+  const letter =
+    existing.letter && String(existing.letter).toUpperCase() !== "OFF"
+      ? existing.letter
+      : (getRotationDayByDate(date)?.letter || "SPECIAL");
 
+  customDays[date] = {
+    letter,
+    label: label || existing.label || "Special Schedule",
+    periods: (periods || []).map(Number).filter(n => n > 0)
+  };
+  saveCustomDays();
+}
+
+function clearSpecialSchedule(date) {
+  if (!date || !customDays[date]) return;
+
+  const entry = { ...customDays[date] };
+  delete entry.periods;
+
+  // If only a synthetic SPECIAL letter with no other meaning, remove the day
+  if (!entry.letter || entry.letter === "SPECIAL") {
+    delete customDays[date];
+  } else {
+    customDays[date] = entry;
+  }
+  saveCustomDays();
+}
+
+function hasSpecialSchedule(date) {
+  return !!(customDays[date] && Array.isArray(customDays[date].periods));
+}
 
 function saveCustomDays() {
   localStorage.setItem(getCustomDaysStorageKey(), JSON.stringify(customDays));
@@ -6165,15 +6421,19 @@ function setCustomDay(date, letter, label) {
   if (!date) return;
 
   if (letter === "DEFAULT" || letter == null || letter === "") {
-    delete customDays[date];   // must delete — do not store "DEFAULT"
+    delete customDays[date];
     saveCustomDays();
     return;
   }
 
+  const prev = customDays[date] || {};
   customDays[date] = {
     letter: String(letter),
-    label: label || (customDays[date] && customDays[date].label) || ""
+    label: label || prev.label || ""
   };
+  if (Array.isArray(prev.periods)) {
+    customDays[date].periods = prev.periods;
+  }
   saveCustomDays();
 }
 
@@ -7231,8 +7491,9 @@ window.removeSpecialDay = function(index) {
   renderSpecialDays();
   renderCalendar();
 };
+
 function renderSummary() {
-  let totalUnits = Object.values(units).flat().length;
+  const totalUnits = Object.values(units).flat().length;
   const totalSchoolDays = new Set(
     getCurrentRotationData()
       .filter(day => getPeriodsForDate(day.date, day.letter).length > 0)
@@ -7241,71 +7502,81 @@ function renderSummary() {
 
   const todayISO = new Date().toISOString().split("T")[0];
 
-  const unitEvents = getAssessmentSchedule();
-  const modalTests = [];
-
-Object.keys(localStorage).forEach(key => {
-  if (!key.startsWith("notes_")) return;   // match saveNotesForDate
-    const date = key.replace("notes_", "");   // ← this was still wrong
-    const notes = loadNotesForDate(date);
-
-getPeriodsForDate(date, getRotationDayByDate(date)?.letter || "").forEach(periodNum => {
-    if (notes[`test-${periodNum}`] === true || notes[`quiz-${periodNum}`] === true) {
-      modalTests.push({
-        date,
-        periodNum,
-        courseName: teacherSchedule[periodNum] || `Period ${periodNum}`,
-        isTest: notes[`test-${periodNum}`] === true,
-        isQuiz: notes[`quiz-${periodNum}`] === true,
-        unitInfo: {
-          hasTestToday: notes[`test-${periodNum}`] === true,
-          hasQuizToday: notes[`quiz-${periodNum}`] === true
-          
-          }
-        });      }
-    });
-  });
-    const upcomingAssessments = [...unitEvents, ...modalTests]
+  // Single list (deduped inside getAssessmentSchedule)
+  const upcomingAssessments = getAssessmentSchedule()
     .filter(event => event.date >= todayISO)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.periodNum - b.periodNum);
+    .sort((a, b) => {
+      if (a.periodNum !== b.periodNum) return a.periodNum - b.periodNum;
+      return a.date.localeCompare(b.date);
+    });
 
   const warnings = getAssessmentWarnings();
 
-  let html = `
+  document.getElementById("summaryStats").innerHTML = `
     <p><strong>Total Units Defined:</strong> ${totalUnits}</p>
     <p><strong>Total School Days In Semester:</strong> ${totalSchoolDays}</p>
     <hr>
-    <p><strong>Upcoming Quizzes / Tests:</strong></p>
-    <ul id="testDaysList" style="padding-left:1.2rem; font-size:0.85rem;"></ul>
-    <p><strong>Conflicts:</strong></p>
+    <p><strong>Upcoming Quizzes / Tests</strong> <span class="small">(by class, then date)</span></p>
+    <div id="testDaysList" style="font-size:0.85rem;"></div>
+    <p style="margin-top:0.8rem;"><strong>Conflicts:</strong></p>
     <ul id="warningList" style="padding-left:1.2rem; font-size:0.85rem;"></ul>
   `;
 
-  document.getElementById("summaryStats").innerHTML = html;
-
-  // Upcoming assessments
   const testList = document.getElementById("testDaysList");
   testList.innerHTML = "";
 
   if (!upcomingAssessments.length) {
-    const li = document.createElement("li");
-    li.textContent = "No upcoming quizzes or tests.";
-    testList.appendChild(li);
+    const empty = document.createElement("div");
+    empty.className = "small";
+    empty.textContent = "No upcoming quizzes or tests.";
+    testList.appendChild(empty);
   } else {
+    const byClass = {};
     upcomingAssessments.forEach(event => {
-      const li = document.createElement("li");
-const type = (event.isTest || event.unitInfo.hasTestToday) ? "TEST" : "QUIZ";
-      
-      const unitInfo = getUnitProgress(event.periodNum, getDayCountsForDate(event.date, [event.periodNum])[event.periodNum], event.date);
-      const unitPart = unitInfo.unitName ? ` - ${unitInfo.unitName}` : "";
-
-      li.textContent = `${type} - ${event.date}: ${event.courseName}${unitPart}`;
-      testList.appendChild(li);
+      const courseName = event.courseName || `Period ${event.periodNum}`;
+      const key = `P${event.periodNum}|${courseName}`;
+      if (!byClass[key]) {
+        byClass[key] = { periodNum: event.periodNum, courseName, events: [] };
+      }
+      byClass[key].events.push(event);
     });
-  
+
+    Object.values(byClass)
+      .sort((a, b) => a.periodNum - b.periodNum)
+      .forEach(group => {
+        const details = document.createElement("details");
+        details.open = true;
+        details.style.margin = "8px 0";
+
+        const summary = document.createElement("summary");
+        summary.style.cssText = "cursor:pointer; font-weight:700;";
+        summary.textContent = `P${group.periodNum}: ${group.courseName} (${group.events.length})`;
+        details.appendChild(summary);
+
+        const ul = document.createElement("ul");
+        ul.style.cssText = "padding-left:1.2rem; margin:6px 0 0;";
+
+        group.events
+          .slice()
+          .sort((a, b) => a.date.localeCompare(b.date))
+          .forEach(event => {
+            const type =
+              event.isTest || event.unitInfo?.hasTestToday ? "TEST" : "QUIZ";
+
+            let unitPart = event.unitInfo?.unitName
+              ? ` — ${event.unitInfo.unitName}`
+              : "";
+
+            const li = document.createElement("li");
+            li.textContent = `${event.date} · ${type}${unitPart}`;
+            ul.appendChild(li);
+          });
+
+        details.appendChild(ul);
+        testList.appendChild(details);
+      });
   }
 
-  // Conflicts with action buttons
   const warningList = document.getElementById("warningList");
   warningList.innerHTML = "";
 
@@ -7704,7 +7975,7 @@ function applyPrintFilters() {
       undefined,
       { month: "short", year: "numeric" }
     );
-    html += `<a href="#month-${i}">${shortLabel}</a>`;
+    html += `<a href="#month-${i}">${shortLabel}</a>${i < activeMonths.length - 1 ? " " : ""}`;
   });
   html += `</nav>`;
 
@@ -7955,6 +8226,7 @@ function ensureExpandDaysButton() {
 
 // --- Init ---
 function init() {
+  applyHoverAgendaPreference()
   ensureDefaultProfile();
   wireProfileUI();
   renderProfileSelector();
@@ -8439,6 +8711,7 @@ document.getElementById("nextMonthBtn")?.addEventListener("click", () => {
 
     let isMobileView = false;
 
+
     // Dropdown listeners
   document.getElementById("leftActions1").addEventListener("change", (e) => {
     const value = e.target.value;
@@ -8454,6 +8727,7 @@ document.getElementById("nextMonthBtn")?.addEventListener("click", () => {
     if (value === "mobile") document.getElementById("mobileViewBtn").click();
     if (value === "special") document.getElementById("toggleSpecialTagsBtn").click();
     if (value === "dark") document.getElementById("darkModeToggle").click();
+    if (value === "hover") toggleHoverAgenda();
     e.target.value = ""; // reset
   });
 
