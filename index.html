@@ -2650,8 +2650,7 @@ const HS_ROTATION_2026 = [
   { date: "2026-12-08", letter: "C" },
   { date: "2026-12-09", letter: "D" },
   { date: "2026-12-10", letter: "Reading Day"},
-  { date: "2026-12-11", letter: "Reading Day" },
-  { date: "2026-12-11", letter: "Statistics/Computer Science Exams" },
+  { date: "2026-12-11", letter: "Reading Day / Stats / CS Exams" },
 
   { date: "2026-12-14", letter: "Science Exam" },
   { date: "2026-12-15", letter: "English Exam" },
@@ -3514,8 +3513,25 @@ function getCurrentRotationRules() {
     return pack.rotationRules || {};
   }
 
-  if (typeof ROTATION_RULES !== "undefined") return ROTATION_RULES;
+  // Prefer division config
+  if (typeof getCurrentConfig === "function") {
+    const cfg = getCurrentConfig();
+    if (cfg && cfg.rotationRules && Object.keys(cfg.rotationRules).length) {
+      return cfg.rotationRules;
+    }
+  }
 
+  if (currentDivision === "ms" && typeof MS_ROTATION_RULES !== "undefined") {
+    return MS_ROTATION_RULES;
+  }
+  if (currentDivision === "ls" && typeof LS_ROTATION_RULES !== "undefined") {
+    return LS_ROTATION_RULES;
+  }
+  if (typeof HS_ROTATION_RULES !== "undefined") {
+    return HS_ROTATION_RULES;
+  }
+
+  // Last resort HS map
   return {
     A: [1, 2, 3, 4, 5],
     B: [6, 7, 1, 2, 3],
@@ -3523,7 +3539,7 @@ function getCurrentRotationRules() {
     D: [2, 3, 4, 5, 6],
     E: [7, 1, 2, 3, 4],
     F: [5, 6, 7, 1, 2],
-    G: [3, 4, 5, 6, 7],
+    G: [3, 4, 5, 6, 7]
   };
 }
 
@@ -3661,12 +3677,10 @@ const STATIC_SPECIAL_DAY_ROWS = [
   ["2026-12-09", ["hs"], "Band Christmas Concert"],
   ["2026-12-10", ["hs"], "Late Start"],
   ["2026-12-10", ["ms"], "Exam Review Day (7th-8th)"],
-  ["2026-12-10", ["hs"], "Reading Day"],
+  
   ["2026-12-11", ["hs"], "Late Start"],
   ["2026-12-11", ["ms"], "Exam Review Day (7th-8th)"],
-  ["2026-12-11", ["hs"], "Reading Day"],
-  ["2026-12-11", ["hs"], "Statistics Exam"],
-  ["2026-12-11", ["hs"], "Computer Science Exam"],
+  
   ["2026-12-11", ["hs"], "12:30 Dismissal"],
   ["2026-12-14", ["all"], "Late Start"],
   ["2026-12-14", ["ms"], "Science Exam (7th-8th)"],
@@ -3755,11 +3769,14 @@ function getCurrentMonths() {
 const DIVISION_SPECIFIC_PERIOD_OVERRIDES = {
   hs: {
     sem1: {
-      "2026-12-10": [7, 1, 2, 3]
+      "2026-12-10": [7, 1, 2, 3],
+      "2026-12-11": [4, 5, 6]
     },
     sem2: {}
   },
-  ms: { sem1: {}, sem2: {} },
+  ms: { sem1: {
+    "2026-08-12": [1, 2, 3, 4, 5, 6, 7]
+  }, sem2: {} },
   ls: { sem1: {}, sem2: {} }
 };
 
@@ -4725,17 +4742,14 @@ function countScheduledClassesBefore(dateLimit) {
   const counts = {};
 
   getCurrentRotationData().forEach(day => {
-    if (day.date > dateLimit) {
-      return;
-    }
+    // Strictly before the limit — do NOT include monthStart
+    if (day.date >= dateLimit) return;
 
-    const letter = normalizeLetter(day.letter);
-    if (!letter || !getCurrentRotationRules()[letter]) {
-      return;
-    }
-
-    getCurrentRotationRules()[letter].forEach(periodNum => {
-      counts[periodNum] = (counts[periodNum] || 0) + 1;
+    const periods = getPeriodsForDate(day.date, day.letter);
+    periods.forEach(periodNum => {
+      const p = Number(periodNum);
+      if (!p) return;
+      counts[p] = (counts[p] || 0) + 1;
     });
   });
 
@@ -5554,7 +5568,7 @@ function renderCalendar() {
             : "";
 
         // ONE classLine only
-        let classLine = `${periodNum}: ${courseName}`;
+        let classLine = `${periodNum}: ${courseName} (${periodDayCount})`;
 
         if (isTestToday) {
           classLine = unitName
