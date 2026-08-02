@@ -9563,6 +9563,7 @@ function applyPrintFilters() {
 
             periodRows.push({
               line,
+              topicName: unitInfo.topicName || "",
               note: dayNotes[periodNum] || "",
               isTest: !!(unitInfo.hasTestToday || dayNotes[`test-${periodNum}`]),
               isQuiz: !!(unitInfo.hasQuizToday || dayNotes[`quiz-${periodNum}`])
@@ -9735,6 +9736,9 @@ function applyPrintFilters() {
 
         entry.periodRows.forEach(row => {
           html += `<div class="period">${row.line}`;
+          if (row.topicName) {
+            html += `<span class="note">Topic: ${typeof noteToHtml === "function" ? noteToHtml(row.topicName) : row.topicName}</span>`;
+          }
           if (row.note) {
             html += `<span class="note">Note: ${
               typeof noteToHtml === "function" ? noteToHtml(row.note) : row.note
