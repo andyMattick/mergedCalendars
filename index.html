@@ -1209,6 +1209,58 @@ body.dark .day-cell.today.cycle-G { background: #3a4657; }
   display: block;
 }
 
+.custom-calendar-guide {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #334155;
+}
+
+.custom-calendar-guide ol {
+  margin: 8px 0 0 18px;
+}
+
+body.dark .custom-calendar-guide {
+  background: #1f2937;
+  border-color: #4b5563;
+  color: #e5e7eb;
+}
+
+.new-user-quickstart {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.new-user-quickstart .small {
+  color: #475569;
+}
+
+.new-user-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.new-user-branch {
+  margin-top: 8px;
+}
+
+body.dark .new-user-quickstart {
+  background: #1f2937;
+  border-color: #4b5563;
+  color: #e5e7eb;
+}
+
+body.dark .new-user-quickstart .small {
+  color: #cbd5e1;
+}
+
 .help-footer {
   display: flex;
   justify-content: space-between;
@@ -1367,7 +1419,7 @@ body.dark .agenda-note.empty {
 }
    
 /* Hide specific buttons for cleaner header */
-#backupBtn, #restoreBtn, #printCalendarBtn, #exportTestsByClassBtn, #darkModeToggle, #mobileViewBtn, #toggleSpecialTagsBtn {
+#backupBtn, #restoreBtn, #setExternalBackupFileBtn, #syncBackupNowBtn, #printCalendarBtn, #exportTestsByClassBtn, #darkModeToggle, #mobileViewBtn, #toggleSpecialTagsBtn {
   display: none;
 }
 
@@ -1464,11 +1516,15 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
 
         <button id="backupBtn" class="secondary">Backup Data</button>
         <button id="restoreBtn" class="secondary">Restore Data</button>
+        <button id="setExternalBackupFileBtn" class="secondary">Set Auto Backup File</button>
+        <button id="syncBackupNowBtn" class="secondary">Sync Backup Now</button>
         <input id="restoreInput" type="file" accept=".json" style="display:none;">
         <select id="leftActions1" class="header-select">
         <option value="">Save / Restore / Print</option>
         <option value="backup">Backup Data</option>
         <option value="restore">Restore Data</option>
+        <option value="setExternalBackup">Set Auto Backup File</option>
+        <option value="syncBackupNow">Sync Backup Now</option>
         <option value="print">Print with Filters</option>
         <option value="export">Export Tests/Quizzes</option>
       </select>
@@ -1487,8 +1543,6 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
         <option value="rename">Rename Profile</option>
         <option value="duplicate">Duplicate profile…</option>
         <option value="delete">Delete Profile</option>
-      </select>
-      
       </select>
 
       </div>
@@ -1590,13 +1644,11 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
     <div class="config-section" data-section-key="custom-calendar">
       <button class="config-section-toggle" type="button">
         <span class="config-chevron">▼</span>
-        <span>Create a custom calendar</span>
+        <span>Custom calendar</span>
       </button>
 
       <div class="config-section-body">
-        <p class="small" style="margin-top:0;">
-          Build a school year schedule, then click <strong>Use this calendar</strong> to apply it to the current profile.
-        </p>
+     
 
         <div id="packCurrentSummary" class="small" style="margin:0 0 10px; padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; background:#f8fafc; color:#334155;"></div>
 
@@ -1628,11 +1680,10 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
         <label><input id="packSkipWeekends" type="checkbox" checked> Skip weekends in cycle</label>
 
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
-          <button type="button" id="packGenerateDraftBtn">Generate draft</button>
-          <button type="button" id="packSaveBtn">Save calendar</button>
+          <button type="button" id="packGuidedSetupBtn" class="secondary">Set up a new calendar</button>
           <button type="button" id="packDeleteBtn" class="secondary">Delete selected</button>
           <button type="button" id="editPackPeriodMapBtn">Edit period map</button>
-          <button type="button" id="toggleDefaultTimesBtn" class="secondary" aria-expanded="false">Show default M-F bell times</button>
+          <button type="button" id="toggleDefaultTimesBtn" class="secondary" aria-expanded="false">Edit M-F Times</button>
         </div>
 
         <div id="defaultTimesPanel" style="display:none; margin-top:8px;">
@@ -1751,16 +1802,6 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
 </main>
 
     <script>
-// One draft only in this slice (multi-pack later)
-let calendarDraft = null;
-// {
-//   name: "My 2026 Sem1",
-//   start: "2026-08-12",
-//   end: "2026-12-18",
-//   letters: ["A","B","C","D","E","F","G"],
-//   skipWeekends: true,
-//   days: [{ date: "2026-08-12", letter: "A" }, ...]
-// }
 let savedPacks = JSON.parse(localStorage.getItem("plannerSavedPacks") || "[]");
 // [{ id, name, start, end, letters, skipWeekends, days }, ...]
 
@@ -1893,35 +1934,6 @@ function toggleHoverAgenda() {
 function savePackLibrary() {
   localStorage.setItem("plannerSavedPacks", JSON.stringify(savedPacks));
   localStorage.setItem("plannerActivePackId", activePackId);
-}
-function saveDraftAsPack() {
-  if (!calendarDraft || !calendarDraft.days?.length) {
-    alert("Generate a draft first.");
-    return;
-  }
-  const id = "pack-" + Date.now();
-  const pack = {
-    ...calendarDraft,
-    id,
-    periodCount: Math.max(1, Number(calendarDraft.periodCount) || 7),
-    days: JSON.parse(JSON.stringify(calendarDraft.days))
-  };
-  if (typeof ensurePackRotationRules === "function") ensurePackRotationRules(pack);
-  // ★ HERE — before push
-  const dup = savedPacks.find(
-    p => p.name === pack.name && p.days?.length === pack.days.length
-  );
-  if (dup && !confirm(`A pack named "${pack.name}" already exists. Save another copy?`)) {
-    return;
-  }
-  savedPacks.push(pack);
-  savePackLibrary();
-
-  if (typeof refreshPackSelect === "function") {
-    refreshPackSelect();
-  }
-
-  alert(`Saved pack "${pack.name}" (${pack.days.length} days). Still on built-in until you click Use.`);
 }
 
 function deleteSelectedPack() {
@@ -2112,18 +2124,6 @@ function usePack(id) {
       return;
     }
   }
-
-  // After activePackId is set: clear USER tags if custom (this profile only)
-if (activePackId !== "builtin") {
-  specialDays = [];
-  hiddenSpecialEntryKeys = new Set();
-  hideAllSpecialTags = false;
-
-  // Do NOT call saveSpecialDays() if it still hits a shared key only
-  if (typeof saveCurrentProfile === "function") {
-    saveCurrentProfile(false);
-  }
-}
 
   // Perform switch
   if (nextId === "builtin") {
@@ -3596,13 +3596,15 @@ function setCurrentProfileId(id) {
 
 function collectCurrentProfileData() {
   const notes = {};
-  Object.keys(localStorage).forEach(key => {
-    if (key.startsWith("notes_")) {
-      try {
-        notes[key] = JSON.parse(localStorage.getItem(key));
-      } catch {
-        notes[key] = localStorage.getItem(key);
-      }
+  const seenNoteDates = new Set();
+  getAllNoteStorageEntries().forEach(({ key, date }) => {
+    if (!date || seenNoteDates.has(date)) return;
+    seenNoteDates.add(date);
+    const scopedKey = getNotesKey(date);
+    try {
+      notes[scopedKey] = loadNotesForDate(date);
+    } catch {
+      notes[scopedKey] = localStorage.getItem(key);
     }
   });
 
@@ -3696,14 +3698,16 @@ if (typeof saveProjects === "function") saveProjects();
   if (typeof saveCustomDays === "function") saveCustomDays();
   if (typeof saveSpecialDays === "function") saveSpecialDays();
 
-  Object.keys(localStorage).forEach(key => {
-    if (key.startsWith("notes_")) localStorage.removeItem(key);
+  getAllNoteStorageEntries().forEach(({ key }) => {
+    localStorage.removeItem(key);
   });
   if (data.notes && typeof data.notes === "object") {
     Object.keys(data.notes).forEach(key => {
+      const date = getNoteDateFromStorageKey(key);
+      const targetKey = date ? getNotesKey(date) : key;
       const val = data.notes[key];
       localStorage.setItem(
-        key,
+        targetKey,
         typeof val === "string" ? val : JSON.stringify(val)
       );
     });
@@ -4129,7 +4133,7 @@ const L = cycle[li % cycle.length];
   return days;
 }
 
-function buildCalendarDraftFromForm() {
+function buildCalendarDraftFromForm(options = {}) {
   const name = (document.getElementById("packName")?.value || "Custom pack").trim();
   const start = document.getElementById("packStart")?.value;
   const end = document.getElementById("packEnd")?.value;
@@ -4144,7 +4148,7 @@ function buildCalendarDraftFromForm() {
   const days = generateCycleDays(start, end, letters, skipWeekends);
   if (!days.length) return null;
 
-  calendarDraft = {
+  const draft = {
     name,
     start,
     end,
@@ -4155,9 +4159,73 @@ function buildCalendarDraftFromForm() {
     days
   };
   if (typeof renderPackInputPreview === "function") renderPackInputPreview();
-  console.log("Draft pack:", calendarDraft.name, days.length, "days", days.slice(0, 5));
-  alert(`Draft OK: ${days.length} days.\nFirst: ${days[0].date} ${days[0].letter}\nLast: ${days[days.length - 1].date} ${days[days.length - 1].letter}\n\nNot applied to calendar yet.`);
-  return calendarDraft;
+  console.log("Draft pack:", draft.name, days.length, "days", days.slice(0, 5));
+  if (!options.suppressAlert) {
+    alert(`Draft OK: ${days.length} days.\nFirst: ${days[0].date} ${days[0].letter}\nLast: ${days[days.length - 1].date} ${days[days.length - 1].letter}`);
+  }
+  return draft;
+}
+
+function createAndUsePackFromForm(options = {}) {
+  const draft = buildCalendarDraftFromForm({ suppressAlert: true });
+  if (!draft) return null;
+
+  let finalName = draft.name || "Custom pack";
+  const existingSameName = (savedPacks || []).find(p => p.name === finalName);
+  if (existingSameName) {
+    const replace = confirm(
+      `A calendar named "${finalName}" already exists.\n\n` +
+      `OK = replace existing\nCancel = keep existing and save as a new copy`
+    );
+    if (replace) {
+      savedPacks = (savedPacks || []).filter(p => p.id !== existingSameName.id);
+    } else {
+      let n = 2;
+      while ((savedPacks || []).some(p => p.name === `${finalName} (${n})`)) n += 1;
+      finalName = `${finalName} (${n})`;
+    }
+  }
+
+  const id = "pack-" + Date.now();
+  const pack = {
+    ...draft,
+    id,
+    name: finalName,
+    periodCount: Math.max(1, Number(draft.periodCount) || 7),
+    days: JSON.parse(JSON.stringify(draft.days || []))
+  };
+
+  if (typeof ensurePackRotationRules === "function") ensurePackRotationRules(pack);
+  savedPacks.push(pack);
+  savePackLibrary();
+
+  if (typeof usePack === "function") usePack(pack.id);
+  else {
+    activePackId = pack.id;
+    savePackLibrary();
+  }
+
+  // Re-sync selector + form fields after switching so inputs reflect the new pack.
+  if (typeof refreshPackSelect === "function") {
+    refreshPackSelect();
+  } else {
+    const sel = document.getElementById("packSelect") || document.getElementById("activePackSelect");
+    if (sel) {
+      sel.value = pack.id;
+      if (typeof hydratePackFormFromSelection === "function") {
+        hydratePackFormFromSelection(pack.id);
+      }
+    }
+  }
+  if (typeof renderPackInputPreview === "function") renderPackInputPreview();
+  if (typeof renderCustomBellTimesEditor === "function") renderCustomBellTimesEditor();
+
+  if (options.promptSetup) {
+    const mapNow = alert("Custom calendar created.  You can set up the period map and daily times in the Custom Calendar section");
+  }
+
+  showProfileToast?.(`Custom calendar created and applied: ${pack.name}`);
+  return pack;
 }
 
 function formatPackPreviewDate(iso) {
@@ -4208,7 +4276,7 @@ function setDefaultTimesPanelOpen(open) {
   if (!panel || !btn) return;
 
   panel.style.display = open ? "block" : "none";
-  btn.textContent = open ? "Hide default M-F bell times" : "Show default M-F bell times";
+  btn.textContent = open ? "Hide M-F times" : "Edit M-F Times";
   btn.setAttribute("aria-expanded", open ? "true" : "false");
 }
 
@@ -4591,6 +4659,10 @@ function updateDivisionVisibility() {
     const row = el.closest("label, .control-row, .toolbar-group") || el;
     row.style.display = "";
   });
+
+  if (typeof updateCustomCalendarSectionVisibility === "function") {
+    updateCustomCalendarSectionVisibility();
+  }
 }
 
 function insertShiftDaysByInstructionalNumber(days, selectedInstructionalDays) {
@@ -4625,6 +4697,16 @@ function isCustomCalendarActive() {
   return typeof activePackId !== "undefined" &&
     !!activePackId &&
     activePackId !== "builtin";
+}
+
+function updateCustomCalendarSectionVisibility() {
+  const section = document.querySelector('.config-section[data-section-key="custom-calendar"]');
+  if (!section) return;
+
+  const usingBuiltIn = !activePackId || activePackId === "builtin";
+
+  // Hide whenever Wesleyan built-in calendar is active.
+  section.style.display = usingBuiltIn ? "none" : "";
 }
 
 /** Rows safe to persist (never static/generated). */
@@ -5196,7 +5278,7 @@ function openTodayAgendaModal() {
     badgeRow.appendChild(specialBadge);
   });
 
-if (dayNotes.noTest && !isAutoNoTestDay(iso)) {
+if (dayNotes.noTest && !isAutoNoTestDay(todayISO)) {
   const noTestBadge = document.createElement("span");
   noTestBadge.className = "status-badge no-test-day";
   noTestBadge.textContent = "NO TEST TODAY";
@@ -5352,12 +5434,43 @@ function saveBellTimes() {
       return `${getStorageKey(LS_NOTES_KEY_PREFIX)}-${date}`;
     }
 
+    function getNoteDateFromStorageKey(key) {
+      if (!key) return "";
+      if (key.startsWith("notes_")) return key.replace("notes_", "");
+      const scopedPrefix = `${getStorageKey(LS_NOTES_KEY_PREFIX)}-`;
+      if (key.startsWith(scopedPrefix)) return key.slice(scopedPrefix.length);
+      return "";
+    }
+
+    function getAllNoteStorageEntries() {
+      const entries = [];
+      Object.keys(localStorage).forEach(key => {
+        const date = getNoteDateFromStorageKey(key);
+        if (date) entries.push({ key, date });
+      });
+      return entries;
+    }
+
       function loadNotesForDate(date) {
-        const key = `notes_${date}`;
-        const saved = localStorage.getItem(key);
+        const key = getNotesKey(date);
+        const legacyKey = `notes_${date}`;
+        let saved = localStorage.getItem(key);
+        if (!saved) {
+          const legacySaved = localStorage.getItem(legacyKey);
+          if (legacySaved) {
+            localStorage.setItem(key, legacySaved);
+            localStorage.removeItem(legacyKey);
+            saved = legacySaved;
+          }
+        }
         if (!saved) return { general: "" };
 
-        const notes = JSON.parse(saved);
+        let notes = {};
+        try {
+          notes = JSON.parse(saved);
+        } catch {
+          notes = { general: String(saved || "") };
+        }
         return {
           general: notes.general || "",
           ...notes   // keep all other notes
@@ -5366,14 +5479,15 @@ function saveBellTimes() {
 
     function saveNotesForDate(date, notesObj) {
       if (!date) return;
-      const key = `notes_${date}`;
+      const key = getNotesKey(date);
       localStorage.setItem(key, JSON.stringify(notesObj));
+      localStorage.removeItem(`notes_${date}`);
 
       console.log("General notes saved for", date, notesObj.general); // debug
     }
 
     function hasNotesForDate(date) {
-      return !!localStorage.getItem(getNotesKey(date));
+      return !!localStorage.getItem(getNotesKey(date)) || !!localStorage.getItem(`notes_${date}`);
     }
 
 function formatDateLabel(dateStr) {
@@ -5549,16 +5663,9 @@ function getAssessmentSchedule() {
   });
 
   // Manual per-period test / quiz flags
-  Object.keys(localStorage).forEach(key => {
-    if (!key.startsWith("notes_")) return;
-
-    const date = key.replace("notes_", "");
-    let notes;
-    try {
-      notes = JSON.parse(localStorage.getItem(key) || "{}");
-    } catch (e) {
-      return;
-    }
+  const noteDates = Array.from(new Set(getAllNoteStorageEntries().map(entry => entry.date)));
+  noteDates.forEach(date => {
+    const notes = loadNotesForDate(date);
 
     const letter = getRotationDayByDate(date)?.letter || "";
     const periods = getPeriodsForDate(date, letter);
@@ -5616,9 +5723,8 @@ function getAssessmentWarnings() {
   });
 
   // Manual tests on No Test days
-  Object.keys(localStorage).forEach(key => {
-    if (!key.startsWith("notes_")) return;
-    const date = key.replace("notes_", "");
+  const noteDates = Array.from(new Set(getAllNoteStorageEntries().map(entry => entry.date)));
+  noteDates.forEach(date => {
     const notes = loadNotesForDate(date);
 
     if (!(notes.noTest || isAutoNoTestDay(date))) return;
@@ -6750,7 +6856,7 @@ function openDayModal(day) {
       limitBlock.innerHTML = `
         <label>
           <input type="checkbox" id="modalLimitPeriods" ${usingOverride ? "checked" : ""}>
-          Limit periods today (special / half day)
+          Edit periods today (special / half day)
         </label>
         <div id="modalPeriodChecks" style="margin-top:8px;${
           usingOverride ? "" : "display:none;"
@@ -8539,31 +8645,429 @@ function renderSummary() {
   }
 }
 
+const EXTERNAL_BACKUP_DB_NAME = "plannerExternalBackupDb";
+const EXTERNAL_BACKUP_STORE_NAME = "settings";
+const EXTERNAL_BACKUP_HANDLE_KEY = "autoBackupFileHandle";
+
+let externalBackupHandle = null;
+let externalBackupConfigured = false;
+let lastExternalBackupTime = null;
+let lastExternalBackupError = "";
+
+function supportsExternalBackupApi() {
+  return typeof window !== "undefined" && "showSaveFilePicker" in window;
+}
+
+function openExternalBackupDb() {
+  return new Promise((resolve, reject) => {
+    if (!window.indexedDB) {
+      reject(new Error("IndexedDB unavailable"));
+      return;
+    }
+    const req = indexedDB.open(EXTERNAL_BACKUP_DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(EXTERNAL_BACKUP_STORE_NAME)) {
+        db.createObjectStore(EXTERNAL_BACKUP_STORE_NAME);
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error || new Error("Failed to open backup DB"));
+  });
+}
+
+async function saveExternalBackupHandle(handle) {
+  const db = await openExternalBackupDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(EXTERNAL_BACKUP_STORE_NAME, "readwrite");
+    const store = tx.objectStore(EXTERNAL_BACKUP_STORE_NAME);
+    store.put(handle, EXTERNAL_BACKUP_HANDLE_KEY);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error("Failed to save backup handle"));
+  });
+  db.close();
+}
+
+async function loadExternalBackupHandle() {
+  const db = await openExternalBackupDb();
+  const value = await new Promise((resolve, reject) => {
+    const tx = db.transaction(EXTERNAL_BACKUP_STORE_NAME, "readonly");
+    const store = tx.objectStore(EXTERNAL_BACKUP_STORE_NAME);
+    const req = store.get(EXTERNAL_BACKUP_HANDLE_KEY);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error || new Error("Failed to load backup handle"));
+  });
+  db.close();
+  return value;
+}
+
+async function getExternalBackupPermission(handle, allowPrompt) {
+  if (!handle) return false;
+  if (typeof handle.queryPermission !== "function") return true;
+  try {
+    const current = await handle.queryPermission({ mode: "readwrite" });
+    if (current === "granted") return true;
+    if (!allowPrompt || typeof handle.requestPermission !== "function") return false;
+    const asked = await handle.requestPermission({ mode: "readwrite" });
+    return asked === "granted";
+  } catch (e) {
+    console.warn("Permission check failed", e);
+    return false;
+  }
+}
+
+function buildBackupSnapshot() {
+  const currentDiv = currentDivision || "default";
+  const backup = {
+    timestamp: new Date().toISOString(),
+    division: currentDiv,
+    teacherScheduleSem1: JSON.parse(localStorage.getItem("hs-sem1teacherScheduleSem1") || "{}"),
+    unitsSem1: JSON.parse(localStorage.getItem("hs-sem1-units") || "{}"),
+    notes: {},
+    cycleColors: getCycleColors(),
+    classColors: JSON.parse(localStorage.getItem("classColors") || "{}"),
+    profiles: getProfiles(),
+    currentProfileId: getCurrentProfileId(),
+    customDays: JSON.parse(JSON.stringify(customDays || {}))
+  };
+
+  const noteDates = Array.from(new Set(getAllNoteStorageEntries().map(entry => entry.date)));
+  noteDates.forEach(date => {
+    const scopedKey = getNotesKey(date);
+    backup.notes[scopedKey] = loadNotesForDate(date);
+  });
+
+  return backup;
+}
+
+function formatBackupTime(ts) {
+  return new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function updateAutoBackupStatusText() {
+  const status = document.getElementById("autoBackupStatus");
+  if (!status) return;
+
+  if (lastExternalBackupTime) {
+    status.textContent = `External backup synced at ${formatBackupTime(lastExternalBackupTime)}`;
+    return;
+  }
+
+  if (externalBackupConfigured && lastExternalBackupError) {
+    status.textContent = "External backup unavailable; local autosave active";
+    return;
+  }
+
+  if (lastAutoBackupTime) {
+    const minutesAgo = Math.floor((Date.now() - lastAutoBackupTime) / 60000);
+    status.textContent = minutesAgo === 0 ? "Auto-saved just now" : `Auto-saved ${minutesAgo} min ago`;
+    return;
+  }
+
+  status.textContent = "Auto-backup active";
+}
+
+function getBackupTimestampMs(backup) {
+  if (!backup || !backup.timestamp) return 0;
+  const ms = Date.parse(backup.timestamp);
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function getCurrentProfileUpdatedAtMs() {
+  try {
+    const profiles = typeof getProfiles === "function" ? getProfiles() : {};
+    const profileId = typeof getCurrentProfileId === "function" ? getCurrentProfileId() : "";
+    const updated = profiles?.[profileId]?.updatedAt;
+    const ms = Date.parse(updated || "");
+    return Number.isFinite(ms) ? ms : 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function readExternalBackupSnapshot() {
+  if (!supportsExternalBackupApi() || !externalBackupHandle) return null;
+
+  try {
+    const granted = await getExternalBackupPermission(externalBackupHandle, false);
+    if (!granted) return null;
+
+    const file = await externalBackupHandle.getFile();
+    const text = await file.text();
+    if (!text) return null;
+
+    const parsed = JSON.parse(text);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch (e) {
+    console.warn("External backup read failed", e);
+    return null;
+  }
+}
+
+function applyBackupObject(backup, options = {}) {
+  const showAlerts = options.showAlerts !== false;
+  const reloadAfter = options.reloadAfter === true;
+
+  if (!backup || typeof backup !== "object") {
+    throw new Error("Invalid backup payload");
+  }
+
+  // Profiles (optional)
+  if (backup.profiles) {
+    localStorage.setItem(LS_PROFILES, JSON.stringify(backup.profiles));
+  }
+  if (backup.currentProfileId) {
+    localStorage.setItem(LS_CURRENT_PROFILE, backup.currentProfileId);
+  }
+
+  // Prefer full profile-style payload if present
+  if (backup.data && typeof applyProfileData === "function") {
+    applyProfileData(backup.data);
+  } else if (typeof applyProfileData === "function") {
+    // File may already be a profile data object (from collectCurrentProfileData)
+    applyProfileData(backup);
+  } else {
+    // Manual restore fallback
+    if (backup.teacherSchedule) {
+      teacherSchedule = backup.teacherSchedule;
+      if (typeof saveScheduleToStorage === "function") saveScheduleToStorage();
+    }
+    if (backup.units) {
+      units = backup.units;
+      if (typeof saveUnits === "function") saveUnits();
+    }
+    if (backup.unitsSem1) {
+      localStorage.setItem("hs-sem1-units", JSON.stringify(backup.unitsSem1));
+    }
+    if (backup.teacherScheduleSem1) {
+      localStorage.setItem(
+        "hs-sem1teacherScheduleSem1",
+        JSON.stringify(backup.teacherScheduleSem1)
+      );
+    }
+    if (backup.notes) {
+      Object.keys(backup.notes).forEach(key => {
+        localStorage.setItem(key, JSON.stringify(backup.notes[key]));
+      });
+    }
+    if (backup.cycleColors) {
+      localStorage.setItem("cycleColors", JSON.stringify(backup.cycleColors));
+    }
+    if (backup.classColors) {
+      localStorage.setItem("classColors", JSON.stringify(backup.classColors));
+    }
+    if (backup.customDays && typeof backup.customDays === "object") {
+      customDays = backup.customDays;
+      if (typeof saveCustomDays === "function") saveCustomDays();
+    }
+    if (backup.specialDays) {
+      specialDays = backup.specialDays;
+      if (typeof saveSpecialDays === "function") saveSpecialDays();
+    }
+  }
+
+  // Always apply customDays if present at top level
+  if (backup.customDays && typeof backup.customDays === "object") {
+    customDays = backup.customDays;
+    if (typeof saveCustomDays === "function") saveCustomDays();
+  }
+
+  // Always restore period names + known classes
+  if (backup.teacherSchedule && typeof backup.teacherSchedule === "object") {
+    teacherSchedule = backup.teacherSchedule;
+    if (typeof saveScheduleToStorage === "function") {
+      saveScheduleToStorage();
+    } else {
+      localStorage.setItem(
+        "hs-sem1teacherScheduleSem1",
+        JSON.stringify(backup.teacherSchedule)
+      );
+    }
+  }
+  if (backup.teacherScheduleSem1) {
+    localStorage.setItem(
+      "hs-sem1teacherScheduleSem1",
+      JSON.stringify(backup.teacherScheduleSem1)
+    );
+  }
+  if (Array.isArray(backup.knownClasses)) {
+    localStorage.setItem("knownClasses", JSON.stringify(backup.knownClasses));
+  }
+  if (backup.units && typeof backup.units === "object") {
+    units = backup.units;
+    if (typeof saveUnits === "function") saveUnits();
+  }
+
+  if (typeof saveCurrentProfile === "function") saveCurrentProfile(false);
+
+  if (showAlerts) {
+    alert(reloadAfter ? "Restore successful. Reloading…" : "Restore successful.");
+  }
+  if (reloadAfter) {
+    location.reload();
+  }
+}
+
+async function syncBackupNow({ showToast = true } = {}) {
+  const currentDiv = currentDivision || "default";
+  const backupKey = `autoBackup_${currentDiv}`;
+  const backup = buildBackupSnapshot();
+
+  localStorage.setItem(backupKey, JSON.stringify(backup));
+  lastAutoBackupTime = Date.now();
+
+  if (typeof saveCurrentProfile === "function") {
+    saveCurrentProfile(false);
+  }
+
+  const wroteExternal = await writeExternalBackupSnapshot(backup, true);
+  updateAutoBackupStatusText();
+
+  if (showToast) {
+    if (wroteExternal) {
+      showProfileToast?.("Backup synced to local + external");
+    } else {
+      showProfileToast?.("Saved locally (external unavailable)");
+    }
+  }
+}
+
+async function restoreNewestAvailableBackupIfNeeded() {
+  const currentDiv = currentDivision || "default";
+  const backupKey = `autoBackup_${currentDiv}`;
+
+  let localBackup = null;
+  try {
+    const raw = localStorage.getItem(backupKey);
+    localBackup = raw ? JSON.parse(raw) : null;
+  } catch {
+    localBackup = null;
+  }
+
+  const externalBackup = await readExternalBackupSnapshot();
+  const localMs = getBackupTimestampMs(localBackup);
+  const externalMs = getBackupTimestampMs(externalBackup);
+
+  let chosen = null;
+  let chosenMs = 0;
+
+  if (localMs >= externalMs && localBackup) {
+    chosen = localBackup;
+    chosenMs = localMs;
+  } else if (externalBackup) {
+    chosen = externalBackup;
+    chosenMs = externalMs;
+  }
+
+  if (!chosen) return;
+
+  const profileMs = getCurrentProfileUpdatedAtMs();
+  if (chosenMs <= profileMs) return;
+
+  try {
+    applyBackupObject(chosen, { showAlerts: false, reloadAfter: false });
+    lastAutoBackupTime = Date.now();
+    if (chosen === externalBackup) {
+      lastExternalBackupTime = Date.now();
+      showProfileToast?.("Loaded newer external backup");
+    } else {
+      showProfileToast?.("Loaded newer local autosave");
+    }
+  } catch (e) {
+    console.warn("Could not auto-restore newest backup", e);
+  }
+}
+
+async function writeExternalBackupSnapshot(snapshot, allowPrompt = false) {
+  if (!supportsExternalBackupApi() || !externalBackupHandle) {
+    return false;
+  }
+
+  const granted = await getExternalBackupPermission(externalBackupHandle, allowPrompt);
+  if (!granted) {
+    lastExternalBackupError = "Permission denied";
+    updateAutoBackupStatusText();
+    return false;
+  }
+
+  try {
+    const writable = await externalBackupHandle.createWritable();
+    await writable.write(JSON.stringify(snapshot, null, 2));
+    await writable.close();
+    lastExternalBackupTime = Date.now();
+    lastExternalBackupError = "";
+    updateAutoBackupStatusText();
+    return true;
+  } catch (e) {
+    console.warn("External backup write failed", e);
+    lastExternalBackupError = e?.message || "Write failed";
+    updateAutoBackupStatusText();
+    return false;
+  }
+}
+
+async function configureExternalBackupFile() {
+  if (!supportsExternalBackupApi()) {
+    alert("External auto-backup file is not supported in this browser. Local autosave will continue.");
+    return;
+  }
+
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: "planner-auto-backup.json",
+      types: [{
+        description: "JSON backup",
+        accept: { "application/json": [".json"] }
+      }]
+    });
+
+    if (!handle) return;
+
+    externalBackupHandle = handle;
+    externalBackupConfigured = true;
+    await saveExternalBackupHandle(handle);
+
+    const snapshot = buildBackupSnapshot();
+    const wrote = await writeExternalBackupSnapshot(snapshot, true);
+    if (wrote) {
+      alert("External auto-backup file set. Future autosaves will overwrite this file every 5 minutes.");
+    } else {
+      alert("Backup file selected, but write permission is not currently granted. Local autosave will continue.");
+    }
+  } catch (e) {
+    if (e?.name === "AbortError") return;
+    console.error("Failed to configure external backup file", e);
+    alert("Could not set external backup file. Local autosave will continue.");
+  }
+}
+
+async function initExternalBackupHandle() {
+  if (!supportsExternalBackupApi()) return;
+  try {
+    const savedHandle = await loadExternalBackupHandle();
+    if (!savedHandle) return;
+    externalBackupHandle = savedHandle;
+    externalBackupConfigured = true;
+    updateAutoBackupStatusText();
+  } catch (e) {
+    console.warn("No persisted external backup handle", e);
+  }
+}
+
+document.getElementById("setExternalBackupFileBtn")?.addEventListener("click", () => {
+  configureExternalBackupFile();
+});
+
+document.getElementById("syncBackupNowBtn")?.addEventListener("click", () => {
+  syncBackupNow({ showToast: true }).catch(err => {
+    console.error("Manual sync failed", err);
+    alert("Backup sync failed. Local autosave is still active.");
+  });
+});
+
 document.getElementById("backupBtn").addEventListener("click", () => {
   const currentDiv = currentDivision || "default";
-
-      const backup = {
-        timestamp: new Date().toISOString(),
-        division: currentDiv,
-        teacherScheduleSem1: JSON.parse(localStorage.getItem("hs-sem1teacherScheduleSem1") || "{}"),
-        unitsSem1: JSON.parse(localStorage.getItem("hs-sem1-units") || "{}"),
-        notes: {},
-        cycleColors: getCycleColors(),
-        classColors: JSON.parse(localStorage.getItem("classColors") || "{}"),
-        profiles: getProfiles(),
-        currentProfileId: getCurrentProfileId(),
-        customDays: JSON.parse(JSON.stringify(customDays || {})),
-      };
-
-  Object.keys(localStorage).forEach(key => {
-    if (key.startsWith("notes_")) {
-      try {
-        backup.notes[key] = JSON.parse(localStorage.getItem(key));
-      } catch(e) {
-        backup.notes[key] = localStorage.getItem(key);
-      }
-    }
-  });
+  const backup = buildBackupSnapshot();
 
   const dataStr = JSON.stringify(backup, null, 2);
   const linkElement = document.createElement('a');
@@ -8589,97 +9093,7 @@ document.getElementById("restoreBtn").addEventListener("click", () => {
     reader.onload = function (event) {
       try {
         const backup = JSON.parse(event.target.result);
-
-        // Profiles (optional)
-        if (backup.profiles) {
-          localStorage.setItem(LS_PROFILES, JSON.stringify(backup.profiles));
-        }
-        if (backup.currentProfileId) {
-          localStorage.setItem(LS_CURRENT_PROFILE, backup.currentProfileId);
-        }
-
-        // Prefer full profile-style payload if present
-        if (backup.data && typeof applyProfileData === "function") {
-          applyProfileData(backup.data);
-        } else if (typeof applyProfileData === "function") {
-          // File is already a profile data object (from collectCurrentProfileData)
-          applyProfileData(backup);
-        } else {
-          // Manual restore
-          if (backup.teacherSchedule) {
-            teacherSchedule = backup.teacherSchedule;
-            if (typeof saveScheduleToStorage === "function") saveScheduleToStorage();
-          }
-          if (backup.units) {
-            units = backup.units;
-            if (typeof saveUnits === "function") saveUnits();
-          }
-          if (backup.unitsSem1) {
-            localStorage.setItem("hs-sem1-units", JSON.stringify(backup.unitsSem1));
-          }
-          if (backup.teacherScheduleSem1) {
-            localStorage.setItem(
-              "hs-sem1teacherScheduleSem1",
-              JSON.stringify(backup.teacherScheduleSem1)
-            );
-          }
-          if (backup.notes) {
-            Object.keys(backup.notes).forEach(key => {
-              localStorage.setItem(key, JSON.stringify(backup.notes[key]));
-            });
-          }
-          if (backup.cycleColors) {
-            localStorage.setItem("cycleColors", JSON.stringify(backup.cycleColors));
-          }
-          if (backup.classColors) {
-            localStorage.setItem("classColors", JSON.stringify(backup.classColors));
-          }
-          if (backup.customDays && typeof backup.customDays === "object") {
-            customDays = backup.customDays;
-            if (typeof saveCustomDays === "function") saveCustomDays();
-          }
-          if (backup.specialDays) {
-            specialDays = backup.specialDays;
-            if (typeof saveSpecialDays === "function") saveSpecialDays();
-          }
-        }
-
-        // Always apply customDays if present at top level
-        if (backup.customDays && typeof backup.customDays === "object") {
-          customDays = backup.customDays;
-          if (typeof saveCustomDays === "function") saveCustomDays();
-        }
-
-                // === Always restore period names + known classes ===
-        if (backup.teacherSchedule && typeof backup.teacherSchedule === "object") {
-          teacherSchedule = backup.teacherSchedule;
-          if (typeof saveScheduleToStorage === "function") {
-            saveScheduleToStorage();
-          } else {
-            localStorage.setItem(
-              "hs-sem1teacherScheduleSem1",
-              JSON.stringify(backup.teacherSchedule)
-            );
-          }
-        }
-        if (backup.teacherScheduleSem1) {
-          localStorage.setItem(
-            "hs-sem1teacherScheduleSem1",
-            JSON.stringify(backup.teacherScheduleSem1)
-          );
-        }
-        if (Array.isArray(backup.knownClasses)) {
-          localStorage.setItem("knownClasses", JSON.stringify(backup.knownClasses));
-        }
-        if (backup.units && typeof backup.units === "object") {
-          units = backup.units;
-          if (typeof saveUnits === "function") saveUnits();
-        }
-
-        if (typeof saveCurrentProfile === "function") saveCurrentProfile(false);
-
-        alert("Restore successful. Reloading…");
-        location.reload();
+        applyBackupObject(backup, { showAlerts: true, reloadAfter: true });
       } catch (err) {
         alert("Restore failed: " + err.message);
         console.error(err);
@@ -8696,7 +9110,7 @@ document.getElementById("printCalendarBtn").addEventListener("click", () => {
   openPrintFilterModal();
 });
 
-function populatePrintFilters() {
+function populatePrintFilters(preferActiveCustom = false) {
   const divisionFilters = document.getElementById("printDivisionFilters");
   const unitFilter = document.getElementById("printUnitFilter");
   const periodFilters = document.getElementById("printPeriodFilters");
@@ -8713,8 +9127,12 @@ function populatePrintFilters() {
   const selectedDivisions = new Set(
     Array.from(divisionFilters.querySelectorAll('input[type="checkbox"]:checked')).map(input => input.value)
   );
-  if (!selectedDivisions.size) {
-    selectedDivisions.add(currentDivision);
+  if (preferActiveCustom && activePackId && activePackId !== "builtin") {
+    selectedDivisions.clear();
+    selectedDivisions.add("customActive");
+  } else if (!selectedDivisions.size) {
+    if (activePackId && activePackId !== "builtin") selectedDivisions.add("customActive");
+    else selectedDivisions.add(currentDivision);
   }
   const activeDivisions = Array.from(selectedDivisions);
 
@@ -8727,7 +9145,10 @@ function populatePrintFilters() {
   const unitNames = getUnitNamesForDivisions(activeDivisions);
   const periodNumbers = getMaxPeriodsForDivisions(activeDivisions);
 
-  divisionFilters.innerHTML = Object.keys(DIVISIONS).map(divisionKey => {
+  const divisionChoices = [...Object.keys(DIVISIONS)];
+  if (activePackId && activePackId !== "builtin") divisionChoices.unshift("customActive");
+
+  divisionFilters.innerHTML = divisionChoices.map(divisionKey => {
     const checked = activeDivisions.includes(divisionKey) ? "checked" : "";
     return `<label class="check-row"><input type="checkbox" value="${divisionKey}" ${checked}> ${getDivisionDisplayName(divisionKey)}</label>`;
   }).join("");
@@ -8759,6 +9180,7 @@ function populatePrintFilters() {
 }
 
 function getDivisionDisplayName(divisionKey) {
+  if (divisionKey === "customActive") return "Active Custom Calendar";
   return DIVISIONS[divisionKey]?.name || String(divisionKey || "").toUpperCase();
 }
 
@@ -8773,6 +9195,16 @@ function getMonthLabelFromKey(monthKey) {
 function getMonthKeysForDivisions(divisionKeys) {
   const keys = new Set();
   (divisionKeys || []).forEach(divisionKey => {
+    if (divisionKey === "customActive") {
+      const pack = typeof getActivePack === "function" ? getActivePack() : null;
+      const days = Array.isArray(pack?.days) ? pack.days : [];
+      days.forEach(day => {
+        if (!day?.date) return;
+        keys.add(String(day.date).slice(0, 7));
+      });
+      return;
+    }
+
     const data = DIVISIONS[divisionKey]?.rotationData?.[currentSemester] || [];
     data.forEach(day => {
       if (!day?.date) return;
@@ -8785,6 +9217,17 @@ function getMonthKeysForDivisions(divisionKeys) {
 function getUnitNamesForDivisions(divisionKeys) {
   const names = new Set();
   (divisionKeys || []).forEach(divisionKey => {
+    if (divisionKey === "customActive") {
+      Object.values(units || {}).forEach(periodUnits => {
+        if (!Array.isArray(periodUnits)) return;
+        periodUnits.forEach(unit => {
+          const name = String(unit?.name || "").trim();
+          if (name) names.add(name);
+        });
+      });
+      return;
+    }
+
     const raw = localStorage.getItem(`${divisionKey}-${currentSemester}${LS_UNITS_KEY}`);
     if (!raw) return;
     try {
@@ -8806,13 +9249,16 @@ function getUnitNamesForDivisions(divisionKeys) {
 function getMaxPeriodsForDivisions(divisionKeys) {
   const max = Math.max(
     1,
-    ...(divisionKeys || []).map(key => Number(DIVISIONS[key]?.periods || 0))
+    ...(divisionKeys || []).map(key => {
+      if (key === "customActive") return Number(getCurrentPeriodCount?.() || 0);
+      return Number(DIVISIONS[key]?.periods || 0);
+    })
   );
   return Array.from({ length: max }, (_, idx) => idx + 1);
 }
 
 function openPrintFilterModal() {
-  populatePrintFilters();
+  populatePrintFilters(true);
   document.getElementById("printFilterBackdrop").style.display = "flex";
 }
 
@@ -8829,8 +9275,141 @@ function switchHelpSection(sectionName) {
   });
 }
 
+function updateNewUserQuestionBranch() {
+  const selected = document.querySelector('input[name="newUserCalendarType"]:checked')?.value || "default";
+  const defaultBranch = document.getElementById("newUserDefaultQuestions");
+  const customBranch = document.getElementById("newUserCustomQuestions");
+  if (defaultBranch) defaultBranch.style.display = selected === "default" ? "block" : "none";
+  if (customBranch) customBranch.style.display = selected === "custom" ? "block" : "none";
+}
+
+function populateNewUserProfileChoices() {
+  const sel = document.getElementById("newUserProfileSelect");
+  if (!sel || typeof getProfiles !== "function") return;
+
+  const profiles = Object.values(getProfiles() || {}).sort((a, b) =>
+    String(a?.name || "").localeCompare(String(b?.name || ""))
+  );
+  const currentId = typeof getCurrentProfileId === "function" ? getCurrentProfileId() : "";
+
+  const options = ['<option value="">Keep current profile</option>'];
+  profiles.forEach(p => {
+    const selected = p.id === currentId ? "selected" : "";
+    options.push(`<option value="${p.id}" ${selected}>${p.name}</option>`);
+  });
+  sel.innerHTML = options.join("");
+}
+
+function applyNewUserSetup() {
+  const profileId = document.getElementById("newUserProfileSelect")?.value || "";
+  if (profileId && typeof loadProfile === "function") {
+    const loaded = loadProfile(profileId);
+    if (!loaded) {
+      alert("Could not load the selected profile.");
+      return;
+    }
+  }
+
+  const selected = document.querySelector('input[name="newUserCalendarType"]:checked')?.value || "default";
+
+  if (selected === "default") {
+    const division = document.getElementById("newUserDivision")?.value || "hs";
+    const semester = document.getElementById("newUserSemester")?.value || "sem1";
+
+    const divisionSelect = document.getElementById("divisionSelector") || document.getElementById("divisionSelect");
+    if (divisionSelect) {
+      divisionSelect.value = division;
+      divisionSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    } else {
+      currentDivision = division;
+      localStorage.setItem("currentDivision", currentDivision);
+    }
+
+    const semesterSelect = document.getElementById("semesterSelector") || document.getElementById("semesterSelect");
+    if (semesterSelect) {
+      semesterSelect.value = semester;
+      semesterSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    } else {
+      currentSemester = semester;
+      localStorage.setItem("currentSemester", currentSemester);
+    }
+
+    if (typeof usePack === "function") {
+      usePack("builtin");
+    } else {
+      activePackId = "builtin";
+      if (typeof savePackLibrary === "function") savePackLibrary();
+    }
+
+    if (typeof closeHelp === "function") closeHelp();
+    showProfileToast?.("Default Wesleyan calendar applied.");
+    return;
+  }
+
+  const map = [
+    ["newUserPackName", "packName"],
+    ["newUserPackStart", "packStart"],
+    ["newUserPackEnd", "packEnd"],
+    ["newUserPackLetters", "packLetters"],
+    ["newUserPackPeriodCount", "packPeriodCount"],
+    ["newUserPackSkipWeekends", "packSkipWeekends"]
+  ];
+
+  map.forEach(([fromId, toId]) => {
+    const from = document.getElementById(fromId);
+    const to = document.getElementById(toId);
+    if (!from || !to) return;
+    if (from.type === "checkbox") to.checked = from.checked;
+    else to.value = from.value;
+  });
+
+  if (typeof renderPackInputPreview === "function") renderPackInputPreview();
+  if (typeof renderCustomBellTimesEditor === "function") renderCustomBellTimesEditor();
+
+  const customDivision = document.getElementById("newUserCustomDivision")?.value || currentDivision || "hs";
+  const divisionSelect = document.getElementById("divisionSelector") || document.getElementById("divisionSelect");
+  if (divisionSelect) {
+    divisionSelect.value = customDivision;
+    divisionSelect.dispatchEvent(new Event("change", { bubbles: true }));
+  } else {
+    currentDivision = customDivision;
+    localStorage.setItem("currentDivision", currentDivision);
+  }
+
+  const startVal = (document.getElementById("packStart")?.value || "").trim();
+  const endVal = (document.getElementById("packEnd")?.value || "").trim();
+  if (!startVal || !endVal) {
+    alert("Please enter start and end dates for the custom calendar.");
+    return;
+  }
+
+  const customSection = document.querySelector('.config-section[data-section-key="custom-calendar"]');
+  if (customSection?.classList.contains("collapsed")) {
+    customSection.querySelector(".config-section-toggle")?.click();
+  }
+  customSection?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  if (typeof closeHelp === "function") closeHelp();
+  if (typeof createAndUsePackFromForm === "function") {
+    createAndUsePackFromForm({ promptSetup: true });
+  }
+}
+
+function openGuidedCalendarSetupFromCustomSection() {
+  const ok = confirm("Create a new calendar now using guided setup?");
+  if (!ok) return;
+
+  openHelp("welcome");
+  const quickStart = document.querySelector(".new-user-quickstart");
+  if (quickStart) {
+    quickStart.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
 function openHelp(sectionName = "welcome") {
   switchHelpSection(sectionName);
+  populateNewUserProfileChoices();
+  updateNewUserQuestionBranch();
   document.getElementById("helpBackdrop").style.display = "flex";
 }
 
@@ -8924,8 +9503,13 @@ function applyPrintFilters() {
 
   try {
     selectedDivisions.forEach(divisionKey => {
-      currentDivision = divisionKey;
-      activePackId = "builtin";
+      if (divisionKey === "customActive") {
+        activePackId = stateSnapshot.activePackId;
+        currentDivision = stateSnapshot.currentDivision;
+      } else {
+        currentDivision = divisionKey;
+        activePackId = "builtin";
+      }
       loadScheduleFromStorage();
       loadBellTimes();
       loadUnits();
@@ -9334,9 +9918,17 @@ function ensureExpandDaysButton() {
 
 
 // --- Init ---
-function init() {
+async function init() {
   applyHoverAgendaPreference()
   ensureDefaultProfile();
+
+  try {
+    await initExternalBackupHandle();
+    await restoreNewestAvailableBackupIfNeeded();
+  } catch (e) {
+    console.warn("Startup backup check failed", e);
+  }
+
   wireProfileUI();
   renderProfileSelector();
 
@@ -9423,9 +10015,8 @@ document.getElementById("exportTestsByClassBtn").addEventListener("click", () =>
   const modalTests = [];
   const todayISO = new Date().toISOString().split("T")[0];
 
-Object.keys(localStorage).forEach(key => {
-  if (!key.startsWith("notes_")) return;   // match saveNotesForDate
-    const date = key.replace("notes_", "");   // ← this was still wrong
+const noteDates = Array.from(new Set(getAllNoteStorageEntries().map(entry => entry.date)));
+noteDates.forEach(date => {
     
     if (date < todayISO) return;
 
@@ -9504,7 +10095,10 @@ modal.innerHTML = `
   document.body.appendChild(modal);
 });
 
-document.getElementById("packSaveBtn")?.addEventListener("click", saveDraftAsPack);
+document.getElementById("packCreateUseBtn")?.addEventListener("click", () => {
+  createAndUsePackFromForm({ promptSetup: true });
+});
+document.getElementById("packGuidedSetupBtn")?.addEventListener("click", openGuidedCalendarSetupFromCustomSection);
 document.getElementById("packUseBtn")?.addEventListener("click", () => {
   const id = document.getElementById("packSelect")?.value || "builtin";
   usePack(id);
@@ -9666,10 +10260,6 @@ document.getElementById("divisionSelector")
     });
   });
 
-  document.getElementById("packGenerateDraftBtn")?.addEventListener("click", () => {
-  buildCalendarDraftFromForm();
-});
-
   document.querySelectorAll('input[name="semester"]').forEach(radio => {
     radio.addEventListener("change", () => {
       currentSemester = radio.value;
@@ -9717,7 +10307,11 @@ document.getElementById("divisionSelector")
     .addEventListener("click", () => {
       document.getElementById("printUnitFilter").value = "";
       document.querySelectorAll('#printDivisionFilters input[type="checkbox"]').forEach(input => {
-        input.checked = input.value === currentDivision;
+        if (activePackId && activePackId !== "builtin") {
+          input.checked = input.value === "customActive";
+        } else {
+          input.checked = input.value === currentDivision;
+        }
       });
       document.querySelectorAll('#printPeriodFilters input[type="checkbox"]').forEach(input => {
         input.checked = true;
@@ -9740,6 +10334,13 @@ document.getElementById("divisionSelector")
   document.querySelectorAll(".help-tab-btn").forEach(btn => {
     btn.addEventListener("click", () => switchHelpSection(btn.dataset.helpSection));
   });
+
+  document.querySelectorAll('input[name="newUserCalendarType"]').forEach(input => {
+    input.addEventListener("change", updateNewUserQuestionBranch);
+  });
+
+  document.getElementById("applyNewUserSetupBtn")
+    ?.addEventListener("click", applyNewUserSetup);
 
   document.getElementById("closeUnitDaysBtn")
     .addEventListener("click", closeUnitDaysEditor);
@@ -9872,6 +10473,8 @@ document.getElementById("nextMonthBtn")?.addEventListener("click", () => {
     const value = e.target.value;
     if (value === "backup") document.getElementById("backupBtn").click();
     if (value === "restore") document.getElementById("restoreBtn").click();
+    if (value === "setExternalBackup") document.getElementById("setExternalBackupFileBtn")?.click();
+    if (value === "syncBackupNow") document.getElementById("syncBackupNowBtn")?.click();
     if (value === "print") document.getElementById("printCalendarBtn").click();
     if (value === "export") document.getElementById("exportTestsByClassBtn").click();
     e.target.value = ""; // reset
@@ -10069,25 +10672,7 @@ setInterval(() => {
   try {
     const currentDiv = currentDivision || "default";
     const backupKey = `autoBackup_${currentDiv}`;
-
-    const backup = {
-      timestamp: new Date().toISOString(),
-      division: currentDiv,
-      teacherScheduleSem1: JSON.parse(localStorage.getItem("hs-sem1teacherScheduleSem1") || "{}"),
-      unitsSem1: JSON.parse(localStorage.getItem("hs-sem1-units") || "{}"),
-      notes: {},
-      cycleColors: getCycleColors(),
-      classColors: JSON.parse(localStorage.getItem("classColors") || "{}"),
-      customDays: JSON.parse(JSON.stringify(customDays || {})),
-    };
-
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith("notes_")) {
-        try {
-          backup.notes[key] = JSON.parse(localStorage.getItem(key));
-        } catch (e) {}
-      }
-    });
+    const backup = buildBackupSnapshot();
 
     localStorage.setItem(backupKey, JSON.stringify(backup));
     lastAutoBackupTime = Date.now();
@@ -10105,9 +10690,12 @@ setInterval(() => {
     const time = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
     showProfileToast(`${name} saved · ${time}`);
 
-    // Badge
-    const status = document.getElementById("autoBackupStatus");
-    if (status) status.textContent = "Auto-saved just now";
+    updateAutoBackupStatusText();
+
+    // Best effort: overwrite selected external backup file.
+    writeExternalBackupSnapshot(backup, false).catch(err => {
+      console.warn("External backup sync skipped", err);
+    });
 
     console.log(`Auto-backup saved for ${currentDiv}`);
   } catch (e) {
@@ -10123,15 +10711,12 @@ statusDiv.style.cssText =
 statusDiv.textContent = "Auto-backup active";
 document.body.appendChild(statusDiv);
 
+initExternalBackupHandle().catch(err => {
+  console.warn("External backup initialization failed", err);
+});
+
 setInterval(() => {
-  const el = document.getElementById("autoBackupStatus");
-  if (!el) return;
-  if (lastAutoBackupTime) {
-    const minutesAgo = Math.floor((Date.now() - lastAutoBackupTime) / 60000);
-    el.textContent = minutesAgo === 0 ? "Auto-saved just now" : `Auto-saved ${minutesAgo} min ago`;
-  } else {
-    el.textContent = "Auto-backup active";
-  }
+  updateAutoBackupStatusText();
 }, 30000);
 
   </script>
@@ -10335,6 +10920,76 @@ setInterval(() => {
         <section class="help-section active" data-help-section="welcome">
           <h2>Welcome to Your Digital Planner</h2>
           <p>This tool helps you plan classes with rotation days, units, notes, and assessments — all saved locally in your browser.</p>
+          <div class="new-user-quickstart">
+            <h3 style="margin:0 0 6px; font-size:1rem;">New User Quick Start</h3>
+            <label>Profile to use (optional)
+              <select id="newUserProfileSelect">
+                <option value="">Keep current profile</option>
+              </select>
+            </label>
+            <p class="small" style="margin:0;">Do you want to start with the default Wesleyan calendar?</p>
+            <div style="display:flex; gap:12px; margin-top:8px; flex-wrap:wrap;">
+              <label><input type="radio" name="newUserCalendarType" value="default" checked> Yes, use default Wesleyan</label>
+              <label><input type="radio" name="newUserCalendarType" value="custom"> No, I need a custom calendar</label>
+            </div>
+
+            <div id="newUserDefaultQuestions" class="new-user-branch">
+              <div class="new-user-grid">
+                <label>Division
+                  <select id="newUserDivision">
+                    <option value="hs">High School</option>
+                    <option value="ms">Middle School</option>
+                    <option value="ls">Lower School</option>
+                    <option value="other">Other</option>
+                  </select>
+                </label>
+                <label>Starting semester
+                  <select id="newUserSemester">
+                    <option value="sem1">1st Semester</option>
+                    <option value="sem2">2nd Semester</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div id="newUserCustomQuestions" class="new-user-branch" style="display:none;">
+              <div class="small">Enter the same setup details used in the Custom Calendar sidebar section.</div>
+              <div class="new-user-grid">
+                <label>Division
+                  <select id="newUserCustomDivision">
+                    <option value="hs">High School</option>
+                    <option value="ms">Middle School</option>
+                    <option value="ls">Lower School</option>
+                    <option value="other">Other</option>
+                  </select>
+                </label>
+                <label>Calendar name
+                  <input id="newUserPackName" type="text" placeholder="School Year 2026-27">
+                </label>
+                <label>Start date
+                  <input id="newUserPackStart" type="date">
+                </label>
+                <label>End date
+                  <input id="newUserPackEnd" type="date">
+                </label>
+                <label>Letters
+                  <input id="newUserPackLetters" type="text" value="A,B,C,D,E,F,G">
+                </label>
+                <label>Periods per day
+                  <input id="newUserPackPeriodCount" type="number" min="1" max="12" step="1" value="7">
+                </label>
+                <label style="display:flex; align-items:center; gap:6px; margin-top:20px;">
+                  <input id="newUserPackSkipWeekends" type="checkbox" checked>
+                  Skip weekends in cycle
+                </label>
+              </div>
+            </div>
+
+            <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              <button type="button" id="applyNewUserSetupBtn">Apply answers</button>
+              <span class="small">This pre-fills settings and opens the right setup path.</span>
+            </div>
+          </div>
           <ul>
             <li>Enter class names in the left sidebar</li>
             <li>Create units with length and daily topics</li>
@@ -10342,7 +10997,7 @@ setInterval(() => {
             <li>Switch divisions / semesters using the header selector</li>
             <li>Use <strong>Backup / Restore</strong> or Profiles to keep your work safe</li>
           </ul>
-          <p>Everything works offline.</p>
+          
         </section>
 
         <!-- UNITS -->
