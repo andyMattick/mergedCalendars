@@ -1503,6 +1503,7 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
           <option value="hs">High School</option>
           <option value="ms">Middle School</option>
           <option value="ls">Lower School</option>
+          <option value="other">Other</option>
         </select>
         <select id="semesterSelector" aria-label="Semester selector">
           <option value="sem1">1st Semester</option>
@@ -1515,6 +1516,7 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
             <label><input type="radio" name="division" value="hs" checked> HS</label>
             <label><input type="radio" name="division" value="ms"> MS</label>
             <label><input type="radio" name="division" value="ls"> LS</label>
+            <label><input type="radio" name="division" value="other"> Other</label>
           </div>
           <div>
             <strong>Semester:</strong>
@@ -1552,7 +1554,16 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
   </button>
 
   <div class="config-section-body">
-    <div id="rotationRulesLegend" class="small"></div>
+    <div id="rotationRulesLayout" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start;">
+      <div>
+        <div class="small" style="margin-bottom:4px;"><strong>Letter Rotation</strong></div>
+        <div id="rotationRulesLegend" class="small"></div>
+      </div>
+      <div>
+        <div class="small" style="margin-bottom:4px;"><strong>M-F Default Times</strong></div>
+        <div id="rotationWeekdayTimes" class="small"></div>
+      </div>
+    </div>
 
     <div id="rotationKey" class="rotation-key" aria-label="Cycle color key"></div>
 
@@ -1587,10 +1598,33 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
           Build a school year schedule, then click <strong>Use this calendar</strong> to apply it to the current profile.
         </p>
 
-        <label>Name <input id="packName" type="text" value="My School Year"></label>
-        <label>Start <input id="packStart" type="date"></label>
-        <label>End <input id="packEnd" type="date"></label>
-        <label>Letters <input id="packLetters" type="text" value="A,B,C,D,E,F,G"></label>
+        <div id="packCurrentSummary" class="small" style="margin:0 0 10px; padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; background:#f8fafc; color:#334155;"></div>
+
+        <label>
+          Name
+          <input id="packName" type="text" value="My School Year">
+          <div id="packNamePreview" class="small" style="margin-top:4px;color:#6b7280;"></div>
+        </label>
+        <label>
+          Start
+          <input id="packStart" type="date">
+          <div id="packStartPreview" class="small" style="margin-top:4px;color:#6b7280;"></div>
+        </label>
+        <label>
+          End
+          <input id="packEnd" type="date">
+          <div id="packEndPreview" class="small" style="margin-top:4px;color:#6b7280;"></div>
+        </label>
+        <label>
+          Letters
+          <input id="packLetters" type="text" value="A,B,C,D,E,F,G">
+          <div id="packLettersPreview" class="small" style="margin-top:4px;color:#6b7280;"></div>
+        </label>
+        <label>
+          Periods per day
+          <input id="packPeriodCount" type="number" min="1" max="12" step="1" value="7">
+          <div id="packPeriodCountPreview" class="small" style="margin-top:4px;color:#6b7280;"></div>
+        </label>
         <label><input id="packSkipWeekends" type="checkbox" checked> Skip weekends in cycle</label>
 
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;">
@@ -1598,6 +1632,15 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
           <button type="button" id="packSaveBtn">Save calendar</button>
           <button type="button" id="packDeleteBtn" class="secondary">Delete selected</button>
           <button type="button" id="editPackPeriodMapBtn">Edit period map</button>
+          <button type="button" id="toggleDefaultTimesBtn" class="secondary" aria-expanded="false">Show default M-F bell times</button>
+        </div>
+
+        <div id="defaultTimesPanel" style="display:none; margin-top:8px;">
+          <strong>Default M-F Bell Times (this division)</strong>
+          <div class="small" style="margin:6px 0 8px;color:#6b7280;">
+            Edit class-block defaults used on letter days. These save with your profile/schedule context.
+          </div>
+          <div id="customBellTimesEditor"></div>
         </div>
 
         <div style="margin-top:12px;">
@@ -1857,12 +1900,18 @@ function saveDraftAsPack() {
     return;
   }
   const id = "pack-" + Date.now();
-  const pack = { ...calendarDraft, id, days: JSON.parse(JSON.stringify(calendarDraft.days)) };
+  const pack = {
+    ...calendarDraft,
+    id,
+    periodCount: Math.max(1, Number(calendarDraft.periodCount) || 7),
+    days: JSON.parse(JSON.stringify(calendarDraft.days))
+  };
+  if (typeof ensurePackRotationRules === "function") ensurePackRotationRules(pack);
   // ★ HERE — before push
   const dup = savedPacks.find(
-    p => p.name === name && p.days?.length === pack.days.length
+    p => p.name === pack.name && p.days?.length === pack.days.length
   );
-  if (dup && !confirm(`A pack named "${name}" already exists. Save another copy?`)) {
+  if (dup && !confirm(`A pack named "${pack.name}" already exists. Save another copy?`)) {
     return;
   }
   savedPacks.push(pack);
@@ -1905,6 +1954,11 @@ function openPackPeriodMapEditor() {
     return;
   }
   ensurePackRotationRules(pack);
+  const isDark = document.body.classList.contains("dark");
+  const panelBg = isDark ? "#111827" : "#ffffff";
+  const panelFg = isDark ? "#e5e7eb" : "#111827";
+  const panelBorder = isDark ? "#374151" : "#e5e7eb";
+  const rowBorder = isDark ? "#374151" : "#e5e7eb";
 
   const letters = Object.keys(pack.rotationRules);
   const pc = pack.periodCount || 7;
@@ -1914,7 +1968,7 @@ function openPackPeriodMapEditor() {
   modal.style.cssText =
     "position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:200;";
   modal.innerHTML = `
-    <div style="background:#fff;padding:1.25rem;border-radius:8px;max-width:640px;max-height:90vh;overflow:auto;min-width:320px;">
+    <div style="background:${panelBg};color:${panelFg};border:1px solid ${panelBorder};padding:1.25rem;border-radius:8px;max-width:640px;max-height:90vh;overflow:auto;min-width:320px;">
       <h3>Period map — ${pack.name || "Pack"}</h3>
       <p class="small">Which periods meet on each letter day.</p>
       <div id="periodMapRows"></div>
@@ -1931,6 +1985,8 @@ function openPackPeriodMapEditor() {
     const set = new Set((pack.rotationRules[L] || []).map(Number));
     const row = document.createElement("div");
     row.style.marginBottom = "10px";
+    row.style.paddingBottom = "8px";
+    row.style.borderBottom = `1px solid ${rowBorder}`;
     row.innerHTML = `<strong>${L}</strong> `;
     for (let p = 1; p <= pc; p++) {
       const id = `pm-${L}-${p}`;
@@ -1965,6 +2021,36 @@ function openPackPeriodMapEditor() {
 
 document.getElementById("editPackPeriodMapBtn")?.addEventListener("click", openPackPeriodMapEditor);
 
+function hydratePackFormFromSelection(value) {
+  const periodInput = document.getElementById("packPeriodCount");
+  if (!periodInput) return;
+
+  const nameInput = document.getElementById("packName");
+  const startInput = document.getElementById("packStart");
+  const endInput = document.getElementById("packEnd");
+  const lettersInput = document.getElementById("packLetters");
+
+  if (value && value !== "builtin") {
+    const selectedPack = savedPacks.find(p => p.id === value);
+    if (nameInput) nameInput.value = selectedPack?.name || "";
+    if (startInput) startInput.value = selectedPack?.start || "";
+    if (endInput) endInput.value = selectedPack?.end || "";
+    if (lettersInput) {
+      const letters = Array.isArray(selectedPack?.letters)
+        ? selectedPack.letters.join(",")
+        : "A,B,C,D,E,F,G";
+      lettersInput.value = letters;
+    }
+    periodInput.value = String(
+      Math.max(1, Number(selectedPack?.periodCount) || Number(getCurrentConfig()?.periods) || 7)
+    );
+  } else {
+    if (nameInput && !nameInput.value.trim()) nameInput.value = "My School Year";
+    if (lettersInput && !lettersInput.value.trim()) lettersInput.value = "A,B,C,D,E,F,G";
+    periodInput.value = String(Math.max(1, Number(getCurrentConfig()?.periods) || 7));
+  }
+}
+
 function refreshPackSelect() {
   const sel = document.getElementById("packSelect");
   if (!sel) return;
@@ -1974,6 +2060,7 @@ function refreshPackSelect() {
       `<option value="${p.id}">${p.name} (${p.days?.length || 0} days)</option>`
     ).join("");
   sel.value = activePackId || "builtin";
+  hydratePackFormFromSelection(sel.value);
 }
 
 function usePack(id) {
@@ -3656,32 +3743,44 @@ function loadProfile(id) {
 
   saveCurrentProfile(false);
 
-  setCurrentProfileId(id);
-  applyProfileData(profile.data || {});
-  loadProjects();
+  const requestedPackId =
+    profile.activePackId || profile.data?.activePackId || "builtin";
+  let resolvedPackId = requestedPackId;
 
-  activePackId = profile.activePackId || profile.data?.activePackId || "builtin";
-
-  if (activePackId !== "builtin") {
+  if (requestedPackId !== "builtin") {
     const pack =
       typeof savedPacks !== "undefined"
-        ? savedPacks.find(p => p.id === activePackId)
+        ? savedPacks.find(p => p.id === requestedPackId)
         : null;
     if (pack) {
       if (typeof ensurePackBaseLetters === "function") ensurePackBaseLetters(pack);
       if (typeof ensurePackRotationRules === "function") ensurePackRotationRules(pack);
     } else {
-      console.warn("Profile pack not in library:", activePackId);
-      activePackId = "builtin";
+      console.warn("Profile pack not in library:", requestedPackId);
+      resolvedPackId = "builtin";
     }
   }
 
-  const sel =
-    document.getElementById("packSelect") ||
-    document.getElementById("activePackSelect");
-  if (sel) {
-    const opt = [...sel.options].some(o => o.value === String(activePackId));
-    sel.value = opt ? activePackId : "builtin";
+  activePackId = resolvedPackId;
+
+  setCurrentProfileId(id);
+  applyProfileData(profile.data || {});
+  loadProjects();
+
+  if (typeof savePackLibrary === "function") savePackLibrary();
+  if (typeof refreshPackSelect === "function") {
+    refreshPackSelect();
+  } else {
+    const sel =
+      document.getElementById("packSelect") ||
+      document.getElementById("activePackSelect");
+    if (sel) {
+      const opt = [...sel.options].some(o => o.value === String(activePackId));
+      sel.value = opt ? activePackId : "builtin";
+      if (typeof hydratePackFormFromSelection === "function") {
+        hydratePackFormFromSelection(sel.value);
+      }
+    }
   }
 
   // DO NOT call refreshAllData() here — it reloads shared schedule/units and undoes the profile
@@ -3691,6 +3790,14 @@ function loadProfile(id) {
   if (typeof updateAppTitle === "function") updateAppTitle();
   if (typeof updateDivisionVisibility === "function") updateDivisionVisibility();
   if (typeof renderProfileSelector === "function") renderProfileSelector();
+  if (typeof showProfileToast === "function") {
+    const calendarLabel =
+      typeof getProfileCalendarLabel === "function"
+        ? getProfileCalendarLabel()
+        : (activePackId === "builtin" ? "Built-in Wesleyan" : "Custom pack");
+    const profileName = profile?.name || "Profile";
+    showProfileToast(`Loaded ${profileName} on ${calendarLabel}`);
+  }
 
   return true;
 }
@@ -3807,6 +3914,16 @@ const letters =
   // Add missing letters only
   letters.forEach(L => {
     if (!Array.isArray(pack.rotationRules[L])) {
+      pack.rotationRules[L] = Array.from({ length: pc }, (_, i) => i + 1);
+      return;
+    }
+
+    // Keep existing choices, but constrain to valid slots for current pack period count.
+    const normalized = pack.rotationRules[L]
+      .map(Number)
+      .filter(n => Number.isInteger(n) && n >= 1 && n <= pc);
+    pack.rotationRules[L] = Array.from(new Set(normalized));
+    if (!pack.rotationRules[L].length) {
       pack.rotationRules[L] = Array.from({ length: pc }, (_, i) => i + 1);
     }
   });
@@ -3946,6 +4063,7 @@ function updateAppTitle() {
   if (currentDivision === "hs") titleEl.textContent = "Wesleyan HS 26-27 Planner";
   else if (currentDivision === "ms") titleEl.textContent = "Wesleyan MS 26-27 Planner";
   else if (currentDivision === "ls") titleEl.textContent = "Wesleyan LS 26-27 Planner";
+  else if (currentDivision === "other") titleEl.textContent = "Wesleyan Other 26-27 Planner";
   else titleEl.textContent = "Planner";
 }
 
@@ -4017,15 +4135,91 @@ function buildCalendarDraftFromForm() {
   const end = document.getElementById("packEnd")?.value;
   const lettersRaw = document.getElementById("packLetters")?.value || "A,B,C,D,E,F,G";
   const letters = lettersRaw.split(/[\s,]+/).filter(Boolean);
+  const periodCountRaw = Number.parseInt(document.getElementById("packPeriodCount")?.value || "", 10);
+  const periodCount = Number.isFinite(periodCountRaw)
+    ? Math.max(1, Math.min(12, periodCountRaw))
+    : Math.max(1, Number(getCurrentConfig()?.periods) || 7);
   const skipWeekends = document.getElementById("packSkipWeekends")?.checked !== false;
 
   const days = generateCycleDays(start, end, letters, skipWeekends);
   if (!days.length) return null;
 
-  calendarDraft = { name, start, end, letters, skipWeekends, days };
+  calendarDraft = {
+    name,
+    start,
+    end,
+    letters,
+    periodCount,
+    rotationRules: defaultRotationRules(periodCount, letters),
+    skipWeekends,
+    days
+  };
+  if (typeof renderPackInputPreview === "function") renderPackInputPreview();
   console.log("Draft pack:", calendarDraft.name, days.length, "days", days.slice(0, 5));
   alert(`Draft OK: ${days.length} days.\nFirst: ${days[0].date} ${days[0].letter}\nLast: ${days[days.length - 1].date} ${days[days.length - 1].letter}\n\nNot applied to calendar yet.`);
   return calendarDraft;
+}
+
+function formatPackPreviewDate(iso) {
+  if (!iso) return "Not set";
+  const parts = String(iso).split("-");
+  if (parts.length !== 3) return iso;
+  return `${parts[1]}/${parts[2]}/${parts[0]}`;
+}
+
+function renderPackInputPreview() {
+  const name = (document.getElementById("packName")?.value || "").trim();
+  const start = document.getElementById("packStart")?.value || "";
+  const end = document.getElementById("packEnd")?.value || "";
+  const letters = (document.getElementById("packLetters")?.value || "").trim();
+  const periodValue = document.getElementById("packPeriodCount")?.value || "";
+
+  const nameEl = document.getElementById("packNamePreview");
+  const startEl = document.getElementById("packStartPreview");
+  const endEl = document.getElementById("packEndPreview");
+  const lettersEl = document.getElementById("packLettersPreview");
+  const periodEl = document.getElementById("packPeriodCountPreview");
+  const summaryEl = document.getElementById("packCurrentSummary");
+  const isDark = document.body.classList.contains("dark");
+
+  if (nameEl) nameEl.textContent = `Current: ${name || "Not set"}`;
+  if (startEl) startEl.textContent = `Current: ${formatPackPreviewDate(start)}`;
+  if (endEl) endEl.textContent = `Current: ${formatPackPreviewDate(end)}`;
+  if (lettersEl) lettersEl.textContent = `Current: ${letters || "Not set"}`;
+  if (periodEl) periodEl.textContent = `Current: ${periodValue || "Not set"}`;
+
+  if (summaryEl) {
+    summaryEl.style.background = isDark ? "#1f2937" : "#f8fafc";
+    summaryEl.style.borderColor = isDark ? "#4b5563" : "#d1d5db";
+    summaryEl.style.color = isDark ? "#e5e7eb" : "#334155";
+    summaryEl.innerHTML =
+      `<strong>Entered details:</strong><br>` +
+      `Name: ${name || "Not set"}<br>` +
+      `Start: ${formatPackPreviewDate(start)}<br>` +
+      `End: ${formatPackPreviewDate(end)}<br>` +
+      `Letters: ${letters || "Not set"}<br>` +
+      `Periods/day: ${periodValue || "Not set"}`;
+  }
+}
+
+function setDefaultTimesPanelOpen(open) {
+  const panel = document.getElementById("defaultTimesPanel");
+  const btn = document.getElementById("toggleDefaultTimesBtn");
+  if (!panel || !btn) return;
+
+  panel.style.display = open ? "block" : "none";
+  btn.textContent = open ? "Hide default M-F bell times" : "Show default M-F bell times";
+  btn.setAttribute("aria-expanded", open ? "true" : "false");
+}
+
+function initDefaultTimesToggle() {
+  const btn = document.getElementById("toggleDefaultTimesBtn");
+  if (!btn) return;
+  btn.onclick = () => {
+    const isOpen = document.getElementById("defaultTimesPanel")?.style.display !== "none";
+    setDefaultTimesPanelOpen(!isOpen);
+    if (!isOpen) renderCustomBellTimesEditor();
+  };
 }
 
 function getCurrentRotationData() {
@@ -4074,6 +4268,10 @@ function getCurrentRotationRules() {
 }
 
 function getCurrentPeriodCount() {
+  const pack = typeof getActivePack === "function" ? getActivePack() : null;
+  if (pack) {
+    return Math.max(1, Number(pack.periodCount) || 0);
+  }
   return getCurrentConfig().periods || 0;
 }
 
@@ -4385,26 +4583,13 @@ function createShiftDayPlan() {
 }
 
 function updateDivisionVisibility() {
-  const onCustom =
-    typeof activePackId !== "undefined" &&
-    activePackId &&
-    activePackId !== "builtin";
-
-  // wrap your division controls in one container if possible
-  const divControls =
-    document.getElementById("divisionControls") ||
-    document.getElementById("divisionSemesterBar");
-
-  if (divControls) {
-    divControls.style.display = onCustom ? "none" : "";
-  }
-
-  // or hide individual radios/selects:
+  // Division and semester controls should always stay available in header,
+  // including while using a custom pack.
   document.querySelectorAll(
-    '[name="division"], #divisionSelect, #semesterSelect, .division-toggle'
+    '[name="division"], [name="semester"], #divisionSelect, #semesterSelect, #divisionSelector, #semesterSelector, .division-toggle'
   ).forEach(el => {
     const row = el.closest("label, .control-row, .toolbar-group") || el;
-    row.style.display = onCustom ? "none" : "";
+    row.style.display = "";
   });
 }
 
@@ -5789,6 +5974,7 @@ function addKnownClass() {
 function renderRotationLegend() {
   const legend = document.getElementById("rotationRulesLegend");
   const key = document.getElementById("rotationKey");
+  const weekdayTimes = document.getElementById("rotationWeekdayTimes");
   if (!legend || !key) return;
 
   const rules = getCurrentRotationRules() || {};
@@ -5797,6 +5983,7 @@ function renderRotationLegend() {
   if (!letters.length) {
     legend.textContent = `${getCurrentConfig().name} does not use rotation rules.`;
     key.innerHTML = "";
+    if (weekdayTimes) weekdayTimes.textContent = "No default times configured.";
     return;
   }
 
@@ -5820,6 +6007,124 @@ function renderRotationLegend() {
     swatch.style.fontSize = "0.75rem";
     swatch.style.fontWeight = "600";
     key.appendChild(swatch);
+  });
+
+  if (weekdayTimes) {
+    const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+    const table = getBellTimesTableForDivision(currentDivision);
+    weekdayTimes.innerHTML = weekdays
+      .map(day => {
+        const list = (table[day] || []).filter(Boolean);
+        return `<div><strong>${day}</strong>: ${list.length ? list.join(" | ") : "(none)"}</div>`;
+      })
+      .join("");
+  }
+}
+
+function getBellTimesTableForDivision(division = currentDivision) {
+  const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  const source =
+    bellTimesByDivision && typeof bellTimesByDivision === "object"
+      ? bellTimesByDivision
+      : BELL_DEFAULTS;
+  const saved = source[division] || {};
+  const defaults = BELL_DEFAULTS[division] || {};
+
+  const chosenRaw = Number.parseInt(document.getElementById("packPeriodCount")?.value || "", 10);
+  const desiredSlots = Number.isFinite(chosenRaw)
+    ? Math.max(1, Math.min(12, chosenRaw))
+    : Math.max(1, getCurrentPeriodCount());
+
+  const output = {};
+  weekdays.forEach(day => {
+    const fromSaved = Array.isArray(saved[day]) ? saved[day] : [];
+    const fromDefaults = Array.isArray(defaults[day]) ? defaults[day] : [];
+    const length = desiredSlots;
+    output[day] = Array.from({ length }, (_, idx) => fromSaved[idx] || fromDefaults[idx] || "");
+  });
+  return output;
+}
+
+function renderCustomBellTimesEditor() {
+  const host = document.getElementById("customBellTimesEditor");
+  if (!host) return;
+
+  const weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+  const table = getBellTimesTableForDivision(currentDivision);
+  const chosenRaw = Number.parseInt(document.getElementById("packPeriodCount")?.value || "", 10);
+  const chosenCount = Number.isFinite(chosenRaw)
+    ? Math.max(1, Math.min(12, chosenRaw))
+    : Math.max(1, getCurrentPeriodCount());
+  const maxSlots = chosenCount;
+
+  let header = `<div style="display:grid;grid-template-columns:80px repeat(${maxSlots}, minmax(94px,1fr));gap:6px;align-items:center;margin-bottom:6px;">`;
+  header += `<div class="small"><strong>Day</strong></div>`;
+  for (let slot = 1; slot <= maxSlots; slot++) {
+    header += `<div class="small"><strong>Class ${slot}</strong></div>`;
+  }
+  header += `</div>`;
+
+  let rows = "";
+  weekdays.forEach(day => {
+    rows += `<div style="display:grid;grid-template-columns:80px repeat(${maxSlots}, minmax(94px,1fr));gap:6px;align-items:center;margin-bottom:6px;">`;
+    rows += `<div class="small"><strong>${day}</strong></div>`;
+    for (let slot = 0; slot < maxSlots; slot++) {
+      const value = (table[day] && table[day][slot]) ? table[day][slot] : "";
+      rows += `<input type="text" data-bell-day="${day}" data-bell-slot="${slot}" value="${value}" placeholder="--">`;
+    }
+    rows += `</div>`;
+  });
+
+  host.innerHTML = `
+    <div class="small" style="margin:0 0 6px;color:#6b7280;">Scroll sideways to view all class columns.</div>
+    <div tabindex="0" aria-label="Default bell times table" style="overflow-x:auto; border:1px solid #e5e7eb; border-radius:8px; padding-bottom:4px;">
+      <div style="min-width:${80 + (maxSlots * 104)}px; padding:8px;">
+        ${header}
+        ${rows}
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+      <button type="button" id="saveCustomBellTimesBtn">Save Default Times</button>
+      <button type="button" id="resetCustomBellTimesBtn" class="secondary">Reset to Built-in</button>
+    </div>
+  `;
+
+  document.getElementById("saveCustomBellTimesBtn")?.addEventListener("click", () => {
+    if (!bellTimesByDivision || typeof bellTimesByDivision !== "object") {
+      bellTimesByDivision = JSON.parse(JSON.stringify(BELL_DEFAULTS));
+    }
+    if (!bellTimesByDivision[currentDivision] || typeof bellTimesByDivision[currentDivision] !== "object") {
+      bellTimesByDivision[currentDivision] = {};
+    }
+
+    weekdays.forEach(day => {
+      const values = Array.from(
+        host.querySelectorAll(`input[data-bell-day="${day}"]`)
+      ).map(input => String(input.value || "").trim());
+
+      while (values.length && !values[values.length - 1]) {
+        values.pop();
+      }
+      bellTimesByDivision[currentDivision][day] = values;
+    });
+
+    saveBellTimes();
+    renderRotationLegend();
+    renderCalendar();
+    alert("Default times saved.");
+  });
+
+  document.getElementById("resetCustomBellTimesBtn")?.addEventListener("click", () => {
+    if (!bellTimesByDivision || typeof bellTimesByDivision !== "object") {
+      bellTimesByDivision = {};
+    }
+    bellTimesByDivision[currentDivision] = JSON.parse(
+      JSON.stringify(BELL_DEFAULTS[currentDivision] || {})
+    );
+    saveBellTimes();
+    renderCustomBellTimesEditor();
+    renderRotationLegend();
+    renderCalendar();
   });
 }
 
@@ -5985,7 +6290,12 @@ function renderCalendar() {
       periodsForDay.forEach(periodNum => {
         const unitInfo = getUnitProgress(periodNum, (classCounts[periodNum] || 0) + 1, iso);
         hasContent = true;
-        hoverContent += `<strong>${periodNum}: ${unitInfo.courseName}</strong>`;
+        const bellTime = getBellTimeForPeriodOnDate(iso, periodNum, periodsForDay);
+        const hoverTitle =
+          bellTime && hasRotationLetterForTimes
+            ? `${bellTime}: ${periodNum}: ${unitInfo.courseName}`
+            : `${periodNum}: ${unitInfo.courseName}`;
+        hoverContent += `<strong>${hoverTitle}</strong>`;
         if (unitInfo.unitName) hoverContent += ` — ${unitInfo.unitName}`;
         if (unitInfo.topicName) hoverContent += ` (${unitInfo.topicName})`;
         if (unitInfo.dayInUnit && unitInfo.unitLength) {
@@ -6319,60 +6629,6 @@ function openDayModal(day) {
       </p>
     `;
     body.appendChild(packLetterBlock);
-
-        // === Special schedule (built-in calendar) ===
-    {
-      const isOff =
-        override && String(override.letter || "").toUpperCase() === "OFF";
-
-      if (!isOff) {
-        const usingOverride = Array.isArray(override?.periods);
-        const defaultPeriods = getPeriodNumbers();
-        const selected = new Set(
-          (usingOverride ? override.periods : defaultPeriods).map(Number)
-        );
-
-        const limitBlock = document.createElement("div");
-        limitBlock.className = "note-block";
-        limitBlock.style.marginBottom = "12px";
-        limitBlock.innerHTML = `
-          <label>
-            <input type="checkbox" id="modalSpecialScheduleEnabled" ${
-              usingOverride ? "checked" : ""
-            }>
-            Special schedule (choose which periods meet)
-          </label>
-          <div id="modalSpecialSchedulePeriods" style="margin-top:8px;${
-            usingOverride ? "" : "display:none;"
-          }"></div>
-          <p class="small">When checked, only selected periods meet this day. Unchecked = normal letter map.</p>
-        `;
-
-        const checks = limitBlock.querySelector("#modalSpecialSchedulePeriods");
-        defaultPeriods.forEach(p => {
-          const lab = document.createElement("label");
-          lab.style.marginRight = "10px";
-          lab.innerHTML = `<input type="checkbox" class="modal-ss-period-cb" value="${p}" ${
-            selected.has(p) ? "checked" : ""
-          }> ${p}`;
-          checks.appendChild(lab);
-        });
-
-        body.appendChild(limitBlock);
-
-        limitBlock
-          .querySelector("#modalSpecialScheduleEnabled")
-          .addEventListener("change", e => {
-            checks.style.display = e.target.checked ? "block" : "none";
-            if (e.target.checked) {
-              const any = checks.querySelector("input:checked");
-              if (!any) {
-                checks.querySelectorAll("input").forEach(cb => (cb.checked = true));
-              }
-            }
-          });
-      }
-    }
 
     const sel = packLetterBlock.querySelector("#modalPackLetter");
     if (sel) {
@@ -9112,6 +9368,12 @@ renderCycleColorPickers();
 
   document.getElementById("divisionSelector").value = currentDivision;
   document.getElementById("semesterSelector").value = currentSemester;
+  document.querySelectorAll('input[name="division"]').forEach(r => {
+    r.checked = r.value === currentDivision;
+  });
+  document.querySelectorAll('input[name="semester"]').forEach(r => {
+    r.checked = r.value === currentSemester;
+  });
 
 
   renderScheduleFields();
@@ -9121,7 +9383,9 @@ renderCycleColorPickers();
   }
 
   renderRotationLegend();
+  renderCustomBellTimesEditor();
   refreshAllData();
+  updateDivisionVisibility();
   initCollapsibleSections();
 
   document.getElementById("closeProjectEditorBtn")
@@ -9245,7 +9509,34 @@ document.getElementById("packUseBtn")?.addEventListener("click", () => {
   const id = document.getElementById("packSelect")?.value || "builtin";
   usePack(id);
 });
+document.getElementById("packSelect")?.addEventListener("change", event => {
+  const value = event.target.value;
+  hydratePackFormFromSelection(value);
+
+  renderPackInputPreview();
+  initDefaultTimesToggle();
+  renderCustomBellTimesEditor();
+});
+document.getElementById("packPeriodCount")?.addEventListener("input", () => {
+  const value = Math.max(1, Number.parseInt(document.getElementById("packPeriodCount")?.value || "1", 10) || 1);
+  const activePack = getActivePack();
+  if (activePack) {
+    activePack.periodCount = value;
+    ensurePackRotationRules(activePack);
+    savePacks();
+    renderRotationLegend();
+  }
+  renderPackInputPreview();
+  renderCustomBellTimesEditor();
+});
+document.getElementById("packName")?.addEventListener("input", renderPackInputPreview);
+document.getElementById("packStart")?.addEventListener("input", renderPackInputPreview);
+document.getElementById("packEnd")?.addEventListener("input", renderPackInputPreview);
+document.getElementById("packLetters")?.addEventListener("input", renderPackInputPreview);
 refreshPackSelect();
+renderPackInputPreview();
+initDefaultTimesToggle();
+setDefaultTimesPanelOpen(false);
 document.getElementById("packDeleteBtn")?.addEventListener("click", deleteSelectedPack);
 
 function groupAssessmentsByClass(events) {
@@ -9325,10 +9616,14 @@ window.applyExportFilters = function() {
 document.getElementById("divisionSelector")
   .addEventListener("change", event => {
     currentDivision = event.target.value;
+    document.querySelectorAll('input[name="division"]').forEach(r => {
+      r.checked = r.value === currentDivision;
+    });
     localStorage.setItem("currentDivision", currentDivision);
     currentMonthIndex = 0;
     renderScheduleFields();
     renderRotationLegend();
+    renderCustomBellTimesEditor();
     initCollapsibleSections();
     refreshAllData();
     applyDarkModePreference();
@@ -9339,10 +9634,14 @@ document.getElementById("divisionSelector")
     document.getElementById("semesterSelector")
     .addEventListener("change", event => {
       currentSemester = event.target.value;
+      document.querySelectorAll('input[name="semester"]').forEach(r => {
+        r.checked = r.value === currentSemester;
+      });
       localStorage.setItem("currentSemester", currentSemester);
       currentMonthIndex = 0;
       initCollapsibleSections();
       refreshAllData();
+      renderCustomBellTimesEditor();
       applyDarkModePreference();
       updateMaxDaysHints();
       console.log("Switched to semester:", currentSemester, "Schedule loaded:", Object.keys(teacherSchedule));
@@ -9352,10 +9651,13 @@ document.getElementById("divisionSelector")
   document.querySelectorAll('input[name="division"]').forEach(radio => {
     radio.addEventListener("change", () => {
       currentDivision = radio.value;
+      const select = document.getElementById("divisionSelector");
+      if (select) select.value = currentDivision;
       localStorage.setItem("currentDivision", currentDivision);
       currentMonthIndex = 0;
       renderScheduleFields();
       renderRotationLegend();
+      renderCustomBellTimesEditor();
       initCollapsibleSections();
       refreshAllData();
       applyDarkModePreference();
@@ -9371,10 +9673,13 @@ document.getElementById("divisionSelector")
   document.querySelectorAll('input[name="semester"]').forEach(radio => {
     radio.addEventListener("change", () => {
       currentSemester = radio.value;
+      const select = document.getElementById("semesterSelector");
+      if (select) select.value = currentSemester;
       localStorage.setItem("currentSemester", currentSemester);
       currentMonthIndex = 0;
       initCollapsibleSections();
       refreshAllData();
+      renderCustomBellTimesEditor();
       applyDarkModePreference();
       updateMaxDaysHints();
     });
@@ -9659,6 +9964,9 @@ function refreshAllData() {
   ensureKnownClassesFromSchedule();
   hydrateScheduleForm(); // → renderPeriodSlots
   renderKnownClasses();
+  renderRotationLegend();
+  renderCustomBellTimesEditor();
+  updateDivisionVisibility();
   
 }
 
