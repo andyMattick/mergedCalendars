@@ -2539,6 +2539,65 @@ function saveCurrentProfile(showToast = false) {
     // In real use, generate this from the HS monthly rotation table in your PDF.
     // Each entry: { date: "YYYY-MM-DD", label: "A".."G" }
 
+    // Bell times by division + weekday. Values are ordered class slots (1st meeting, 2nd, ...).
+// Not period numbers — rotation decides which course sits in which slot.
+const BELL_DEFAULTS = {
+  hs: {
+    // Mon, Tue, Thu, Fri — five class blocks
+    Mon: ["8:10–9:10", "9:15–10:15", "11:10–12:10", "12:50–1:50", "1:55–2:55"],
+    Tue: ["8:10–9:10", "9:15–10:15", "11:10–12:10", "12:50–1:50", "1:55–2:55"],
+    Wed: ["8:50–9:50", "9:55–10:55", "11:15–12:15", "12:50–1:50", "1:55–2:55"],
+    Thu: ["8:10–9:10", "9:15–10:15", "11:10–12:10", "12:50–1:50", "1:55–2:55"],
+    Fri: ["8:10–9:10", "9:15–10:15", "11:10–12:10", "12:50–1:50", "1:55–2:55"]
+  },
+  ms: {
+    // Six instructional class blocks per day (homeroom/flex/chapel/lunch excluded)
+    Mon: ["8:10-9:00", "9:10-10:00", "10:25-11:15", "11:55-12:45", "12:55-1:45", "1:50-2:40"],
+    Tue: ["8:10-9:00", "9:10-10:00", "10:25-11:15", "11:55-12:45", "12:55-1:45", "1:50-2:40"],
+    Wed: ["8:55-9:45", "9:45-10:35", "10:35-11:25", "12:05-12:55", "12:55-1:45", "1:55-2:45"],
+    Thu: ["8:05-8:55", "9:35-10:25", "10:25-11:15", "11:55-12:45", "12:55-1:45", "1:50-2:40"],
+    Fri: ["8:10-9:00", "9:10-10:00", "10:25-11:15", "11:55-12:45", "12:55-1:45", "1:50-2:40"]
+  },
+  ls: {}
+};
+
+let bellTimesByDivision = null;
+
+function getWeekdayKey(isoDate) {
+  const [y, m, d] = String(isoDate).split("-").map(Number);
+  const day = new Date(y, m - 1, d).getDay(); // 0=Sun ... 6=Sat
+  return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][day];
+}
+
+/**
+ * Time for the Nth class meeting on a date (slotIndex 0 = first class that day).
+ * Later: day override via customDays[date].slotTimes
+ */
+function getBellTimeForSlot(isoDate, slotIndex, division = currentDivision) {
+  // Day-level override (special schedule) — step 3 later
+  const dayOverride = customDays?.[isoDate]?.slotTimes;
+  if (Array.isArray(dayOverride) && dayOverride[slotIndex]) {
+    return dayOverride[slotIndex];
+  }
+
+  const wd = getWeekdayKey(isoDate);
+  const source =
+    bellTimesByDivision && typeof bellTimesByDivision === "object"
+      ? bellTimesByDivision
+      : BELL_DEFAULTS;
+  const table = source[division] || {};
+  const defaults = BELL_DEFAULTS[division] || {};
+  const slots = table[wd] || table.Mon || defaults[wd] || defaults.Mon || [];
+  return slots[slotIndex] || "";
+}
+
+function getBellTimeForPeriodOnDate(isoDate, periodNum, periodsForDay) {
+  const list = (periodsForDay || []).map(Number);
+  const slotIndex = list.indexOf(Number(periodNum));
+  if (slotIndex < 0) return "";
+  return getBellTimeForSlot(isoDate, slotIndex);
+}
+
 const HS_ROTATION_2026 = [
   
   { date: "2026-08-13", letter: "*" },
@@ -3482,6 +3541,7 @@ units: JSON.parse(JSON.stringify(units || {})),
     knownClasses: Array.isArray(known) ? known : [],
     classColors: JSON.parse(localStorage.getItem("classColors") || "{}"),
     cycleColors: typeof getCycleColors === "function" ? getCycleColors() : {},
+    bellTimesByDivision: JSON.parse(JSON.stringify(bellTimesByDivision || BELL_DEFAULTS)),
     notes,
     activePackId: typeof activePackId !== "undefined" ? activePackId : "builtin",
     projects: JSON.parse(JSON.stringify(projects || {})),
@@ -3536,9 +3596,15 @@ if (typeof saveProjects === "function") saveProjects();
     if (typeof applyCycleColors === "function") applyCycleColors();
   }
 
+  bellTimesByDivision =
+    data.bellTimesByDivision && typeof data.bellTimesByDivision === "object"
+      ? JSON.parse(JSON.stringify(data.bellTimesByDivision))
+      : JSON.parse(JSON.stringify(BELL_DEFAULTS));
+
   // Keep active storage in sync with THIS profile only
   
   if (typeof saveScheduleToStorage === "function") saveScheduleToStorage();
+  if (typeof saveBellTimes === "function") saveBellTimes();
   if (typeof saveUnits === "function") saveUnits();
   if (typeof saveCustomDays === "function") saveCustomDays();
   if (typeof saveSpecialDays === "function") saveSpecialDays();
@@ -4918,6 +4984,10 @@ function openTodayAgendaModal() {
   const specialEntries = getUnifiedSpecialDaysForDate(todayISO);
   const noTestPolicyDay = isAutoNoTestDay(todayISO) || !!dayNotes.noTest;
   const periods = schoolDay ? getPeriodsForDate(todayISO, schoolDay.letter) : [];
+  const normalizedLetterForTimes = normalizeLetter(schoolDay?.letter);
+  const hasRotationLetterForTimes = !!(
+    normalizedLetterForTimes && getCurrentRotationRules()[normalizedLetterForTimes]
+  );
   const dayCounts = getDayCountsForDate(todayISO, periods);
 
   const backdrop = document.getElementById("todayAgendaBackdrop");
@@ -4988,7 +5058,11 @@ if (dayNotes.noTest && !isAutoNoTestDay(iso)) {
 
     const title = document.createElement("div");
     title.className = "agenda-period-title";
-    title.textContent = `${periodNum}: ${unitInfo.courseName}`;
+    const bellTime = getBellTimeForPeriodOnDate(todayISO, periodNum, periods);
+    title.textContent =
+      bellTime && hasRotationLetterForTimes
+        ? `${bellTime}: ${periodNum}: ${unitInfo.courseName}`
+        : `${periodNum}: ${unitInfo.courseName}`;
     card.appendChild(title);
 
     const note = document.createElement("div");
@@ -5039,6 +5113,7 @@ if (dayNotes.noTest && !isAutoNoTestDay(iso)) {
 
     // --- LocalStorage keys ---
     const LS_SCHEDULE_KEY = "-schedule";
+    const LS_BELL_TIMES_KEY = "-bellTimes";
     const LS_NOTES_KEY_PREFIX = "-notes";
     const LS_CLASS_COUNT_KEY = "-classCounts";
     let classCounts = {}; // { "1": 15, "2": 12, ... }
@@ -5061,6 +5136,31 @@ function loadScheduleFromStorage() {
 function saveScheduleToStorage() {
   const key = getCurrentScheduleKey();
   localStorage.setItem(getStorageKey(key), JSON.stringify(teacherSchedule));
+}
+
+function loadBellTimes() {
+  const raw = localStorage.getItem(getStorageKey(LS_BELL_TIMES_KEY));
+  if (!raw) {
+    bellTimesByDivision = JSON.parse(JSON.stringify(BELL_DEFAULTS));
+    return;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    bellTimesByDivision =
+      parsed && typeof parsed === "object"
+        ? parsed
+        : JSON.parse(JSON.stringify(BELL_DEFAULTS));
+  } catch (e) {
+    console.warn("Failed to parse bell times", e);
+    bellTimesByDivision = JSON.parse(JSON.stringify(BELL_DEFAULTS));
+  }
+}
+
+function saveBellTimes() {
+  if (!bellTimesByDivision || typeof bellTimesByDivision !== "object") {
+    bellTimesByDivision = JSON.parse(JSON.stringify(BELL_DEFAULTS));
+  }
+  localStorage.setItem(getStorageKey(LS_BELL_TIMES_KEY), JSON.stringify(bellTimesByDivision));
 }
 
     function getNotesKey(date) {
@@ -5735,6 +5835,7 @@ function handleScheduleSubmit(event) {
   console.log(`Saving schedule for ${currentSemester}:`, teacherSchedule);
 
   saveScheduleToStorage();
+  saveBellTimes();
 
   const semName = currentSemester === "sem1" ? "1st Semester" : "2nd Semester";
   alert(`Schedule saved for ${semName}.`);
@@ -5811,6 +5912,9 @@ function renderCalendar() {
 
     const cycleLetter = isOff ? "" : normalizeLetter(schoolDay?.letter);
     const letter = isOff ? "OFF" : schoolDay?.letter;
+    const hasRotationLetterForTimes = !!(
+      cycleLetter && getCurrentRotationRules()[cycleLetter]
+    );
 
     const periodsForDay =
       schoolDay && !isOff && !isNoSchool
@@ -6025,19 +6129,24 @@ function renderCalendar() {
             : "";
 
         // ONE classLine only
-        let classLine = `${periodNum}: ${courseName} (${periodDayCount})`;
+        let classLine = `${periodNum}: ${courseName}`;
 
         if (isTestToday) {
           classLine = unitName
-            ? `${periodNum}: ${courseName} — TEST — ${unitName}${topicSuffix}${dayCounter}`
+            ? `${periodNum}: ${courseName} — TEST — ${unitName}${dayCounter}`
             : `${periodNum}: ${courseName} — TEST${dayCounter}`;
         } else if (isQuizToday) {
           classLine = unitName
-            ? `${periodNum}: ${courseName} — QUIZ — ${unitName}${topicSuffix}${dayCounter}`
+            ? `${periodNum}: ${courseName} — QUIZ — ${unitName}${dayCounter}`
             : `${periodNum}: ${courseName} — QUIZ${dayCounter}`;
         } else if (unitInfo.unitIndex !== null || unitName) {
           const unitLabel = unitName || `Unit ${(unitInfo.unitIndex ?? 0) + 1}`;
-          classLine = `${periodNum}: ${courseName} (${periodDayCount}) • ${unitLabel}${topicSuffix}${dayCounter}`;
+          classLine = `${periodNum}: ${courseName} • ${unitLabel}${dayCounter}`;
+        }
+
+        const bellTime = getBellTimeForPeriodOnDate(iso, periodNum, periodsForDay);
+        if (bellTime && hasRotationLetterForTimes) {
+          classLine = `${bellTime}: ${classLine}`;
         }
 
         li.appendChild(document.createTextNode(classLine));
@@ -6416,6 +6525,13 @@ function openDayModal(day) {
 
   const periods = getPeriodsForDate(day.date, effectiveLetter);
   const dayCounts = getDayCountsForDate(day.date, periods);
+  const normalizedEffectiveLetter = normalizeLetter(effectiveLetter);
+  const hasRotationLetterForTimes = !!(
+    normalizedEffectiveLetter && getCurrentRotationRules()[normalizedEffectiveLetter]
+  );
+  const existingSlotTimes = Array.isArray(customDays?.[day.date]?.slotTimes)
+    ? customDays[day.date].slotTimes
+    : [];
 
   const shiftAllBtn = document.getElementById("shiftAllUnitsBtn");
   if (shiftAllBtn) shiftAllBtn.style.display = periods.length ? "inline-block" : "none";
@@ -6492,12 +6608,46 @@ body.appendChild(generalBlock);
   // Per-Period Notes + Test Checkbox (unchanged)
   periods.forEach(periodNum => {
     const unitInfo = getUnitProgress(periodNum, dayCounts[periodNum], day.date);
+    const slotIndex = periods.indexOf(periodNum);
+    const defaultBellTime = hasRotationLetterForTimes
+      ? getBellTimeForPeriodOnDate(day.date, periodNum, periods)
+      : "";
+    const savedBellTime =
+      typeof existingSlotTimes[slotIndex] === "string"
+        ? existingSlotTimes[slotIndex]
+        : "";
+    const bellTimeForInput = savedBellTime || defaultBellTime;
+
     const block = document.createElement("div");
     block.className = "note-block";
 
     const label = document.createElement("label");
     label.textContent = unitInfo.displayText;
     block.appendChild(label);
+
+    const timeRow = document.createElement("div");
+    timeRow.className = "check-row";
+
+    const timeLabel = document.createElement("label");
+    const timeInputId = `modalBellTime-${periodNum}`;
+    timeLabel.setAttribute("for", timeInputId);
+    timeLabel.textContent = `Time (slot ${slotIndex + 1})`;
+
+    const timeInput = document.createElement("input");
+    timeInput.type = "text";
+    timeInput.id = timeInputId;
+    timeInput.className = "modal-bell-time";
+    timeInput.dataset.slotIndex = String(slotIndex);
+    timeInput.value = bellTimeForInput;
+    timeInput.placeholder = hasRotationLetterForTimes ? "8:10-9:10" : "No letter day";
+    timeInput.style.maxWidth = "170px";
+    if (!hasRotationLetterForTimes) {
+      timeInput.disabled = true;
+    }
+
+    timeRow.appendChild(timeLabel);
+    timeRow.appendChild(timeInput);
+    block.appendChild(timeRow);
 
     const testRow = document.createElement("div");
     testRow.className = "check-row";
@@ -6702,6 +6852,69 @@ function handleSaveNotes() {
     currentModalDay.letter;
 
   const periods = getPeriodsForDate(currentModalDay.date, letterForPeriods);
+  const normalizedLetterForTimes = normalizeLetter(letterForPeriods || "");
+  const hasRotationLetterForTimes = !!(
+    normalizedLetterForTimes && getCurrentRotationRules()[normalizedLetterForTimes]
+  );
+
+  const bellTimeInputs = Array.from(document.querySelectorAll(".modal-bell-time"));
+  if (bellTimeInputs.length) {
+    const existingDay = customDays[currentModalDay.date]
+      ? { ...customDays[currentModalDay.date] }
+      : null;
+
+    if (hasRotationLetterForTimes) {
+      const slotTimes = [];
+      let hasAnyValue = false;
+
+      bellTimeInputs.forEach(input => {
+        const slotIndex = Number(input.dataset.slotIndex);
+        if (!Number.isInteger(slotIndex) || slotIndex < 0) return;
+        const value = String(input.value || "").trim();
+        slotTimes[slotIndex] = value;
+        if (value) hasAnyValue = true;
+      });
+
+      if (hasAnyValue) {
+        const baseLetter =
+          letterForPeriods && letterForPeriods !== "DEFAULT"
+            ? letterForPeriods
+            : (currentModalDay.letter || getRotationDayByDate(currentModalDay.date)?.letter || "");
+
+        customDays[currentModalDay.date] = {
+          ...(existingDay || {}),
+          letter: (existingDay?.letter ?? baseLetter),
+          label: existingDay?.label || "",
+          slotTimes
+        };
+      } else if (existingDay && Array.isArray(existingDay.slotTimes)) {
+        delete existingDay.slotTimes;
+        if (
+          existingDay.letter ||
+          existingDay.label ||
+          Array.isArray(existingDay.periods)
+        ) {
+          customDays[currentModalDay.date] = existingDay;
+        } else {
+          delete customDays[currentModalDay.date];
+        }
+      }
+    } else if (existingDay && Array.isArray(existingDay.slotTimes)) {
+      delete existingDay.slotTimes;
+      if (
+        existingDay.letter ||
+        existingDay.label ||
+        Array.isArray(existingDay.periods)
+      ) {
+        customDays[currentModalDay.date] = existingDay;
+      } else {
+        delete customDays[currentModalDay.date];
+      }
+    }
+
+    saveCustomDays();
+  }
+
   periods.forEach(periodNum => {
     const testCheckbox = document.getElementById(`test-period-${periodNum}`);
     if (testCheckbox) notesObj[`test-${periodNum}`] = testCheckbox.checked;
@@ -8228,10 +8441,11 @@ document.getElementById("printCalendarBtn").addEventListener("click", () => {
 });
 
 function populatePrintFilters() {
+  const divisionFilters = document.getElementById("printDivisionFilters");
   const unitFilter = document.getElementById("printUnitFilter");
   const periodFilters = document.getElementById("printPeriodFilters");
   const monthFilters = document.getElementById("printMonthFilters");
-  const months = getCurrentMonths();
+
   const selectedUnit = unitFilter.value;
   const selectedPeriods = new Set(
     Array.from(periodFilters.querySelectorAll('input[type="checkbox"]:checked')).map(input => input.value)
@@ -8240,33 +8454,105 @@ function populatePrintFilters() {
     Array.from(monthFilters.querySelectorAll('input[type="checkbox"]:checked')).map(input => input.value)
   );
 
-  const currentMonthKey = months[currentMonthIndex]
-    ? `${months[currentMonthIndex].year}-${String(months[currentMonthIndex].month).padStart(2, "0")}`
+  const selectedDivisions = new Set(
+    Array.from(divisionFilters.querySelectorAll('input[type="checkbox"]:checked')).map(input => input.value)
+  );
+  if (!selectedDivisions.size) {
+    selectedDivisions.add(currentDivision);
+  }
+  const activeDivisions = Array.from(selectedDivisions);
+
+  const monthKeys = getMonthKeysForDivisions(activeDivisions);
+  const currentMonths = getCurrentMonths();
+  const currentMonthKey = currentMonths[currentMonthIndex]
+    ? `${currentMonths[currentMonthIndex].year}-${String(currentMonths[currentMonthIndex].month).padStart(2, "0")}`
     : "";
 
-  const unitNames = Array.from(new Set(
-    Object.values(units)
-      .flat()
-      .map(unit => (unit?.name || "").trim())
-      .filter(Boolean)
-  )).sort((a, b) => a.localeCompare(b));
+  const unitNames = getUnitNamesForDivisions(activeDivisions);
+  const periodNumbers = getMaxPeriodsForDivisions(activeDivisions);
+
+  divisionFilters.innerHTML = Object.keys(DIVISIONS).map(divisionKey => {
+    const checked = activeDivisions.includes(divisionKey) ? "checked" : "";
+    return `<label class="check-row"><input type="checkbox" value="${divisionKey}" ${checked}> ${getDivisionDisplayName(divisionKey)}</label>`;
+  }).join("");
+
+  divisionFilters.querySelectorAll('input[type="checkbox"]').forEach(input => {
+    input.addEventListener("change", () => {
+      const anyChecked = divisionFilters.querySelector('input[type="checkbox"]:checked');
+      if (!anyChecked) {
+        input.checked = true;
+      }
+      populatePrintFilters();
+    });
+  });
 
   unitFilter.innerHTML = `<option value="">All units</option>${unitNames.map(name => `<option value="${name}">${name}</option>`).join("")}`;
   unitFilter.value = selectedUnit;
 
-  periodFilters.innerHTML = getPeriodNumbers().map(periodNum => {
+  periodFilters.innerHTML = periodNumbers.map(periodNum => {
     return `<label class="check-row"><input type="checkbox" value="${periodNum}" ${selectedPeriods.size === 0 || selectedPeriods.has(String(periodNum)) ? "checked" : ""}> Period ${periodNum}</label>`;
   }).join("");
 
-  monthFilters.innerHTML = months.map(monthObj => {
-    const monthKey = `${monthObj.year}-${String(monthObj.month).padStart(2, "0")}`;
-    const monthLabel = new Date(monthObj.year, monthObj.month - 1, 1)
-      .toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  monthFilters.innerHTML = monthKeys.map(monthKey => {
+    const monthLabel = getMonthLabelFromKey(monthKey);
     const shouldCheck = selectedMonths.size
       ? selectedMonths.has(monthKey)
       : monthKey === currentMonthKey;
     return `<label class="check-row"><input type="checkbox" value="${monthKey}" ${shouldCheck ? "checked" : ""}> ${monthLabel}</label>`;
   }).join("");
+}
+
+function getDivisionDisplayName(divisionKey) {
+  return DIVISIONS[divisionKey]?.name || String(divisionKey || "").toUpperCase();
+}
+
+function getMonthLabelFromKey(monthKey) {
+  const [year, month] = String(monthKey).split("-").map(Number);
+  return new Date(year, (month || 1) - 1, 1).toLocaleDateString(undefined, {
+    month: "long",
+    year: "numeric"
+  });
+}
+
+function getMonthKeysForDivisions(divisionKeys) {
+  const keys = new Set();
+  (divisionKeys || []).forEach(divisionKey => {
+    const data = DIVISIONS[divisionKey]?.rotationData?.[currentSemester] || [];
+    data.forEach(day => {
+      if (!day?.date) return;
+      keys.add(String(day.date).slice(0, 7));
+    });
+  });
+  return Array.from(keys).sort();
+}
+
+function getUnitNamesForDivisions(divisionKeys) {
+  const names = new Set();
+  (divisionKeys || []).forEach(divisionKey => {
+    const raw = localStorage.getItem(`${divisionKey}-${currentSemester}${LS_UNITS_KEY}`);
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) || {};
+      Object.values(parsed).forEach(periodUnits => {
+        if (!Array.isArray(periodUnits)) return;
+        periodUnits.forEach(unit => {
+          const name = String(unit?.name || "").trim();
+          if (name) names.add(name);
+        });
+      });
+    } catch (e) {
+      console.warn("Failed to parse unit names for print filter", divisionKey, e);
+    }
+  });
+  return Array.from(names).sort((a, b) => a.localeCompare(b));
+}
+
+function getMaxPeriodsForDivisions(divisionKeys) {
+  const max = Math.max(
+    1,
+    ...(divisionKeys || []).map(key => Number(DIVISIONS[key]?.periods || 0))
+  );
+  return Array.from({ length: max }, (_, idx) => idx + 1);
 }
 
 function openPrintFilterModal() {
@@ -8348,6 +8634,9 @@ function initCollapsibleSections() {
 }
 function applyPrintFilters() {
   const selectedUnitText = document.getElementById("printUnitFilter").value.toLowerCase().trim();
+  const selectedDivisions = Array.from(
+    document.querySelectorAll('#printDivisionFilters input[type="checkbox"]:checked')
+  ).map(input => input.value);
   const selectedPeriods = Array.from(
     document.querySelectorAll('#printPeriodFilters input[type="checkbox"]:checked')
   ).map(input => Number(input.value));
@@ -8355,28 +8644,136 @@ function applyPrintFilters() {
     document.querySelectorAll('#printMonthFilters input[type="checkbox"]:checked')
   ).map(input => input.value);
 
+  if (!selectedDivisions.length) {
+    alert("Select at least one division.");
+    return;
+  }
+
+  const activeMonthKeys = selectedMonths.length
+    ? [...selectedMonths].sort()
+    : getMonthKeysForDivisions(selectedDivisions);
+
+  const stateSnapshot = {
+    currentDivision,
+    activePackId,
+    teacherSchedule: { ...(teacherSchedule || {}) },
+    units: JSON.parse(JSON.stringify(units || {})),
+    customDays: JSON.parse(JSON.stringify(customDays || {})),
+    specialDays: JSON.parse(JSON.stringify(specialDays || [])),
+    hiddenSpecialEntryKeys: new Set(Array.from(hiddenSpecialEntryKeys || [])),
+    bellTimesByDivision: JSON.parse(JSON.stringify(bellTimesByDivision || {}))
+  };
+
+  const divisionEntries = {};
+
+  try {
+    selectedDivisions.forEach(divisionKey => {
+      currentDivision = divisionKey;
+      activePackId = "builtin";
+      loadScheduleFromStorage();
+      loadBellTimes();
+      loadUnits();
+      loadCustomDays();
+      loadHiddenSpecialEntries();
+      loadSpecialDays();
+
+      const byDate = {};
+      const months = getCurrentMonths().filter(monthObj => {
+        const key = `${monthObj.year}-${String(monthObj.month).padStart(2, "0")}`;
+        return activeMonthKeys.length === 0 || activeMonthKeys.includes(key);
+      });
+
+      months.forEach(monthObj => {
+        monthObj.days.forEach(day => {
+          const schoolDay = getRotationDayByDate(day.date) || day;
+          const periodsForDay = getPeriodsForDate(day.date, schoolDay.letter);
+          const dayNotes = loadNotesForDate(day.date);
+          const specialEntries = getUnifiedSpecialDaysForDate(day.date);
+          const hasGeneral = dayNotes.general && String(dayNotes.general).trim();
+          const filteredPeriods = periodsForDay.filter(
+            p => selectedPeriods.length === 0 || selectedPeriods.includes(p)
+          );
+
+          const countsForDay = getDayCountsForDate(day.date, periodsForDay);
+          const normalizedLetterForTimes = normalizeLetter(schoolDay.letter);
+          const hasRotationLetterForTimes = !!(
+            normalizedLetterForTimes && getCurrentRotationRules()[normalizedLetterForTimes]
+          );
+
+          const periodRows = [];
+          filteredPeriods.forEach(periodNum => {
+            const unitInfo = getUnitProgress(periodNum, countsForDay[periodNum], day.date);
+
+            if (
+              selectedUnitText &&
+              !(unitInfo.unitName || "").toLowerCase().includes(selectedUnitText)
+            ) {
+              return;
+            }
+
+            let line = `${periodNum}: ${unitInfo.courseName}`;
+            const bellTime = getBellTimeForPeriodOnDate(day.date, periodNum, periodsForDay);
+            if (bellTime && hasRotationLetterForTimes) {
+              line = `${bellTime}: ${line}`;
+            }
+            if (unitInfo.unitName) line += ` - ${unitInfo.unitName}`;
+            if (unitInfo.dayInUnit && unitInfo.unitLength) {
+              line += ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})`;
+            }
+
+            periodRows.push({
+              line,
+              note: dayNotes[periodNum] || "",
+              isTest: !!(unitInfo.hasTestToday || dayNotes[`test-${periodNum}`]),
+              isQuiz: !!(unitInfo.hasQuizToday || dayNotes[`quiz-${periodNum}`])
+            });
+          });
+
+          if (!periodRows.length && !hasGeneral) return;
+
+          byDate[day.date] = {
+            weekdayName: new Date(day.date + "T12:00:00").toLocaleDateString("en-US", {
+              weekday: "long"
+            }),
+            letterLabel: schoolDay.letter || day.letter || "No classes",
+            specialLabels: specialEntries.map(entry => entry.label),
+            general: hasGeneral
+              ? (typeof noteToHtml === "function" ? noteToHtml(dayNotes.general) : dayNotes.general)
+              : "",
+            periodRows,
+            noTest: !!dayNotes.noTest
+          };
+        });
+      });
+
+      divisionEntries[divisionKey] = byDate;
+    });
+  } finally {
+    currentDivision = stateSnapshot.currentDivision;
+    activePackId = stateSnapshot.activePackId;
+    teacherSchedule = { ...(stateSnapshot.teacherSchedule || {}) };
+    units = JSON.parse(JSON.stringify(stateSnapshot.units || {}));
+    customDays = JSON.parse(JSON.stringify(stateSnapshot.customDays || {}));
+    specialDays = JSON.parse(JSON.stringify(stateSnapshot.specialDays || []));
+    hiddenSpecialEntryKeys = new Set(Array.from(stateSnapshot.hiddenSpecialEntryKeys || []));
+    bellTimesByDivision = JSON.parse(JSON.stringify(stateSnapshot.bellTimesByDivision || {}));
+  }
+
   let html = `
     <html>
     <head>
-      <title>${getCurrentConfig().name} Rotation Planner</title>
+      <title>Multi-Division Rotation Planner</title>
       <style>
         * { box-sizing: border-box; }
         body {
           font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
           margin: 24px auto;
-          max-width: 800px;
+          max-width: 1200px;
           line-height: 1.45;
           color: #111827;
         }
         h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; }
-        .meta { text-align: center; color: #6b7280; font-size: 0.9rem; margin-bottom: 28px; }
-        h2 {
-          margin: 32px 0 12px;
-          padding-bottom: 6px;
-          border-bottom: 2px solid #2563eb;
-          color: #1e40af;
-          font-size: 1.25rem;
-        }
+        .meta { text-align: center; color: #6b7280; font-size: 0.9rem; margin-bottom: 18px; }
         .day {
           border: 1px solid #e5e7eb;
           border-radius: 10px;
@@ -8386,6 +8783,19 @@ function applyPrintFilters() {
           page-break-inside: avoid;
         }
         .day-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 8px; }
+        .day-columns {
+          display: grid;
+          grid-template-columns: repeat(${selectedDivisions.length}, minmax(0, 1fr));
+          gap: 12px;
+        }
+        .day-col {
+          border: 1px solid #e5e7eb;
+          border-radius: 8px;
+          padding: 10px;
+          background: #fff;
+        }
+        .day-col-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; }
+        .day-col-empty { color: #6b7280; font-size: 0.88rem; font-style: italic; }
         .special {
           display: inline-block;
           background: #f3e8ff;
@@ -8427,113 +8837,85 @@ function applyPrintFilters() {
       </style>
     </head>
     <body>
-      <h1>${getCurrentConfig().name} Rotation Planner</h1>
+      <h1>Multi-Division Rotation Planner</h1>
+      <p class="meta">Divisions: ${selectedDivisions.map(getDivisionDisplayName).join(", ")}</p>
       <p class="meta">Generated ${new Date().toLocaleDateString()}</p>
   `;
 
-  const months = getCurrentMonths();
-  const activeMonths = months.filter(monthObj => {
-    const key = `${monthObj.year}-${String(monthObj.month).padStart(2, "0")}`;
-    return selectedMonths.length === 0 || selectedMonths.includes(key);
-  });
-
   let hasContent = false;
 
-  // Month jump links
   html += `<nav class="month-nav">`;
-  activeMonths.forEach((monthObj, i) => {
-    const shortLabel = new Date(monthObj.year, monthObj.month - 1, 1).toLocaleDateString(
-      undefined,
-      { month: "short", year: "numeric" }
-    );
-    html += `<a href="#month-${i}">${shortLabel}</a>${i < activeMonths.length - 1 ? " " : ""}`;
+  activeMonthKeys.forEach((monthKey, i) => {
+    html += `<a href="#month-${i}">${getMonthLabelFromKey(monthKey)}</a>${i < activeMonthKeys.length - 1 ? " " : ""}`;
   });
   html += `</nav>`;
 
-  activeMonths.forEach((monthObj, monthIndex) => {
-    const monthLabel = new Date(monthObj.year, monthObj.month - 1, 1).toLocaleDateString(
-      undefined,
-      { month: "long", year: "numeric" }
-    );
+  activeMonthKeys.forEach((monthKey, monthIndex) => {
     const openAttr = monthIndex === 0 ? " open" : "";
-
     html += `<details class="month-block" id="month-${monthIndex}"${openAttr}>`;
-    html += `<summary class="month-summary">${monthLabel}</summary>`;
+    html += `<summary class="month-summary">${getMonthLabelFromKey(monthKey)}</summary>`;
     html += `<div class="month-body">`;
 
-    monthObj.days.forEach(day => {
-      const dateObj = new Date(day.date + "T12:00:00");
-      const weekdayName = dateObj.toLocaleDateString("en-US", { weekday: "long" });
+    const dateSet = new Set();
+    selectedDivisions.forEach(divisionKey => {
+      Object.keys(divisionEntries[divisionKey] || {}).forEach(date => {
+        if (date.startsWith(monthKey)) dateSet.add(date);
+      });
+    });
 
-      const schoolDay = getRotationDayByDate(day.date) || day;
-      const periodsForDay = getPeriodsForDate(day.date, schoolDay.letter);
-      const dayNotes = loadNotesForDate(day.date);
-      const specialEntries = getUnifiedSpecialDaysForDate(day.date);
-      const hasGeneral = dayNotes.general && String(dayNotes.general).trim();
+    Array.from(dateSet).sort().forEach(date => {
+      const anyEntry = selectedDivisions.some(divisionKey => !!divisionEntries[divisionKey]?.[date]);
+      if (!anyEntry) return;
 
-      if (periodsForDay.length === 0 && !hasGeneral) return;
-
-      const filteredPeriods = periodsForDay.filter(
-        p => selectedPeriods.length === 0 || selectedPeriods.includes(p)
-      );
-      if (filteredPeriods.length === 0 && !hasGeneral) return;
-
-      const letterLabel = schoolDay.letter || day.letter || "No classes";
+      const weekdayName = new Date(date + "T12:00:00").toLocaleDateString("en-US", { weekday: "long" });
       html += `<div class="day">`;
-      html += `<div class="day-title">${day.date} — ${weekdayName} (${letterLabel})</div>`;
+      html += `<div class="day-title">${date} - ${weekdayName}</div>`;
+      html += `<div class="day-columns">`;
 
-      if (specialEntries.length) {
-        specialEntries.forEach(e => {
-          html += `<span class="special">${e.label}</span>`;
-        });
-      }
+      selectedDivisions.forEach(divisionKey => {
+        const entry = divisionEntries[divisionKey]?.[date] || null;
+        html += `<div class="day-col">`;
 
-      if (hasGeneral) {
-        html += `<div class="general-note"><strong>Day notes:</strong> ${
-          typeof noteToHtml === "function" ? noteToHtml(dayNotes.general) : dayNotes.general
-        }</div>`;
-      }
-
-      filteredPeriods.forEach(periodNum => {
-        const unitInfo = getUnitProgress(
-          periodNum,
-          getDayCountsForDate(day.date, periodsForDay)[periodNum],
-          day.date
-        );
-
-        if (
-          selectedUnitText &&
-          !(unitInfo.unitName || "").toLowerCase().includes(selectedUnitText)
-        ) {
+        if (!entry) {
+          html += `<div class="day-col-title">${getDivisionDisplayName(divisionKey)}</div>`;
+          html += `<div class="day-col-empty">No matching entries.</div>`;
+          html += `</div>`;
           return;
         }
 
-        let line = `${periodNum}: ${unitInfo.courseName}`;
-        if (unitInfo.unitName) line += ` — ${unitInfo.unitName}`;
-        if (unitInfo.dayInUnit && unitInfo.unitLength) {
-          line += ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})`;
+        html += `<div class="day-col-title">${getDivisionDisplayName(divisionKey)} (${entry.letterLabel})</div>`;
+
+        entry.specialLabels.forEach(label => {
+          html += `<span class="special">${label}</span>`;
+        });
+
+        if (entry.general) {
+          html += `<div class="general-note"><strong>Day notes:</strong> ${entry.general}</div>`;
         }
 
-        html += `<div class="period">${line}`;
-        if (dayNotes[periodNum]) {
-          html += `<span class="note">Note: ${
-            typeof noteToHtml === "function"
-              ? noteToHtml(dayNotes[periodNum])
-              : dayNotes[periodNum]
-          }</span>`;
+        entry.periodRows.forEach(row => {
+          html += `<div class="period">${row.line}`;
+          if (row.note) {
+            html += `<span class="note">Note: ${
+              typeof noteToHtml === "function" ? noteToHtml(row.note) : row.note
+            }</span>`;
+          }
+          if (row.isTest) {
+            html += ` <span class="badge-test">(TEST)</span>`;
+          } else if (row.isQuiz) {
+            html += ` <span class="badge-quiz">(QUIZ)</span>`;
+          }
+          html += `</div>`;
+        });
+
+        if (entry.noTest) {
+          html += `<div class="no-test">NO TEST TODAY</div>`;
         }
-        if (unitInfo.hasTestToday || dayNotes[`test-${periodNum}`]) {
-          html += ` <span class="badge-test">(TEST)</span>`;
-        } else if (unitInfo.hasQuizToday || dayNotes[`quiz-${periodNum}`]) {
-          html += ` <span class="badge-quiz">(QUIZ)</span>`;
-        }
+
         html += `</div>`;
       });
 
-      if (dayNotes.noTest) {
-        html += `<div class="no-test">NO TEST TODAY</div>`;
-      }
-
+      html += `</div>`;
       html += `</div>`;
       hasContent = true;
     });
@@ -8551,7 +8933,7 @@ function applyPrintFilters() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `planner-filtered-${getCurrentConfig().name.toLowerCase()}.html`;
+  a.download = `planner-filtered-${selectedDivisions.join("-")}.html`;
   a.click();
   URL.revokeObjectURL(url);
 
@@ -9029,16 +9411,13 @@ document.getElementById("divisionSelector")
   document.getElementById("clearPrintFiltersBtn")
     .addEventListener("click", () => {
       document.getElementById("printUnitFilter").value = "";
+      document.querySelectorAll('#printDivisionFilters input[type="checkbox"]').forEach(input => {
+        input.checked = input.value === currentDivision;
+      });
       document.querySelectorAll('#printPeriodFilters input[type="checkbox"]').forEach(input => {
         input.checked = true;
       });
-      const months = getCurrentMonths();
-      const currentMonthKey = months[currentMonthIndex]
-        ? `${months[currentMonthIndex].year}-${String(months[currentMonthIndex].month).padStart(2, "0")}`
-        : "";
-      document.querySelectorAll('#printMonthFilters input[type="checkbox"]').forEach(input => {
-        input.checked = input.value === currentMonthKey;
-      });
+      populatePrintFilters();
     });
 
   document.getElementById("applyPrintFiltersBtn")
@@ -9262,6 +9641,7 @@ function getCurrentScheduleKey() {
 function refreshAllData() {
   
   loadScheduleFromStorage();
+  loadBellTimes();
   console.log("Loaded schedule for", currentSemester, ":", Object.keys(teacherSchedule)); // debug
   loadUnits();
   loadProjects()
@@ -9489,12 +9869,16 @@ setInterval(() => {
       <div class="modal-header">
         <div>
           <div>Print Calendar</div>
-          <div class="small">Filter by period and unit before printing.</div>
+          <div class="small">Filter by division, month, period, and unit before printing.</div>
         </div>
         <button class="secondary" id="closePrintFilterBtn">Close</button>
       </div>
       <div class="modal-body">
         <div class="print-filter-grid">
+          <div>
+            <label>Divisions</label>
+            <div id="printDivisionFilters" class="print-filter-checkboxes"></div>
+          </div>
           <div>
             <label>Months</label>
             <div id="printMonthFilters" class="print-filter-checkboxes"></div>
