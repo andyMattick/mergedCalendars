@@ -4290,12 +4290,55 @@ function initDefaultTimesToggle() {
   };
 }
 
+function splitSchoolYearIntoSemesters(days) {
+  const sorted = (Array.isArray(days) ? days : [])
+    .filter(day => day && typeof day.date === "string")
+    .slice()
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+
+  if (!sorted.length) {
+    return { sem1: [], sem2: [] };
+  }
+
+  const firstYear = Number.parseInt(String(sorted[0].date).slice(0, 4), 10);
+  const janCutover = `${firstYear + 1}-01-01`;
+  const sem1 = sorted.filter(day => day.date < janCutover);
+  const sem2 = sorted.filter(day => day.date >= janCutover);
+
+  // Fallback for unusual datasets that do not cross Jan 1 cleanly.
+  if (!sem2.length && sem1.length === sorted.length) {
+    const mid = Math.ceil(sorted.length / 2);
+    return {
+      sem1: sorted.slice(0, mid),
+      sem2: sorted.slice(mid)
+    };
+  }
+
+  return { sem1, sem2 };
+}
+
 function getCurrentRotationData() {
   if (activePackId && activePackId !== "builtin") {
     const pack = savedPacks.find(p => p.id === activePackId);
     if (pack && Array.isArray(pack.days)) return pack.days;
-  }  
-  return getCurrentConfig().rotationData[currentSemester] || [];
+  }
+
+  const config = getCurrentConfig();
+  const rotationData = config?.rotationData || {};
+  const sem1Raw = Array.isArray(rotationData.sem1) ? rotationData.sem1 : [];
+  const sem2Raw = Array.isArray(rotationData.sem2) ? rotationData.sem2 : [];
+
+  if (sem1Raw.length && !sem2Raw.length) {
+    const split = splitSchoolYearIntoSemesters(sem1Raw);
+    return split[currentSemester] || [];
+  }
+
+  const direct = Array.isArray(rotationData[currentSemester])
+    ? rotationData[currentSemester]
+    : [];
+  if (direct.length) return direct;
+
+  return [];
 }
 
 function getCurrentRotationRules() {
@@ -7318,25 +7361,6 @@ block.appendChild(
     body.appendChild(block);
   });
 
-  if (hasSchedulablePeriodsForTimes) {
-    const bulkTimesBlock = document.createElement("div");
-    bulkTimesBlock.className = "note-block";
-    bulkTimesBlock.innerHTML = `
-      <label style="font-weight:600;">Quick Time Fill (this day)</label>
-      <div class="small" style="margin:4px 0 8px;color:#6b7280;">
-        Apply one value to a chosen slot, or fill all slots for this day.
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <select id="modalBulkSlotSelect" aria-label="Choose slot">
-          ${periods.map((_, idx) => `<option value="${idx}">Slot ${idx + 1}</option>`).join("")}
-        </select>
-        <input type="text" id="modalBulkSlotValue" placeholder="8:10-9:10" style="max-width:170px;">
-        <button type="button" id="modalApplySelectedSlotTimeBtn" class="secondary">Apply to selected slot</button>
-        <button type="button" id="modalApplyAllSlotTimesBtn" class="secondary">Apply to all slots</button>
-      </div>
-    `;
-    body.appendChild(bulkTimesBlock);
-  }
 
   // Add New Special Tag section (unchanged)
   const specialDayBlock = document.createElement("div");
