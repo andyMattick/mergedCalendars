@@ -2587,6 +2587,36 @@ function createShareableStarterCopy() {
   const fresh = getProfiles();
   const source = fresh[srcId] || src;
   const sourceData = JSON.parse(JSON.stringify(source.data || {}));
+  const starterDivision = sourceData.currentDivision || currentDivision || "hs";
+
+  function readSourceScheduleForSemester(semKey) {
+    const scheduleKey = semKey === "sem1" ? "teacherScheduleSem1" : "teacherScheduleSem2";
+    const storageKey = `${starterDivision}-${semKey}${scheduleKey}`;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  const starterTeacherScheduleBySemester = {
+    sem1: readSourceScheduleForSemester("sem1"),
+    sem2: readSourceScheduleForSemester("sem2")
+  };
+
+  if (sourceData.teacherScheduleBySemester && typeof sourceData.teacherScheduleBySemester === "object") {
+    starterTeacherScheduleBySemester.sem1 =
+      sourceData.teacherScheduleBySemester.sem1 && typeof sourceData.teacherScheduleBySemester.sem1 === "object"
+        ? JSON.parse(JSON.stringify(sourceData.teacherScheduleBySemester.sem1))
+        : starterTeacherScheduleBySemester.sem1;
+    starterTeacherScheduleBySemester.sem2 =
+      sourceData.teacherScheduleBySemester.sem2 && typeof sourceData.teacherScheduleBySemester.sem2 === "object"
+        ? JSON.parse(JSON.stringify(sourceData.teacherScheduleBySemester.sem2))
+        : starterTeacherScheduleBySemester.sem2;
+  }
   const starterNotes = {};
   if (sourceData.notes && typeof sourceData.notes === "object") {
     Object.entries(sourceData.notes).forEach(([key, rawValue]) => {
@@ -2617,12 +2647,25 @@ function createShareableStarterCopy() {
   const starterData = {
     ...emptyProfileData(),
     // Keep calendar/times setup from source profile.
-    currentDivision: sourceData.currentDivision || currentDivision || "hs",
+    currentDivision: starterDivision,
     currentSemester: sourceData.currentSemester || currentSemester || "sem1",
     activePackId: source.activePackId || sourceData.activePackId || "builtin",
+    teacherSchedule: JSON.parse(JSON.stringify(
+      starterTeacherScheduleBySemester[sourceData.currentSemester || currentSemester || "sem1"] ||
+      sourceData.teacherSchedule ||
+      {}
+    )),
+    teacherScheduleBySemester: JSON.parse(JSON.stringify(starterTeacherScheduleBySemester)),
     bellTimesByDivision: JSON.parse(JSON.stringify(sourceData.bellTimesByDivision || BELL_DEFAULTS)),
     customDays: JSON.parse(JSON.stringify(sourceData.customDays || {})),
     notes: starterNotes,
+    knownClasses: Array.isArray(sourceData.knownClasses)
+      ? JSON.parse(JSON.stringify(sourceData.knownClasses))
+      : [],
+    classColors:
+      sourceData.classColors && typeof sourceData.classColors === "object"
+        ? JSON.parse(JSON.stringify(sourceData.classColors))
+        : {},
     cycleColors: JSON.parse(JSON.stringify(sourceData.cycleColors || {})),
     periodCount: Number(sourceData.periodCount) || 7
   };
@@ -2656,7 +2699,20 @@ function createShareableStarterCopy() {
     localStorage.setItem(`${starterDivisionKey}-${semKey}${unitsKeySuffix}`, JSON.stringify({}));
   });
 
+  ["sem1", "sem2"].forEach(semKey => {
+    const scheduleKey = semKey === "sem1" ? "teacherScheduleSem1" : "teacherScheduleSem2";
+    const storageKey = `${starterDivisionKey}-${semKey}${scheduleKey}`;
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify(starterTeacherScheduleBySemester[semKey] || {})
+    );
+  });
+
   units = {};
+  teacherSchedule = JSON.parse(
+    JSON.stringify(starterTeacherScheduleBySemester[starterData.currentSemester] || {})
+  );
+  if (typeof saveScheduleToStorage === "function") saveScheduleToStorage();
   if (typeof saveUnits === "function") saveUnits();
   if (typeof renderUnits === "function") renderUnits();
   if (typeof saveCurrentProfile === "function") saveCurrentProfile(false);
@@ -3711,8 +3767,31 @@ function collectCurrentProfileData() {
     known = [];
   }
 
+  function readScheduleForSemester(semKey) {
+    const scheduleKey = semKey === "sem1" ? "teacherScheduleSem1" : "teacherScheduleSem2";
+    const storageKey = `${currentDivision}-${semKey}${scheduleKey}`;
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  const teacherScheduleBySemester = {
+    sem1: readScheduleForSemester("sem1"),
+    sem2: readScheduleForSemester("sem2")
+  };
+
+  if (teacherSchedule && typeof teacherSchedule === "object") {
+    teacherScheduleBySemester[currentSemester] = { ...(teacherSchedule || {}) };
+  }
+
   return {
 teacherSchedule: { ...(teacherSchedule || {}) },
+teacherScheduleBySemester,
 units: JSON.parse(JSON.stringify(units || {})),
     specialDays:
       typeof getUserSpecialDaysForSave === "function"
@@ -3767,6 +3846,24 @@ if (typeof saveProjects === "function") saveProjects();
 
   if (data.currentDivision) currentDivision = data.currentDivision;
   if (data.currentSemester) currentSemester = data.currentSemester;
+
+  if (data.teacherScheduleBySemester && typeof data.teacherScheduleBySemester === "object") {
+    ["sem1", "sem2"].forEach(semKey => {
+      const scheduleKey = semKey === "sem1" ? "teacherScheduleSem1" : "teacherScheduleSem2";
+      const storageKey = `${currentDivision}-${semKey}${scheduleKey}`;
+      const semSchedule = data.teacherScheduleBySemester[semKey];
+      const nextSchedule =
+        semSchedule && typeof semSchedule === "object"
+          ? semSchedule
+          : {};
+      localStorage.setItem(storageKey, JSON.stringify(nextSchedule));
+    });
+
+    const activeSemSchedule = data.teacherScheduleBySemester[currentSemester];
+    if (activeSemSchedule && typeof activeSemSchedule === "object") {
+      teacherSchedule = { ...activeSemSchedule };
+    }
+  }
 
   localStorage.setItem(
     "knownClasses",
