@@ -2990,8 +2990,8 @@ const MS_ROTATION_2026 = [
   { date: "2026-09-11", letter: "F*" },
 
   { date: "2026-09-14", letter: "G" },
-  { date: "2026-09-15", letter: "*" },
-  { date: "2026-09-16", letter: "*" },
+  { date: "2026-09-15", letter: "MS Retreat" },
+  { date: "2026-09-16", letter: "MS Retreat" },
   { date: "2026-09-17", letter: "A" },
   { date: "2026-09-18", letter: "B*" },
 
@@ -3290,7 +3290,7 @@ const LS_ROTATION_2026 = [
   { date: "2026-10-28", letter: "" },
   { date: "2026-10-29", letter: "A" },
   { date: "2026-10-30", letter: "*" },
-  { date: "2026-11-02", letter: "No school" },
+  { date: "2026-11-02", letter: "No school - Conference Day" },
   { date: "2026-11-03", letter: "B" },
   { date: "2026-11-04", letter: "" },
   { date: "2026-11-05", letter: "*" },
@@ -3394,7 +3394,7 @@ const LS_ROTATION_2026 = [
   { date: "2027-02-23", letter: "B"},
   { date: "2027-02-24", letter: ""},
   { date: "2027-02-25", letter: "C"},
-  { date: "2027-02-26", letter: ""},
+  { date: "2027-02-26", letter: "Conference Day - No School"},
 
   { date: "2027-03-01", letter: "D"},
   { date: "2027-03-02", letter: "A"},
@@ -4369,32 +4369,31 @@ const STATIC_SPECIAL_DAY_ROWS = [
   ["2026-08-17", ["ls"], "Picture Day"],
   ["2026-08-18", ["ls"], "Picture Day"],
   ["2026-08-18", ["ls"], "Parent Night"],
-  ["2026-08-19", ["all"], "Late Start"],
+  ["2026-08-19", ["all"], "Late Arrival"],
   ["2026-08-20", ["all"], "All School Chapel"],
   ["2026-08-20", ["ms"], "Parent Night"],
   ["2026-08-25", ["hs"], "Parent Night"],
-  ["2026-08-26", ["all"], "Late Start"],
+  ["2026-08-26", ["all"], "Late Arrival"],
   ["2026-08-27", ["ms"], "Picture Day"],
   ["2026-08-31", ["ls"], "Fall Enrichment Begins"],
-  ["2026-09-02", ["all"], "Late Start"],
+  ["2026-09-02", ["all"], "Late Arrival"],
+  ["2026-09-03", ["all"], "Late Arrival"],
   ["2026-09-03", ["ms"], "CogAT Parent Meeting"],
   ["2026-09-03", ["hs"], "Picture Day"],
   ["2026-09-03", ["hs"], "CogAT Parent Meeting"],
-  ["2026-09-09", ["all"], "Late Start"],
+  ["2026-09-09", ["all"], "Late Arrival"],
   ["2026-09-10", ["ms"], "CTP Testing (5th-7th)"],
   ["2026-09-10", ["ms"], "CTP & CogAT Testing (8th)"],
   ["2026-09-11", ["ms"], "CTP Testing (5th-7th)"],
   ["2026-09-11", ["ms"], "CTP & CogAT Testing (8th)"],
   ["2026-09-11", ["ms"], "1st Grading Period Ends"],
-  ["2026-09-15", ["ms"], "MS Retreat"],
-  ["2026-09-16", ["ms"], "MS Retreat"],
-  ["2026-09-16", ["all"], "Late Start"],
+  ["2026-09-16", ["hs"], "Late Arrival"],
   ["2026-09-17", ["all"], "Family Night"],
-  ["2026-09-18", ["all"], "Late Start"],
+  ["2026-09-18", ["all"], "Late Arrival"],
   ["2026-09-21", ["ls"], "CTP Testing (2nd-4th)"],
   ["2026-09-22", ["ls"], "CTP Testing (2nd-4th)"],
   ["2026-09-22", ["ls"], "Literacy Night (1st-2nd)"],
-  ["2026-09-23", ["all"], "Late Start"],
+  ["2026-09-23", ["all"], "Late Arrival"],
   ["2026-09-23", ["hs"], "Paying for College Seminar"],
   ["2026-09-24", ["ls"], "CTP Testing (2nd-4th)"],
   ["2026-09-25", ["ls"], "CTP Testing (2nd-4th)"],
@@ -4402,61 +4401,61 @@ const STATIC_SPECIAL_DAY_ROWS = [
   ["2026-09-26", ["ms"], "Fall Play"],
   ["2026-09-29", ["ls"], "Passport Club Testing"],
   ["2026-09-29", ["ms"], "CTP Parent Meeting (5th-7th)"],
-  ["2026-09-30", ["all"], "Late Start"],
+  ["2026-09-30", ["all"], "Late Arrival"],
   ["2026-09-30", ["hs"], "PreACT (10th-11th)"],
   ["2026-10-01", ["ms"], "CogAT & CTP Parent Meeting (8th)"],
   ["2026-10-02", ["ls"], "Donuts with Dad"],
   ["2026-10-02", ["ms"], "5th & 6th Fall Social"],
   ["2026-10-05", ["ms"], "Fall Concert"],
-  ["2026-10-07", ["all"], "Late Start"],
+  ["2026-10-07", ["all"], "Late Arrival"],
   ["2026-10-07", ["hs"], "PSAT (10th-11th)"],
   ["2026-10-07", ["hs"], "Grade Level Activities (9th & 12th)"],
   ["2026-10-08", ["ls"], "CTP Parent Meeting"],
   ["2026-10-09", ["ms"], "2nd Grading Period Ends"],
   ["2026-10-09", ["hs"], "2nd Grading Period Ends"],
-  ["2026-10-14", ["all"], "Late Start"],
+  ["2026-10-14", ["all"], "Late Arrival"],
   ["2026-10-16", ["hs"], "Fall Play"],
   ["2026-10-17", ["hs"], "Fall Play"],
   ["2026-10-19", ["hs"], "Freshman Peer Leaders Night"],
   ["2026-10-19", ["ls"], "Fall II Enrichment Begins"],
-  ["2026-10-21", ["all"], "Late Start"],
+  ["2026-10-21", ["all"], "Late Arrival"],
   ["2026-10-22", ["ls"], "Hoedown"],
   ["2026-10-22", ["all"], "Family Night"],
-  ["2026-10-23", ["all"], "Late Start"],
+  ["2026-10-23", ["all"], "Late Arrival"],
   ["2026-10-23", ["ms"], "Fall Social (7th-8th)"],
   ["2026-10-23", ["hs"], "Homecoming"],
-  ["2026-10-23", ["hs"], "1 pm Dismissal"],
+  ["2026-10-23", ["hs"], "1:00 Dismissal"],
   ["2026-10-24", ["hs"], "Homecoming Dance"],
   ["2026-10-26", ["hs"], "Academic Honor Society Induction"],
   ["2026-10-26", ["ms"], "Mission Trip Parent and Student Meeting"],
   ["2026-10-26", ["hs"], "Mission Trip Parent and Student Meeting"],
   ["2026-10-27", ["ls"], "Passport Club Testing"],
   ["2026-10-28", ["hs"], "PreSAT/PreACT Parent and Student Meeting (10th-11th)"],
-  ["2026-10-28", ["all"], "Late Start"],
+  ["2026-10-28", ["all"], "Late Arrival"],
   ["2026-10-30", ["ls"], "Book Character Day"],
   ["2026-10-30", ["ls"], "Noon Dismissal"],
   ["2026-10-30", ["ls"], "First Grading Period Ends"],
-  ["2026-11-02", ["ls"], "Conference Day - NO SCHOOL"],
+  
   ["2026-11-04", ["hs"], "College Night (11th)"],
-  ["2026-11-04", ["all"], "Late Start"],
-  ["2026-11-06", ["ls"], "Veteran's Day Program"],
+  ["2026-11-04", ["all"], "Late Arrival"],
+  ["2026-11-06", ["ls"], "Veterans Day Program"],
   ["2026-11-06", ["ms"], "House Spotlight"],
   ["2026-11-06", ["ms"], "3rd Grading Period Ends"],
   ["2026-11-06", ["hs"], "3rd Grading Period Ends"],
   ["2026-11-09", ["ms"], "Missions Trip Student Meeting"],
   ["2026-11-09", ["hs"], "Missions Trip Student Meeting"],
-  ["2026-11-10", ["ms"], "Veteran's Day Program"],
-  ["2026-11-10", ["hs"], "Veteran's Day Program"],
-  ["2026-11-11", ["all"], "Late Start"],
+  ["2026-11-10", ["ms"], "Veterans Day Program"],
+  ["2026-11-10", ["hs"], "Veterans Day Program"],
+  ["2026-11-11", ["all"], "Late Arrival"],
   ["2026-11-14", ["all"], "Admissions Family Open House"],
   ["2026-11-17", ["ls"], "Passport Club Testing"],
-  ["2026-11-18", ["all"], "Late Start"],
+  ["2026-11-18", ["all"], "Late Arrival"],
   ["2026-11-19", ["all"], "Wesley Day"],
   ["2026-11-20", ["ms"], "House Challenge"],
   ["2026-11-30", ["ms"], "Spelling Bee"],
   ["2026-11-30", ["ms"], "Missions Trip Student Meeting"],
   ["2026-11-30", ["hs"], "Missions Trip Student Meeting"],
-  ["2026-12-02", ["all"], "Late Start"],
+  ["2026-12-02", ["all"], "Late Arrival"],
   ["2026-12-03", ["ms"], "HS Preview Night"],
   ["2026-12-04", ["ms"], "Christmas Rocks"],
   ["2026-12-04", ["ls"], "Kindergarten Play"],
@@ -4467,34 +4466,248 @@ const STATIC_SPECIAL_DAY_ROWS = [
   ["2026-12-08", ["ms"], "Exam Review Day (7th-8th)"],
   ["2026-12-08", ["ls"], "Passport Club Testing"],
   ["2026-12-08", ["ls"], "Parent Christmas Party"],
-  ["2026-12-09", ["all"], "Late Start"],
+  ["2026-12-09", ["all"], "Late Arrival"],
   ["2026-12-09", ["ms"], "Exam Review Day (7th-8th)"],
   ["2026-12-09", ["ms"], "Band Christmas Concert"],
   ["2026-12-09", ["hs"], "Band Christmas Concert"],
-  ["2026-12-10", ["hs"], "Late Start"],
+  ["2026-12-10", ["hs"], "Late Arrival"],
   ["2026-12-10", ["ms"], "Exam Review Day (7th-8th)"],
   
-  ["2026-12-11", ["hs"], "Late Start"],
+  ["2026-12-11", ["hs"], "Late Arrival"],
   ["2026-12-11", ["ms"], "Exam Review Day (7th-8th)"],
   
   ["2026-12-11", ["hs"], "12:30 Dismissal"],
-  ["2026-12-14", ["all"], "Late Start"],
+  ["2026-12-14", ["all"], "Late Arrival"],
   ["2026-12-14", ["ms"], "Science Exam (7th-8th)"],
   
-  ["2026-12-15", ["all"], "Late Start"],
+  ["2026-12-15", ["all"], "Late Arrival"],
   ["2026-12-15", ["ms"], "Social Science Exam (7th-8th)"],
-  ["2026-12-16", ["all"], "Late Start"],
+  ["2026-12-16", ["all"], "Late Arrival"],
   ["2026-12-16", ["all"], "Faculty Christmas Party"],
   ["2026-12-16", ["ls"], "Christmas Parties"],
   ["2026-12-16", ["ms"], "Christmas Party (5th-6th)"],
   ["2026-12-16", ["ms"], "English Exam (7th-8th)"],
-  ["2026-12-17", ["ms"], "Late Start"],
-  ["2026-12-17", ["hs"], "Late Start"],
+  ["2026-12-17", ["ms"], "Late Arrival"],
+  ["2026-12-17", ["hs"], "Late Arrival"],
+  ["2026-12-17", ["ms"], "5th & 6th - No School"],
   ["2026-12-17", ["ms"], "Math Exam (7th-8th)"],
 
   ["2026-12-18", ["ms"], "Semester Grading Period Ends"],
   ["2026-12-18", ["hs"], "Semester Grading Period Ends"],
-  ["2026-12-18", ["hs"], "Late Start"],
+  ["2026-12-18", ["hs"], "Late Arrival"],
+
+  ["2027-01-06", ["all"], "Late Arrival"],
+  ["2027-01-08", ["all"], "Athletic Circle of Honor"],
+  ["2027-01-09", ["all"], "Admissions Interviews / Testing"],
+
+  ["2027-01-09", ["ms"], "Missions Trip Retreat"],
+  ["2027-01-10", ["ms"], "Missions Trip Retreat"],
+  ["2027-01-09", ["hs"], "Missions Trip Retreat"],
+  ["2027-01-10", ["hs"], "Missions Trip Retreat"],
+  ["2027-01-11", ["ls"], "Winter Enrichment Begins"],
+  ["2027-01-13", ["all"], "Late Arrival"],
+  ["2027-01-15", ["hs"], "Christian Life Ski Retreat"],
+  ["2027-01-16", ["hs"], "Christian Life Ski Retreat"],
+  ["2027-01-17", ["hs"], "Christian Life Ski Retreat"],
+  ["2027-01-18", ["hs"], "Christian Life Ski Retreat"],
+  ["2027-01-20", ["all"], "Late Arrival"],
+  ["2027-01-23", ["all"], "Admissions Interviews / Testing"],
+  ["2027-01-26", ["ls"], "Passport Club Testing"],
+  ["2027-01-27", ["all"], "Late Arrival"],
+  ["2027-01-27", ["ls"], "3rd Grade Play"],
+  ["2027-01-29", ["all"], "WPC Red Cross Blood Drive"],
+  ["2027-01-29", ["ms"], "House Challenge"],
+  ["2027-01-29", ["ms"], "First Grading Period Ends"],
+  ["2027-01-29", ["hs"], "First Grading Period Ends"],
+  ["2027-01-30", ["all"], "Admissions Interviews / Testing"],
+  ["2027-01-30", ["hs"], "Winter Dance"],
+  ["2027-02-03", ["all"], "Late Arrival"],
+  ["2027-02-03", ["hs"], "Winter Musical"],
+  ["2027-02-04", ["all"], "Family Night"],
+  ["2027-02-04", ["hs"], "Winter Musical & After Party"],
+  ["2027-02-05", ["all"], "Late Arrival"],
+  ["2027-02-05", ["hs"], "Winter Musical"],
+  ["2027-02-06", ["ls"], "Father / Daughter Dance"],
+  ["2027-02-06", ["hs"], "Winter Musical"],
+  ["2027-02-08", ["all"], "Re-Enrollment Contracts Due"],
+  ["2027-02-08", ["ms"], "Mission Trip Student Meeting"],
+  ["2027-02-08", ["hs"], "Mission Trip Student Meeting"],
+  ["2027-02-10", ["all"], "Ash Wednesday Service"],
+  ["2027-02-10", ["all"], "Late Arrival"],
+  ["2027-02-10", ["ls"], "1st Grade Play"],
+  ["2027-02-12", ["ls"], "Second Grading Period Ends"],
+  ["2027-02-17", ["all"], "Late Arrival"],
+  ["2027-02-19", ["hs"], "Pep Rally"],
+  ["2027-02-22", ["ms"], "Mission Trip Parent & Student Meeting"],
+  ["2027-02-22", ["hs"], "Mission Trip Parent & Student Meeting"],
+  ["2027-02-23", ["ls"], "Passport Club Testing"],
+  ["2027-02-24", ["all"], "Late Arrival"],
+  ["2027-02-24", ["ls"], "4th Grade Businesses of Tomorrow"],
+  ["2027-02-26", ["ms"], "House Challenge"],
+  ["2027-02-26", ["ms"], "7th & 8th Grade Spring Social"],
+  ["2027-02-26", ["ms"], "Mid-Semester Grading Period Ends"],
+  ["2027-02-26", ["hs"], "Mid-Semester Grading Period Ends"],
+  ["2027-03-01", ["all"], "Warm Weather Uniform Begins"],
+  ["2027-03-03", ["all"], "Late Arrival"],
+  ["2027-03-03", ["ls"], "Pre-First Play"],
+  ["2027-03-05", ["all"], "Mission Trip Commissioning Service"],
+  ["2027-03-05", ["ls"], "Noon Dismissal"],
+  ["2027-03-05", ["ms"], "Noon Dismissal"],
+  ["2027-03-05", ["hs"], "12:30 Dismissal"],
+  ["2027-03-17", ["all"], "Late Arrival"],
+  ["2027-03-18", ["ms"], "Community Day"],
+  ["2027-03-18", ["hs"], "Community Day"],
+  ["2027-03-22", ["ls"], "4th Grade Play"],
+  ["2027-03-23", ["ls"], "Passport Club Testing"],
+  ["2027-03-23", ["ls"], "4th Grade Play"],
+  ["2027-03-24", ["all"], "Late Arrival"],
+  ["2027-03-24", ["all"], "Family Night"],
+  ["2027-03-24", ["ms"], "CogAT Testing (5th Grade)"],
+ 
+  ["2027-03-25", ["all"], "No Late Arrival"],
+  ["2027-03-25", ["ls"], "Grandparents Day"],
+  ["2027-03-25", ["ls"], "Noon Dismissal"],
+  ["2027-03-25", ["ms"], "Noon Dismissal"],
+  ["2027-03-25", ["hs"], "12:30 Dismissal"],
+
+  ["2027-03-30", ["ls"], "Spring Enrichment Begins"],
+
+  ["2027-03-31", ["all"], "Late Arrival"],
+
+  ["2027-04-01", ["hs"], "Spring Play"],
+
+  ["2027-04-02", ["ms"], "Pep Rally"],
+  ["2027-04-02", ["ms"], "5th & 6th Grade Spring Social"],
+  ["2027-04-02", ["hs"], "Spring Play"],
+
+  ["2027-04-03", ["all"], "Admissions Decisions Released"],
+  ["2027-04-03", ["hs"], "Spring Play"],
+
+  ["2027-04-05", ["ls"], "CogAT Testing (3rd)"],
+  ["2027-04-06", ["ls"], "CogAT Testing (3rd)"],
+
+  ["2027-04-07", ["all"], "Late Arrival"],
+
+  ["2027-04-08", ["ms"], "Visual Arts Exhibit"],
+  ["2027-04-08", ["hs"], "Visual Arts Exhibit"],
+  ["2027-04-08", ["all"], "Fine Arts Circle of Honor"],
+
+  ["2027-04-09", ["ls"], "Mother & Son Game Night"],
+  ["2027-04-09", ["ms"], "Field Day"],
+  ["2027-04-09", ["ms"], "Third Grading Period Ends"],
+  ["2027-04-09", ["hs"], "Third Grading Period Ends"],
+
+  ["2027-04-10", ["hs"], "ACT on Campus"],
+  ["2027-04-10", ["hs"], "Prom"],
+
+  ["2027-04-13", ["all"], "Admissions New Student Contracts Due"],
+  ["2027-04-13", ["ls"], "Passport Club Testing"],
+
+  ["2027-04-14", ["all"], "Late Arrival"],
+
+  ["2027-04-16", ["hs"], "Spring Chorus Concert"],
+
+  ["2027-04-20", ["all"], "New Families Look Ahead Night"],
+  ["2027-04-20", ["ms"], "Rising 5th Grade Look Ahead Night"],
+  ["2027-04-20", ["ls"], "Rising 4th Grade Look Ahead Night"],
+
+  ["2027-04-21", ["all"], "Late Arrival"],
+
+  ["2027-04-22", ["ls"], "CogAT Parent Meeting (3rd & 5th)"],
+
+  ["2027-04-23", ["all"], "Artist Market"],
+  ["2027-04-24", ["all"], "Artist Market"],
+
+  ["2027-04-27", ["hs"], "Spring Band Concert"],
+
+  ["2027-04-28", ["all"], "Late Arrival"],
+
+  ["2027-04-29", ["ms"], "Spring Musical"],
+  ["2027-04-29", ["hs"], "Senior Honors Day"],
+
+  ["2027-04-30", ["ms"], "Spring Musical"],
+  ["2027-04-30", ["hs"], "Senior Chapel"],
+
+  ["2027-05-01", ["hs"], "SAT on Campus"],
+  ["2027-05-01", ["ms"], "Spring Musical"],
+
+  ["2027-05-03", ["hs"], "AP Exams"],
+  ["2027-05-03", ["hs"], "Senior Science Exam"],
+
+  ["2027-05-04", ["ls"], "Passport Club Testing"],
+  ["2027-05-04", ["hs"], "AP Exams"],
+  ["2027-05-04", ["hs"], "Senior English Exam"],
+
+  ["2027-05-05", ["all"], "Late Arrival"],
+  ["2027-05-05", ["hs"], "AP Exams"],
+  ["2027-05-05", ["hs"], "Senior Math / Conflict Exam"],
+
+  ["2027-05-06", ["all"], "All School Chapel"],
+  ["2027-05-06", ["ms"], "Band Spring Concert"],
+  ["2027-05-06", ["hs"], "AP Exams"],
+  ["2027-05-06", ["hs"], "Senior Conflict Exam"],
+
+  ["2027-05-07", ["ls"], "Morning with Mom"],
+  ["2027-05-07", ["ms"], "House Celebration"],
+  ["2027-05-07", ["hs"], "AP Exams"],
+
+  ["2027-05-10", ["ms"], "Chorus Spring Concert"],
+  ["2027-05-10", ["hs"], "AP Exams"],
+  
+  ["2027-05-11", ["ms"], "7th & 8th Grade Exam Review Day"],
+  ["2027-05-11", ["hs"], "AP Exams"],
+  
+  ["2027-05-12", ["all"], "Late Arrival"],
+  ["2027-05-12", ["ls"], "2nd Grade Play"],
+  ["2027-05-12", ["ms"], "7th & 8th Grade Exam Review Day"],
+  ["2027-05-12", ["hs"], "AP Exams"],
+
+  ["2027-05-13", ["ls"], "World Market Day"],
+  ["2027-05-13", ["ms"], "7th & 8th Grade Exam Review Day"],
+  ["2027-05-13", ["ms"], "8th Grade Chapel"],
+  ["2027-05-13", ["hs"], "AP Exams"],
+
+  ["2027-05-14", ["ls"], "Fine Arts Day"],
+  ["2027-05-14", ["ls"], "Talent Show"],
+  ["2027-05-14", ["ls"], "Third Grading Period Ends"],
+  ["2027-05-14", ["ms"], "7th & 8th Grade Exam Review Day"],
+  ["2027-05-14", ["ms"], "Honors Day"],
+  ["2027-05-14", ["hs"], "AP Exams"],
+  ["2027-05-14", ["hs"], "Honors Day"],
+  ["2027-05-14", ["hs"], "1:10 Dismissal"],
+
+  ["2027-05-16", ["hs"], "Senior Trip"],
+
+  ["2027-05-17", ["all"], "Late Arrival"],
+  ["2027-05-17", ["ms"], "7th & 8th Grade Math Exam"],
+  ["2027-05-17", ["hs"], "Drop / Add"],
+  ["2027-05-17", ["hs"], "Senior Trip"],
+
+  ["2027-05-18", ["all"], "Late Arrival"],
+  ["2027-05-18", ["ls"], "Field Day"],
+  ["2027-05-18", ["ls"], "End of Year Parties"],
+  ["2027-05-18", ["ms"], "7th & 8th Grade Science Exam"],
+  ["2027-05-18", ["hs"], "Drop / Add"],
+  ["2027-05-18", ["hs"], "Senior Trip"],
+
+  ["2027-05-19", ["all"], "Late Arrival"],
+  ["2027-05-19", ["ls"], "Move Up Day"],
+  ["2027-05-19", ["ms"], "7th & 8th Grade Social Science Exam"],
+  ["2027-05-19", ["hs"], "Drop / Add"],
+  ["2027-05-19", ["hs"], "Senior Trip"],
+
+  ["2027-05-20", ["ms"], "Late Arrival"],
+  ["2027-05-20", ["hs"], "Late Arrival"],
+  ["2027-05-20", ["ms"], "5th and 6th End of Year Parties"],
+  ["2027-05-20", ["ms"], "5th and 6th 10:30 Dismissal"],
+  ["2027-05-20", ["ms"], "7th & 8th Grade English Exam"],
+  ["2027-05-20", ["hs"], "Drop / Add"],
+
+  ["2027-05-21", ["hs"], "Late Arrival"],
+  ["2027-05-21", ["ms"], "2nd Semester Grading Period Ends"],
+  ["2027-05-21", ["hs"], "2nd Semester Grading Period Ends"],
+  ["2027-05-21", ["hs"], "Drop / Add"],
+  ["2027-05-21", ["all"], "Baccalaureate"],
 ];
 
 function getSpecialDayScopeBadge(divisions) {
@@ -4559,12 +4772,19 @@ const DIVISION_SPECIFIC_PERIOD_OVERRIDES = {
   hs: {
     sem1: {
       "2026-12-10": [7, 1, 2, 3],
-      "2026-12-11": [4, 5, 6]
+      "2026-12-11": [4, 5, 6],
+      "2027-03-05": [3, 4, 5],
+      "2027-03-25": [6, 7, 1, 2],
+      "2027-05-14": [2, 3, 4, 5, 6, 7, 1],
     },
-    sem2: {}
+    sem2: {
+
+    }
   },
   ms: { sem1: {
-    "2026-08-12": [1, 2, 3, 4, 5, 6, 7]
+    "2026-08-12": [1, 2, 3, 4, 5, 6, 7],
+    "2026-12-16": [1, 2, 3, 4, 5, 6, 7],
+    "2027-05-19": [1, 2, 3, 4, 5, 6, 7],
   }, sem2: {} },
   ls: { sem1: {}, sem2: {} }
 };
@@ -5251,10 +5471,7 @@ function openTodayAgendaModal() {
   const specialEntries = getUnifiedSpecialDaysForDate(todayISO);
   const noTestPolicyDay = isAutoNoTestDay(todayISO) || !!dayNotes.noTest;
   const periods = schoolDay ? getPeriodsForDate(todayISO, schoolDay.letter) : [];
-  const normalizedLetterForTimes = normalizeLetter(schoolDay?.letter);
-  const hasRotationLetterForTimes = !!(
-    normalizedLetterForTimes && getCurrentRotationRules()[normalizedLetterForTimes]
-  );
+  const hasSchedulablePeriodsForTimes = periods.length > 0;
   const dayCounts = getDayCountsForDate(todayISO, periods);
 
   const backdrop = document.getElementById("todayAgendaBackdrop");
@@ -5327,7 +5544,7 @@ if (dayNotes.noTest && !isAutoNoTestDay(todayISO)) {
     title.className = "agenda-period-title";
     const bellTime = getBellTimeForPeriodOnDate(todayISO, periodNum, periods);
     title.textContent =
-      bellTime && hasRotationLetterForTimes
+      bellTime && hasSchedulablePeriodsForTimes
         ? `${bellTime}: ${periodNum}: ${unitInfo.courseName}`
         : `${periodNum}: ${unitInfo.courseName}`;
     card.appendChild(title);
@@ -6183,6 +6400,15 @@ function renderCustomBellTimesEditor() {
 
   host.innerHTML = `
     <div class="small" style="margin:0 0 6px;color:#6b7280;">Scroll sideways to view all class columns.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 8px;">
+      <button type="button" id="addBellSlotBtn" class="secondary">+ Add time slot (all weekdays)</button>
+      <button type="button" id="removeBellSlotBtn" class="secondary" ${maxSlots <= 1 ? "disabled" : ""}>- Remove last slot (all weekdays)</button>
+      <select id="applyBellSlotSelect" aria-label="Choose slot to apply" style="max-width:130px;">
+        ${Array.from({ length: maxSlots }, (_, i) => `<option value="${i + 1}">Slot ${i + 1}</option>`).join("")}
+      </select>
+      <input type="text" id="applyBellSlotValue" placeholder="8:10-9:10" style="max-width:150px;">
+      <button type="button" id="applyBellSlotBtn" class="secondary">Apply slot time to all weekdays</button>
+    </div>
     <div tabindex="0" aria-label="Default bell times table" style="overflow-x:auto; border:1px solid #e5e7eb; border-radius:8px; padding-bottom:4px;">
       <div style="min-width:${80 + (maxSlots * 104)}px; padding:8px;">
         ${header}
@@ -6194,6 +6420,54 @@ function renderCustomBellTimesEditor() {
       <button type="button" id="resetCustomBellTimesBtn" class="secondary">Reset to Built-in</button>
     </div>
   `;
+
+  function updatePeriodCountAndRefresh(nextCount) {
+    const clamped = Math.max(1, Math.min(12, Number(nextCount) || 1));
+    const periodInput = document.getElementById("packPeriodCount");
+    if (periodInput) {
+      periodInput.value = String(clamped);
+    }
+
+    const activePack = typeof getActivePack === "function" ? getActivePack() : null;
+    if (activePack) {
+      activePack.periodCount = clamped;
+      ensurePackRotationRules(activePack);
+      savePacks();
+      renderRotationLegend();
+    }
+
+    renderPackInputPreview();
+    renderCustomBellTimesEditor();
+  }
+
+  document.getElementById("addBellSlotBtn")?.addEventListener("click", () => {
+    if (maxSlots >= 12) {
+      alert("Maximum of 12 class slots reached.");
+      return;
+    }
+    updatePeriodCountAndRefresh(maxSlots + 1);
+  });
+
+  document.getElementById("removeBellSlotBtn")?.addEventListener("click", () => {
+    if (maxSlots <= 1) return;
+    const ok = confirm("Remove the last time slot for all weekdays?");
+    if (!ok) return;
+    updatePeriodCountAndRefresh(maxSlots - 1);
+  });
+
+  document.getElementById("applyBellSlotBtn")?.addEventListener("click", () => {
+    const slotSelect = document.getElementById("applyBellSlotSelect");
+    const valueInput = document.getElementById("applyBellSlotValue");
+    const slotNumber = Number.parseInt(slotSelect?.value || "", 10);
+    const value = String(valueInput?.value || "").trim();
+    if (!Number.isFinite(slotNumber) || slotNumber < 1 || slotNumber > maxSlots) return;
+
+    const slotIndex = slotNumber - 1;
+    weekdays.forEach(day => {
+      const target = host.querySelector(`input[data-bell-day="${day}"][data-bell-slot="${slotIndex}"]`);
+      if (target) target.value = value;
+    });
+  });
 
   document.getElementById("saveCustomBellTimesBtn")?.addEventListener("click", () => {
     if (!bellTimesByDivision || typeof bellTimesByDivision !== "object") {
@@ -6323,14 +6597,12 @@ function renderCalendar() {
 
     const cycleLetter = isOff ? "" : normalizeLetter(schoolDay?.letter);
     const letter = isOff ? "OFF" : schoolDay?.letter;
-    const hasRotationLetterForTimes = !!(
-      cycleLetter && getCurrentRotationRules()[cycleLetter]
-    );
 
     const periodsForDay =
       schoolDay && !isOff && !isNoSchool
         ? getPeriodsForDate(iso, schoolDay.letter)
         : [];
+    const hasSchedulablePeriodsForTimes = periodsForDay.length > 0;
 
     const dayNotes = loadNotesForDate(iso);
     const specialEntries = getUnifiedSpecialDaysForDate(iso);
@@ -6398,7 +6670,7 @@ function renderCalendar() {
         hasContent = true;
         const bellTime = getBellTimeForPeriodOnDate(iso, periodNum, periodsForDay);
         const hoverTitle =
-          bellTime && hasRotationLetterForTimes
+          bellTime && hasSchedulablePeriodsForTimes
             ? `${bellTime}: ${periodNum}: ${unitInfo.courseName}`
             : `${periodNum}: ${unitInfo.courseName}`;
         hoverContent += `<strong>${hoverTitle}</strong>`;
@@ -6561,7 +6833,7 @@ function renderCalendar() {
         }
 
         const bellTime = getBellTimeForPeriodOnDate(iso, periodNum, periodsForDay);
-        if (bellTime && hasRotationLetterForTimes) {
+        if (bellTime && hasSchedulablePeriodsForTimes) {
           classLine = `${bellTime}: ${classLine}`;
         }
 
@@ -6887,10 +7159,7 @@ function openDayModal(day) {
 
   const periods = getPeriodsForDate(day.date, effectiveLetter);
   const dayCounts = getDayCountsForDate(day.date, periods);
-  const normalizedEffectiveLetter = normalizeLetter(effectiveLetter);
-  const hasRotationLetterForTimes = !!(
-    normalizedEffectiveLetter && getCurrentRotationRules()[normalizedEffectiveLetter]
-  );
+  const hasSchedulablePeriodsForTimes = periods.length > 0;
   const existingSlotTimes = Array.isArray(customDays?.[day.date]?.slotTimes)
     ? customDays[day.date].slotTimes
     : [];
@@ -6971,7 +7240,7 @@ body.appendChild(generalBlock);
   periods.forEach(periodNum => {
     const unitInfo = getUnitProgress(periodNum, dayCounts[periodNum], day.date);
     const slotIndex = periods.indexOf(periodNum);
-    const defaultBellTime = hasRotationLetterForTimes
+    const defaultBellTime = hasSchedulablePeriodsForTimes
       ? getBellTimeForPeriodOnDate(day.date, periodNum, periods)
       : "";
     const savedBellTime =
@@ -7001,9 +7270,9 @@ body.appendChild(generalBlock);
     timeInput.className = "modal-bell-time";
     timeInput.dataset.slotIndex = String(slotIndex);
     timeInput.value = bellTimeForInput;
-    timeInput.placeholder = hasRotationLetterForTimes ? "8:10-9:10" : "No letter day";
+    timeInput.placeholder = hasSchedulablePeriodsForTimes ? "8:10-9:10" : "No scheduled periods";
     timeInput.style.maxWidth = "170px";
-    if (!hasRotationLetterForTimes) {
+    if (!hasSchedulablePeriodsForTimes) {
       timeInput.disabled = true;
     }
 
@@ -7048,6 +7317,26 @@ block.appendChild(
 
     body.appendChild(block);
   });
+
+  if (hasSchedulablePeriodsForTimes) {
+    const bulkTimesBlock = document.createElement("div");
+    bulkTimesBlock.className = "note-block";
+    bulkTimesBlock.innerHTML = `
+      <label style="font-weight:600;">Quick Time Fill (this day)</label>
+      <div class="small" style="margin:4px 0 8px;color:#6b7280;">
+        Apply one value to a chosen slot, or fill all slots for this day.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <select id="modalBulkSlotSelect" aria-label="Choose slot">
+          ${periods.map((_, idx) => `<option value="${idx}">Slot ${idx + 1}</option>`).join("")}
+        </select>
+        <input type="text" id="modalBulkSlotValue" placeholder="8:10-9:10" style="max-width:170px;">
+        <button type="button" id="modalApplySelectedSlotTimeBtn" class="secondary">Apply to selected slot</button>
+        <button type="button" id="modalApplyAllSlotTimesBtn" class="secondary">Apply to all slots</button>
+      </div>
+    `;
+    body.appendChild(bulkTimesBlock);
+  }
 
   // Add New Special Tag section (unchanged)
   const specialDayBlock = document.createElement("div");
@@ -7094,6 +7383,27 @@ block.appendChild(
 
   specialApplies.addEventListener("change", () => {
     specialPeriodsWrap.style.display = specialApplies.value === "periods" ? "block" : "none";
+  });
+
+  document.getElementById("modalApplySelectedSlotTimeBtn")?.addEventListener("click", () => {
+    const select = document.getElementById("modalBulkSlotSelect");
+    const valueInput = document.getElementById("modalBulkSlotValue");
+    const slotIndex = Number.parseInt(select?.value || "", 10);
+    const value = String(valueInput?.value || "").trim();
+    if (!Number.isInteger(slotIndex) || slotIndex < 0) return;
+
+    const target = body.querySelector(`.modal-bell-time[data-slot-index="${slotIndex}"]`);
+    if (target && !target.disabled) {
+      target.value = value;
+    }
+  });
+
+  document.getElementById("modalApplyAllSlotTimesBtn")?.addEventListener("click", () => {
+    const valueInput = document.getElementById("modalBulkSlotValue");
+    const value = String(valueInput?.value || "").trim();
+    body.querySelectorAll(".modal-bell-time").forEach(input => {
+      if (!input.disabled) input.value = value;
+    });
   });
 
 document.body.classList.add("modal-open");
@@ -7214,10 +7524,7 @@ function handleSaveNotes() {
     currentModalDay.letter;
 
   const periods = getPeriodsForDate(currentModalDay.date, letterForPeriods);
-  const normalizedLetterForTimes = normalizeLetter(letterForPeriods || "");
-  const hasRotationLetterForTimes = !!(
-    normalizedLetterForTimes && getCurrentRotationRules()[normalizedLetterForTimes]
-  );
+  const hasSchedulablePeriodsForTimes = periods.length > 0;
 
   const bellTimeInputs = Array.from(document.querySelectorAll(".modal-bell-time"));
   if (bellTimeInputs.length) {
@@ -7225,7 +7532,7 @@ function handleSaveNotes() {
       ? { ...customDays[currentModalDay.date] }
       : null;
 
-    if (hasRotationLetterForTimes) {
+    if (hasSchedulablePeriodsForTimes) {
       const slotTimes = [];
       let hasAnyValue = false;
 
@@ -9535,10 +9842,7 @@ function applyPrintFilters() {
           );
 
           const countsForDay = getDayCountsForDate(day.date, periodsForDay);
-          const normalizedLetterForTimes = normalizeLetter(schoolDay.letter);
-          const hasRotationLetterForTimes = !!(
-            normalizedLetterForTimes && getCurrentRotationRules()[normalizedLetterForTimes]
-          );
+          const hasSchedulablePeriodsForTimes = periodsForDay.length > 0;
 
           const periodRows = [];
           filteredPeriods.forEach(periodNum => {
@@ -9553,7 +9857,7 @@ function applyPrintFilters() {
 
             let line = `${periodNum}: ${unitInfo.courseName}`;
             const bellTime = getBellTimeForPeriodOnDate(day.date, periodNum, periodsForDay);
-            if (bellTime && hasRotationLetterForTimes) {
+            if (bellTime && hasSchedulablePeriodsForTimes) {
               line = `${bellTime}: ${line}`;
             }
             if (unitInfo.unitName) line += ` - ${unitInfo.unitName}`;
