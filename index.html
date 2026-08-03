@@ -6709,6 +6709,7 @@ function renderCustomBellTimesEditor() {
     });
 
     saveBellTimes();
+    if (typeof saveCurrentProfile === "function") saveCurrentProfile(false);
     renderRotationLegend();
     renderCalendar();
     alert("Default times saved.");
@@ -6722,6 +6723,7 @@ function renderCustomBellTimesEditor() {
       JSON.stringify(BELL_DEFAULTS[currentDivision] || {})
     );
     saveBellTimes();
+    if (typeof saveCurrentProfile === "function") saveCurrentProfile(false);
     renderCustomBellTimesEditor();
     renderRotationLegend();
     renderCalendar();
