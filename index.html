@@ -2587,6 +2587,27 @@ function createShareableStarterCopy() {
   const fresh = getProfiles();
   const source = fresh[srcId] || src;
   const sourceData = JSON.parse(JSON.stringify(source.data || {}));
+  const starterNotes = {};
+  if (sourceData.notes && typeof sourceData.notes === "object") {
+    Object.entries(sourceData.notes).forEach(([key, rawValue]) => {
+      if (typeof rawValue === "string") {
+        const general = rawValue.trim();
+        if (general) starterNotes[key] = { general };
+        return;
+      }
+
+      if (rawValue && typeof rawValue === "object") {
+        const general = String(rawValue.general || "").trim();
+        const noTest = rawValue.noTest === true;
+        if (general || noTest) {
+          starterNotes[key] = {
+            general,
+            ...(noTest ? { noTest: true } : {})
+          };
+        }
+      }
+    });
+  }
   const copyName = prompt(
     "Name for the shareable starter copy:",
     `${source.name || "Profile"} Starter`
@@ -2601,6 +2622,7 @@ function createShareableStarterCopy() {
     activePackId: source.activePackId || sourceData.activePackId || "builtin",
     bellTimesByDivision: JSON.parse(JSON.stringify(sourceData.bellTimesByDivision || BELL_DEFAULTS)),
     customDays: JSON.parse(JSON.stringify(sourceData.customDays || {})),
+    notes: starterNotes,
     cycleColors: JSON.parse(JSON.stringify(sourceData.cycleColors || {})),
     periodCount: Number(sourceData.periodCount) || 7
   };
