@@ -2627,6 +2627,9 @@ function createShareableStarterCopy() {
     periodCount: Number(sourceData.periodCount) || 7
   };
 
+  // Explicitly enforce blank units for shareable starters.
+  starterData.units = {};
+
   const newId = generateProfileId();
   fresh[newId] = {
     id: newId,
@@ -2645,6 +2648,18 @@ function createShareableStarterCopy() {
     setCurrentProfileId(newId);
     applyProfileData(starterData);
   }
+
+  // Units are stored by division+semester keys; clear both semesters so starters stay blank.
+  const unitsKeySuffix = typeof LS_UNITS_KEY === "string" ? LS_UNITS_KEY : "-units";
+  const starterDivisionKey = starterData.currentDivision || "hs";
+  ["sem1", "sem2"].forEach(semKey => {
+    localStorage.setItem(`${starterDivisionKey}-${semKey}${unitsKeySuffix}`, JSON.stringify({}));
+  });
+
+  units = {};
+  if (typeof saveUnits === "function") saveUnits();
+  if (typeof renderUnits === "function") renderUnits();
+  if (typeof saveCurrentProfile === "function") saveCurrentProfile(false);
 
   if (typeof renderProfileSelector === "function") renderProfileSelector();
   showProfileToast?.(`Created shareable starter "${copyName.trim()}"`);
@@ -5554,12 +5569,13 @@ function isHolidayLabel(label) {
 
 function getNextInstructionalDateAfter(startDate, rotationData = getCurrentRotationData()) {
   const sortedDays = [...rotationData].sort((a, b) => a.date.localeCompare(b.date));
-  const startIndex = sortedDays.findIndex(day => day.date === startDate);
-  if (startIndex === -1) return null;
-
-  for (let index = startIndex + 1; index < sortedDays.length; index++) {
+  for (let index = 0; index < sortedDays.length; index++) {
     const candidate = sortedDays[index];
-    if (isRotationDay(candidate.letter)) {
+    if (!candidate?.date || candidate.date <= startDate) continue;
+
+    const hasSchedulablePeriods =
+      getPeriodsForDate(candidate.date, candidate.letter).length > 0;
+    if (isRotationDay(candidate.letter) || hasSchedulablePeriods) {
       return candidate.date;
     }
   }
@@ -5659,8 +5675,6 @@ function getAutoNoTestSpecialDays() {
 function buildAutoNoTestDates() {
   return new Set(getAutoNoTestSpecialDays().map(day => day.date));
 }
-
-const AUTO_NO_TEST_DATES = buildAutoNoTestDates();
 
 function isAutoNoTestDay(date) {
   return buildAutoNoTestDates().has(date);
