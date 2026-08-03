@@ -10870,35 +10870,6 @@ document.getElementById("nextMonthBtn")?.addEventListener("click", () => {
     }
   });
 
-    // Keyboard Shortcuts
-  document.addEventListener("keydown", (e) => {
-    if (e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT") return;
-
-    switch (e.key.toLowerCase()) {
-      case "1":
-        openTodayAgendaModal();
-        break;
-      case "2":
-        // Open modal for today
-        const todayISO = getLocalTodayISO();
-        const todayDay = getRotationDayByDate(todayISO);
-        if (todayDay) openDayModal({ date: todayISO, letter: todayDay.letter });
-        break;
-      case "3":
-        document.getElementById("printCalendarBtn").click();
-        break;
-      case "4":
-        document.getElementById("backupBtn").click();
-        break;
-      case "?":
-        document.getElementById("helpBtn").click();
-        break;
-    }
-
-
-  });
-
-
   document.getElementById("toggleSpecialTagsBtn").addEventListener("click", () => {
     hideAllSpecialTags = !hideAllSpecialTags;
     document.getElementById("toggleSpecialTagsBtn").textContent = hideAllSpecialTags 
