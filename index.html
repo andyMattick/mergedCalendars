@@ -1542,6 +1542,8 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
         <option value="new">New Profile</option>
         <option value="rename">Rename Profile</option>
         <option value="duplicate">Duplicate profile…</option>
+                <option value="shareStarterCopy">Create Shareable Starter Copy…</option>
+                <option value="resetDefaults">Reset Active Profile to Defaults</option>
         <option value="delete">Delete Profile</option>
       </select>
 
@@ -2567,6 +2569,63 @@ function duplicateCurrentProfile() {
 
   if (typeof renderProfileSelector === "function") renderProfileSelector();
   showProfileToast?.(`Duplicated as "${name.trim()}"`);
+}
+
+function createShareableStarterCopy() {
+  const profiles = getProfiles();
+  const srcId = getCurrentProfileId();
+  const src = profiles[srcId];
+  if (!src) {
+    alert("No profile to copy.");
+    return;
+  }
+
+  if (typeof saveCurrentProfile === "function") {
+    saveCurrentProfile(false);
+  }
+
+  const fresh = getProfiles();
+  const source = fresh[srcId] || src;
+  const sourceData = JSON.parse(JSON.stringify(source.data || {}));
+  const copyName = prompt(
+    "Name for the shareable starter copy:",
+    `${source.name || "Profile"} Starter`
+  );
+  if (!copyName || !copyName.trim()) return;
+
+  const starterData = {
+    ...emptyProfileData(),
+    // Keep calendar/times setup from source profile.
+    currentDivision: sourceData.currentDivision || currentDivision || "hs",
+    currentSemester: sourceData.currentSemester || currentSemester || "sem1",
+    activePackId: source.activePackId || sourceData.activePackId || "builtin",
+    bellTimesByDivision: JSON.parse(JSON.stringify(sourceData.bellTimesByDivision || BELL_DEFAULTS)),
+    customDays: JSON.parse(JSON.stringify(sourceData.customDays || {})),
+    cycleColors: JSON.parse(JSON.stringify(sourceData.cycleColors || {})),
+    periodCount: Number(sourceData.periodCount) || 7
+  };
+
+  const newId = generateProfileId();
+  fresh[newId] = {
+    id: newId,
+    name: copyName.trim(),
+    type: source.type || "teacher",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    activePackId: starterData.activePackId,
+    data: starterData
+  };
+
+  saveProfiles(fresh);
+  if (typeof loadProfile === "function") {
+    loadProfile(newId);
+  } else {
+    setCurrentProfileId(newId);
+    applyProfileData(starterData);
+  }
+
+  if (typeof renderProfileSelector === "function") renderProfileSelector();
+  showProfileToast?.(`Created shareable starter "${copyName.trim()}"`);
 }
 
 function saveCurrentProfile(showToast = false) {
@@ -3857,6 +3916,47 @@ function createProfile(name, type = "teacher", fromCurrent = false) {
 
   if (typeof renderProfileSelector === "function") renderProfileSelector();
   return id;
+}
+
+function resetActiveProfileToDefaults() {
+  const id = getCurrentProfileId();
+  if (!id) {
+    alert("No active profile selected.");
+    return false;
+  }
+
+  const profiles = getProfiles();
+  const profile = profiles[id];
+  if (!profile) {
+    alert("Active profile not found.");
+    return false;
+  }
+
+  const ok = confirm(
+    `Reset profile "${profile.name}" to defaults?\n\n` +
+    `This will clear units, notes, projects, classes, and day overrides for this profile.`
+  );
+  if (!ok) return false;
+
+  const defaults = emptyProfileData();
+  defaults.currentDivision = "hs";
+  defaults.currentSemester = "sem1";
+  defaults.activePackId = "builtin";
+
+  profiles[id].data = defaults;
+  profiles[id].activePackId = "builtin";
+  profiles[id].updatedAt = new Date().toISOString();
+  saveProfiles(profiles);
+
+  activePackId = "builtin";
+  if (typeof savePackLibrary === "function") savePackLibrary();
+  if (typeof refreshPackSelect === "function") refreshPackSelect();
+
+  applyProfileData(defaults);
+  if (typeof renderProfileSelector === "function") renderProfileSelector();
+  if (typeof updateAppTitle === "function") updateAppTitle();
+  showProfileToast?.(`Profile "${profile.name}" reset to defaults`);
+  return true;
 }
 
 function renameProfile(id, newName) {
@@ -6158,6 +6258,10 @@ function wireProfileUI() {
   duplicateCurrentProfile();
 }
 
+      if (action === "shareStarterCopy") {
+        createShareableStarterCopy();
+      }
+
       if (action === "rename") {
         const id = getCurrentProfileId();
         const profiles = getProfiles();
@@ -6176,6 +6280,10 @@ function wireProfileUI() {
           deleteProfile(id);
           showProfileToast?.("Profile deleted");
         }
+      }
+
+      if (action === "resetDefaults") {
+        resetActiveProfileToDefaults();
       }
     };
   } else {
