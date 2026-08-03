@@ -2646,7 +2646,6 @@ function createShareableStarterCopy() {
 
   const starterData = {
     ...emptyProfileData(),
-    // Keep calendar/times setup from source profile.
     currentDivision: starterDivision,
     currentSemester: sourceData.currentSemester || currentSemester || "sem1",
     activePackId: source.activePackId || sourceData.activePackId || "builtin",
@@ -2658,7 +2657,14 @@ function createShareableStarterCopy() {
     teacherScheduleBySemester: JSON.parse(JSON.stringify(starterTeacherScheduleBySemester)),
     bellTimesByDivision: JSON.parse(JSON.stringify(sourceData.bellTimesByDivision || BELL_DEFAULTS)),
     customDays: JSON.parse(JSON.stringify(sourceData.customDays || {})),
-    notes: starterNotes,
+    specialDays: Array.isArray(sourceData.specialDays)
+      ? JSON.parse(JSON.stringify(sourceData.specialDays))
+      : [],
+    hiddenSpecialEntryKeys: Array.isArray(sourceData.hiddenSpecialEntryKeys)
+      ? [...sourceData.hiddenSpecialEntryKeys]
+      : [],
+    hideAllSpecialTags: !!sourceData.hideAllSpecialTags,
+    notes: starterNotes, // general + noTest only (already filtered above)
     knownClasses: Array.isArray(sourceData.knownClasses)
       ? JSON.parse(JSON.stringify(sourceData.knownClasses))
       : [],
@@ -2667,11 +2673,15 @@ function createShareableStarterCopy() {
         ? JSON.parse(JSON.stringify(sourceData.classColors))
         : {},
     cycleColors: JSON.parse(JSON.stringify(sourceData.cycleColors || {})),
-    periodCount: Number(sourceData.periodCount) || 7
+    periodCount: Number(sourceData.periodCount) || 7,
+    // Explicit blanks for shareable starter
+    units: {},
+    projects: {}
   };
 
   // Explicitly enforce blank units for shareable starters.
   starterData.units = {};
+  starterData.projects = {};
 
   const newId = generateProfileId();
   fresh[newId] = {
@@ -2692,12 +2702,17 @@ function createShareableStarterCopy() {
     applyProfileData(starterData);
   }
 
-  // Units are stored by division+semester keys; clear both semesters so starters stay blank.
+    // Units are stored by division+semester keys; clear both semesters so starters stay blank.
   const unitsKeySuffix = typeof LS_UNITS_KEY === "string" ? LS_UNITS_KEY : "-units";
   const starterDivisionKey = starterData.currentDivision || "hs";
   ["sem1", "sem2"].forEach(semKey => {
     localStorage.setItem(`${starterDivisionKey}-${semKey}${unitsKeySuffix}`, JSON.stringify({}));
   });
+
+  units = {};
+  if (typeof saveUnits === "function") saveUnits();
+  projects = {};
+  if (typeof saveProjects === "function") saveProjects();
 
   ["sem1", "sem2"].forEach(semKey => {
     const scheduleKey = semKey === "sem1" ? "teacherScheduleSem1" : "teacherScheduleSem2";
@@ -2716,6 +2731,19 @@ function createShareableStarterCopy() {
   if (typeof saveUnits === "function") saveUnits();
   if (typeof renderUnits === "function") renderUnits();
   if (typeof saveCurrentProfile === "function") saveCurrentProfile(false);
+
+  // Final guard: starter must not keep units
+  units = {};
+  projects = {};
+  if (typeof saveUnits === "function") saveUnits();
+  if (typeof saveProjects === "function") saveProjects();
+  const profilesAfter = getProfiles();
+  const starterId = getCurrentProfileId();
+  if (profilesAfter[starterId]?.data) {
+    profilesAfter[starterId].data.projects = {}
+    profilesAfter[starterId].data.units = {};
+    saveProfiles(profilesAfter);
+  }
 
   if (typeof renderProfileSelector === "function") renderProfileSelector();
   showProfileToast?.(`Created shareable starter "${copyName.trim()}"`);
@@ -9364,25 +9392,85 @@ async function getExternalBackupPermission(handle, allowPrompt) {
 }
 
 function buildBackupSnapshot() {
-  const currentDiv = currentDivision || "default";
+  if (typeof saveCurrentProfile === "function") {
+    saveCurrentProfile(false);
+  }
+
+  const div = currentDivision || "hs";
+  const unitsKey = typeof LS_UNITS_KEY === "string" ? LS_UNITS_KEY : "-units";
+
+  const profileData =
+    typeof collectCurrentProfileData === "function"
+      ? collectCurrentProfileData()
+      : {};
+
+  function readUnitsForSemester(semKey) {
+    try {
+      const raw = localStorage.getItem(`${div}-${semKey}${unitsKey}`);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  // Compute FIRST (before creating backup)
+  const unitsBySemester = {
+    sem1: readUnitsForSemester("sem1"),
+    sem2: readUnitsForSemester("sem2")
+  };
+  const currentUnits =
+    unitsBySemester[currentSemester || "sem1"] ||
+    JSON.parse(JSON.stringify(units || {}));
+
+const projectsKey = typeof LS_PROJECTS_KEY === "string" ? LS_PROJECTS_KEY : "-projects";
+
+function readProjectsForSemester(semKey) {
+  try {
+    const raw = localStorage.getItem(`${div}-${semKey}${projectsKey}`);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+const projectsBySemester = {
+  sem1: readProjectsForSemester("sem1"),
+  sem2: readProjectsForSemester("sem2")
+};
+
   const backup = {
     timestamp: new Date().toISOString(),
-    division: currentDiv,
-    teacherScheduleSem1: JSON.parse(localStorage.getItem("hs-sem1teacherScheduleSem1") || "{}"),
-    unitsSem1: JSON.parse(localStorage.getItem("hs-sem1-units") || "{}"),
-    notes: {},
-    cycleColors: getCycleColors(),
-    classColors: JSON.parse(localStorage.getItem("classColors") || "{}"),
-    profiles: getProfiles(),
-    currentProfileId: getCurrentProfileId(),
-    customDays: JSON.parse(JSON.stringify(customDays || {}))
-  };
+    version: 2,
+    division: div,
+    currentDivision: currentDivision || "hs",
+    currentSemester: currentSemester || "sem1",
+    currentProfileId: typeof getCurrentProfileId === "function" ? getCurrentProfileId() : "",
+    profiles: typeof getProfiles === "function" ? getProfiles() : {},
 
-  const noteDates = Array.from(new Set(getAllNoteStorageEntries().map(entry => entry.date)));
-  noteDates.forEach(date => {
-    const scopedKey = getNotesKey(date);
-    backup.notes[scopedKey] = loadNotesForDate(date);
-  });
+    data: profileData,
+
+    teacherSchedule: JSON.parse(JSON.stringify(teacherSchedule || {})),
+    units: currentUnits,                    // active semester
+    unitsBySemester: unitsBySemester,       // BOTH semesters
+    customDays: JSON.parse(JSON.stringify(customDays || {})),
+    specialDays: JSON.parse(JSON.stringify(specialDays || [])),
+    projects: JSON.parse(JSON.stringify(projects || {})),
+    bellTimesByDivision: JSON.parse(
+      JSON.stringify(
+        bellTimesByDivision ||
+          (typeof BELL_DEFAULTS !== "undefined" ? BELL_DEFAULTS : {})
+      )
+    ),
+    notes: profileData.notes || {},
+    knownClasses: Array.isArray(profileData.knownClasses) ? profileData.knownClasses : [],
+    classColors: profileData.classColors || {},
+    cycleColors: profileData.cycleColors || {},
+    hideAllSpecialTags: !!hideAllSpecialTags,
+    hiddenSpecialEntryKeys: [...(hiddenSpecialEntryKeys || [])],
+    activePackId: typeof activePackId !== "undefined" ? activePackId : "builtin",
+    projects: projectsBySemester[currentSemester || "sem1"] || JSON.parse(JSON.stringify(projects || {})),
+    projectsBySemester: projectsBySemester,
+  };
 
   return backup;
 }
@@ -9459,93 +9547,101 @@ function applyBackupObject(backup, options = {}) {
     throw new Error("Invalid backup payload");
   }
 
-  // Profiles (optional)
-  if (backup.profiles) {
+  // Restore profiles map if present
+  if (backup.profiles && typeof backup.profiles === "object") {
     localStorage.setItem(LS_PROFILES, JSON.stringify(backup.profiles));
   }
   if (backup.currentProfileId) {
     localStorage.setItem(LS_CURRENT_PROFILE, backup.currentProfileId);
   }
 
-  // Prefer full profile-style payload if present
-  if (backup.data && typeof applyProfileData === "function") {
-    applyProfileData(backup.data);
-  } else if (typeof applyProfileData === "function") {
-    // File may already be a profile data object (from collectCurrentProfileData)
-    applyProfileData(backup);
-  } else {
-    // Manual restore fallback
-    if (backup.teacherSchedule) {
-      teacherSchedule = backup.teacherSchedule;
-      if (typeof saveScheduleToStorage === "function") saveScheduleToStorage();
-    }
-    if (backup.units) {
-      units = backup.units;
-      if (typeof saveUnits === "function") saveUnits();
-    }
-    if (backup.unitsSem1) {
-      localStorage.setItem("hs-sem1-units", JSON.stringify(backup.unitsSem1));
-    }
-    if (backup.teacherScheduleSem1) {
-      localStorage.setItem(
-        "hs-sem1teacherScheduleSem1",
-        JSON.stringify(backup.teacherScheduleSem1)
-      );
-    }
-    if (backup.notes) {
-      Object.keys(backup.notes).forEach(key => {
-        localStorage.setItem(key, JSON.stringify(backup.notes[key]));
-      });
-    }
-    if (backup.cycleColors) {
-      localStorage.setItem("cycleColors", JSON.stringify(backup.cycleColors));
-    }
-    if (backup.classColors) {
-      localStorage.setItem("classColors", JSON.stringify(backup.classColors));
-    }
-    if (backup.customDays && typeof backup.customDays === "object") {
-      customDays = backup.customDays;
-      if (typeof saveCustomDays === "function") saveCustomDays();
-    }
-    if (backup.specialDays) {
-      specialDays = backup.specialDays;
-      if (typeof saveSpecialDays === "function") saveSpecialDays();
-    }
+  // Prefer nested full profile payload; else treat file as profile data itself
+  const payload =
+    backup.data && typeof backup.data === "object"
+      ? backup.data
+      : backup;
+
+  if (typeof applyProfileData === "function") {
+    applyProfileData(payload);
   }
 
-  // Always apply customDays if present at top level
+  // Force critical live fields from top-level if present (covers older + newer backups)
+  if (backup.units && typeof backup.units === "object") {
+    units = JSON.parse(JSON.stringify(backup.units));
+    if (typeof saveUnits === "function") saveUnits();
+  } else if (payload.units && typeof payload.units === "object") {
+    units = JSON.parse(JSON.stringify(payload.units));
+    if (typeof saveUnits === "function") saveUnits();
+  }
+
+  if (backup.unitsBySemester && typeof backup.unitsBySemester === "object") {
+  const restoreDiv = backup.currentDivision || currentDivision || "hs";
+  const unitsKey = typeof LS_UNITS_KEY === "string" ? LS_UNITS_KEY : "-units";
+  ["sem1", "sem2"].forEach(semKey => {
+    localStorage.setItem(
+      `${restoreDiv}-${semKey}${unitsKey}`,
+      JSON.stringify(backup.unitsBySemester[semKey] || {})
+    );
+  });
+  if (typeof loadUnits === "function") loadUnits();
+}
+
+if (backup.projectsBySemester && typeof backup.projectsBySemester === "object") {
+  const restoreDiv = backup.currentDivision || currentDivision || "hs";
+  const projectsKey = typeof LS_PROJECTS_KEY === "string" ? LS_PROJECTS_KEY : "-projects";
+  ["sem1", "sem2"].forEach(semKey => {
+    localStorage.setItem(
+      `${restoreDiv}-${semKey}${projectsKey}`,
+      JSON.stringify(backup.projectsBySemester[semKey] || {})
+    );
+  });
+  if (typeof loadProjects === "function") loadProjects();
+}
+
   if (backup.customDays && typeof backup.customDays === "object") {
-    customDays = backup.customDays;
+    customDays = JSON.parse(JSON.stringify(backup.customDays));
     if (typeof saveCustomDays === "function") saveCustomDays();
   }
 
-  // Always restore period names + known classes
   if (backup.teacherSchedule && typeof backup.teacherSchedule === "object") {
-    teacherSchedule = backup.teacherSchedule;
-    if (typeof saveScheduleToStorage === "function") {
-      saveScheduleToStorage();
-    } else {
-      localStorage.setItem(
-        "hs-sem1teacherScheduleSem1",
-        JSON.stringify(backup.teacherSchedule)
-      );
-    }
+    teacherSchedule = JSON.parse(JSON.stringify(backup.teacherSchedule));
+    if (typeof saveScheduleToStorage === "function") saveScheduleToStorage();
   }
+
+  if (backup.specialDays && Array.isArray(backup.specialDays)) {
+    specialDays = JSON.parse(JSON.stringify(backup.specialDays));
+    if (typeof saveSpecialDays === "function") saveSpecialDays();
+  }
+
+  if (backup.bellTimesByDivision && typeof backup.bellTimesByDivision === "object") {
+    bellTimesByDivision = JSON.parse(JSON.stringify(backup.bellTimesByDivision));
+    if (typeof saveBellTimes === "function") saveBellTimes();
+  }
+
+  if (backup.projects && typeof backup.projects === "object") {
+    projects = JSON.parse(JSON.stringify(backup.projects));
+    if (typeof saveProjects === "function") saveProjects();
+  }
+
+  if (Array.isArray(backup.knownClasses)) {
+    localStorage.setItem("knownClasses", JSON.stringify(backup.knownClasses));
+  }
+
   if (backup.teacherScheduleSem1) {
     localStorage.setItem(
       "hs-sem1teacherScheduleSem1",
       JSON.stringify(backup.teacherScheduleSem1)
     );
   }
-  if (Array.isArray(backup.knownClasses)) {
-    localStorage.setItem("knownClasses", JSON.stringify(backup.knownClasses));
-  }
-  if (backup.units && typeof backup.units === "object") {
-    units = backup.units;
-    if (typeof saveUnits === "function") saveUnits();
-  }
 
   if (typeof saveCurrentProfile === "function") saveCurrentProfile(false);
+
+  if (typeof loadCustomDays === "function") loadCustomDays();
+  if (typeof loadUnits === "function") loadUnits();
+  if (typeof loadProjects === "function") loadProjects();
+  if (typeof renderUnits === "function") renderUnits();
+  if (typeof renderCalendar === "function") renderCalendar();
+  if (typeof renderSummary === "function") renderSummary();
 
   if (showAlerts) {
     alert(reloadAfter ? "Restore successful. Reloading…" : "Restore successful.");
