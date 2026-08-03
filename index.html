@@ -8263,6 +8263,7 @@ function renderUnits() {
         <div class="unit-actions">
           <button onclick="addUnitFromInputs(${p})">+ Add Unit</button>
         </div>
+        
         <div id="units-list-${p}"></div>
       </div>
     `;
@@ -8303,6 +8304,7 @@ function renderUnits() {
           <button onclick="shiftUnit(${p}, ${i}, -1)">-1 Day</button>
           <button onclick="shiftUnit(${p}, ${i}, 1, false)" class="secondary">Shift This + Following</button>
           <button onclick="removeUnit(${p},${i})" class="secondary">Remove Unit</button>
+          <button onclick="duplicateUnit(${p}, ${i})" class="secondary">Duplicate</button>
         </div>
       `;
       list.appendChild(row);
@@ -9150,6 +9152,81 @@ window.removeUnit = function(period, index) {
   renderUnits();
   renderCalendar();
   renderSummary();
+};
+
+window.duplicateUnit = function(period, index) {
+  const sourceUnit = getUnitsForPeriod(period)[index];
+  if (!sourceUnit) {
+    alert("Unit not found.");
+    return;
+  }
+
+  const allPeriods = typeof getCurrentPeriodNumbers === "function"
+    ? getCurrentPeriodNumbers()
+    : Array.from({ length: getCurrentPeriodCount() }, (_, i) => i + 1);
+
+  const defaultTargets = allPeriods.filter(p => p !== period).join(",");
+  const input = prompt(
+    `Duplicate "${sourceUnit.name || "Unit"}" (with topics/tests) to which period(s)?\n` +
+      `Comma-separated. Example: 2,5,7\n` +
+      `Include ${period} to also add a copy in this period.`,
+    defaultTargets
+  );
+
+  if (input === null) return; // cancelled
+
+  const targets = input
+    .split(",")
+    .map(p => parseInt(p.trim(), 10))
+    .filter(p => !Number.isNaN(p) && allPeriods.includes(p));
+
+  if (!targets.length) {
+    alert("No valid periods selected.");
+    return;
+  }
+
+  let copied = 0;
+
+  targets.forEach(p => {
+    if (!units[p]) units[p] = [];
+
+    const preview = applyUnitSchedule(p, units[p], false);
+    const defaultStartDate =
+      preview.valid && preview.windows.length
+        ? preview.occurrenceDates[
+            Math.min(
+              preview.windows[preview.windows.length - 1].endIndex + 1,
+              preview.occurrenceDates.length - 1
+            )
+          ] || ""
+        : "";
+
+    const copy = JSON.parse(JSON.stringify(sourceUnit));
+    copy.startDate = defaultStartDate;
+    // optional: mark copies in the same period
+    if (p === period) {
+      copy.name = `${copy.name || "Unit"} (copy)`;
+    }
+
+    const candidate = [...units[p], normalizeUnit(copy, units[p].length)];
+    const validated = applyUnitSchedule(p, candidate, true);
+    if (validated.valid) {
+      units[p] = validated.units;
+      copied++;
+    }
+  });
+
+  if (!copied) {
+    alert("Could not duplicate — check scheduling conflicts.");
+    return;
+  }
+
+  saveUnits();
+  if (typeof saveCurrentProfile === "function") saveCurrentProfile(false);
+  renderUnits();
+  renderCalendar();
+  renderSummary();
+  alert(`Duplicated to ${copied} period(s).`);
 };
 
 window.addSpecialDay = function() {
