@@ -4865,11 +4865,19 @@ function getSpecialDayColor(divisions) {
   return "#bbf7d0";
 }
 
+function inferSemesterFromIsoDate(isoDate) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(isoDate || ""))) return "sem1";
+  const month = Number.parseInt(String(isoDate).slice(5, 7), 10);
+  if (!Number.isFinite(month)) return "sem1";
+  // School year model: Aug-Dec => sem1, Jan-Jul => sem2.
+  return month >= 1 && month <= 7 ? "sem2" : "sem1";
+}
+
 const STATIC_SPECIAL_DAYS = STATIC_SPECIAL_DAY_ROWS.map(([date, divisions, label], index) => ({
   id: `static-special-${index + 1}`,
   date,
   divisions,
-  semesters: ["sem1"],
+  semesters: [inferSemesterFromIsoDate(date)],
   label,
   badgeText: getSpecialDayScopeBadge(divisions),
   color: getSpecialDayColor(divisions),
@@ -4880,9 +4888,12 @@ const STATIC_SPECIAL_DAYS = STATIC_SPECIAL_DAY_ROWS.map(([date, divisions, label
 
 function normalizeLetter(letter) {
   if (!letter) return null;
+  const normalized = String(letter).trim().toUpperCase();
   // A* → A, B* → B, etc.
-  if (letter.endsWith("*")) return letter[0];
-  return letter;
+  if (/^[A-Z]\*$/.test(normalized)) return normalized[0];
+  if (/^[A-Z]$/.test(normalized)) return normalized;
+  if (normalized === "OFF") return "OFF";
+  return null;
 }
 
 let currentMonthIndex = 0;
@@ -5297,25 +5308,49 @@ function getPeriodsForDate(date, letterLike) {
     return [];
   }
 
-  const overrides =
-    DIVISION_SPECIFIC_PERIOD_OVERRIDES[currentDivision]?.[currentSemester] || {};
-  if (overrides[date]) {
-    return overrides[date];
+  const semesterOverrides = DIVISION_SPECIFIC_PERIOD_OVERRIDES[currentDivision] || {};
+  const overrideSemesters = Array.from(new Set([
+    currentSemester,
+    inferSemesterFromIsoDate(date),
+    "sem1",
+    "sem2"
+  ]));
+  for (const semKey of overrideSemesters) {
+    const overrides = semesterOverrides?.[semKey] || {};
+    if (overrides[date]) {
+      return overrides[date];
+    }
   }
 
-  const fullPeriodDates =
-    DIVISION_SPECIFIC_ALL_PERIOD_DATES[currentDivision]?.[currentSemester] ||
-    new Set();
-  if (fullPeriodDates.has(date)) {
-    return getPeriodNumbers();
+  const semesterAllPeriodDates = DIVISION_SPECIFIC_ALL_PERIOD_DATES[currentDivision] || {};
+  for (const semKey of overrideSemesters) {
+    const fullPeriodDates = semesterAllPeriodDates?.[semKey] || new Set();
+    if (fullPeriodDates.has(date)) {
+      return getPeriodNumbers();
+    }
   }
 
+  const rotationRules = getCurrentRotationRules();
   const letter = normalizeLetter(letterLike);
-  if (!letter || letter === "OFF") {
+  if (letter === "OFF") {
     return [];
   }
 
-  return getCurrentRotationRules()[letter] || [];
+  if (letter && rotationRules[letter]) {
+    return rotationRules[letter];
+  }
+
+  // Safety fallback: if an override saved a non-instructional marker (e.g. "*"),
+  // use the underlying rotation letter for the date.
+  if (date) {
+    const baseDay = getCurrentRotationData().find(day => day.date === date);
+    const baseLetter = normalizeLetter(baseDay?.letter);
+    if (baseLetter && rotationRules[baseLetter]) {
+      return rotationRules[baseLetter];
+    }
+  }
+
+  return [];
 }
 
 function applyUnitSchedule(periodNum, periodUnits, showAlert = false) {
@@ -5509,54 +5544,88 @@ function getNextInstructionalDateAfter(startDate, rotationData = getCurrentRotat
   return null;
 }
 
-function getHsFamilyNightDates() {
+function getFamilyNightDates() {
   return STATIC_SPECIAL_DAYS
     .filter(day => day.semesters.includes(currentSemester))
     .filter(day => day.label.toLowerCase().includes("family night"))
-    .filter(day => day.divisions.includes("all") || day.divisions.includes("hs"))
+    .filter(day => day.divisions.includes("all") || day.divisions.includes(currentDivision))
     .map(day => day.date);
 }
-function getAutoNoTestSpecialDays() {
-  if (currentDivision !== "hs" || currentSemester !== "sem1") {
-    return [];
+
+function isVacationLikeLabel(label) {
+  if (!label) return false;
+  const value = String(label).toLowerCase();
+  return (
+    value.includes("break") ||
+    value.includes("holiday") ||
+    value.includes("vacation") ||
+    value.includes("no school")
+  );
+}
+
+function getFirstInstructionalDateForSemester(semesterKey) {
+  const config = getCurrentConfig();
+  const rotationData = config?.rotationData || {};
+
+  let semesterDays = Array.isArray(rotationData[semesterKey])
+    ? rotationData[semesterKey]
+    : [];
+
+  if (!semesterDays.length) {
+    const sem1Raw = Array.isArray(rotationData.sem1) ? rotationData.sem1 : [];
+    const sem2Raw = Array.isArray(rotationData.sem2) ? rotationData.sem2 : [];
+    if (sem1Raw.length && !sem2Raw.length) {
+      const split = splitSchoolYearIntoSemesters(sem1Raw);
+      semesterDays = split[semesterKey] || [];
+    }
   }
 
+  const firstInstructional = (semesterDays || []).find(day => isRotationDay(day?.letter));
+  return firstInstructional?.date || null;
+}
+
+function getAutoNoTestSpecialDays() {
   const rotationData = getCurrentRotationData();
   const dates = new Set();
+  const excludedFirstInstructionalDates = new Set(
+    ["sem1", "sem2"]
+      .map(sem => getFirstInstructionalDateForSemester(sem))
+      .filter(Boolean)
+  );
+
+  function addNoTestDateIfAllowed(date) {
+    if (!date) return;
+    if (excludedFirstInstructionalDates.has(date)) return;
+    dates.add(date);
+  }
 
   rotationData.forEach(day => {
     const label = String(day.letter || "").toLowerCase();
     if (label.includes("chapel")) return;
 
-    // Only after real holidays / breaks
-    if (label.includes("no school") || 
-        label.includes("holiday") || 
-        label.includes("thanksgiving") || 
-        label.includes("labor day") || 
-        label.includes("break") || 
-        label.includes("christmas") || 
-        label.includes("fall break")) {
-      
+    // Add no-test day on the first instructional day after a vacation/holiday block.
+    if (isVacationLikeLabel(label)) {
       const nextDate = getNextInstructionalDateAfter(day.date, rotationData);
-      if (nextDate) dates.add(nextDate);
+      addNoTestDateIfAllowed(nextDate);
     }
   });
 
-  // Only after Family Night
-  getHsFamilyNightDates().forEach(date => {
+  // Add no-test day after Family Night.
+  getFamilyNightDates().forEach(date => {
     const nextDate = getNextInstructionalDateAfter(date, rotationData);
-    if (nextDate) dates.add(nextDate);
+    addNoTestDateIfAllowed(nextDate);
   });
 
+  const scopeBadge = String(currentDivision || "all").toUpperCase();
   return Array.from(dates)
     .sort()
     .map((date, index) => ({
       id: `auto-no-test-${index + 1}`,
       date,
-      divisions: ["hs"],
+      divisions: [currentDivision],
       semesters: [currentSemester],
       label: "No Test Today",
-      badgeText: "HS",
+      badgeText: scopeBadge,
       color: "#bbf7d0",
       appliesTo: "day",
       periods: [],
