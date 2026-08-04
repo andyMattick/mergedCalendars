@@ -1518,6 +1518,9 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
         <button id="restoreBtn" class="secondary">Restore Data</button>
         <button id="setExternalBackupFileBtn" class="secondary">Set Auto Backup File</button>
         <button id="syncBackupNowBtn" class="secondary">Sync Backup Now</button>
+        <button type="button" id="linkSharedExportHtmlBtn" class="secondary">
+          Link shared HTML file
+        </button>
         <input id="restoreInput" type="file" accept=".json" style="display:none;">
         <select id="leftActions1" class="header-select">
         <option value="">Save / Restore / Print</option>
@@ -9405,6 +9408,38 @@ let externalBackupHandle = null;
 let externalBackupConfigured = false;
 let lastExternalBackupTime = null;
 let lastExternalBackupError = "";
+let sharedExportHtmlHandle = null;
+let sharedExportHtmlConfigured = false;
+const SHARED_EXPORT_HTML_HANDLE_KEY = "sharedExportHtmlHandle";
+
+function supportsSharedExportHtmlApi() {
+  return typeof window !== "undefined" && "showSaveFilePicker" in window;
+}
+
+async function saveSharedExportHtmlHandle(handle) {
+  const db = await openExternalBackupDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(EXTERNAL_BACKUP_STORE_NAME, "readwrite");
+    tx.objectStore(EXTERNAL_BACKUP_STORE_NAME).put(handle, SHARED_EXPORT_HTML_HANDLE_KEY);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error("Failed to save shared HTML handle"));
+  });
+  db.close();
+}
+
+async function loadSharedExportHtmlHandle() {
+  const db = await openExternalBackupDb();
+  const value = await new Promise((resolve, reject) => {
+    const tx = db.transaction(EXTERNAL_BACKUP_STORE_NAME, "readonly");
+    const req = tx.objectStore(EXTERNAL_BACKUP_STORE_NAME).get(SHARED_EXPORT_HTML_HANDLE_KEY);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error || new Error("Failed to load shared HTML handle"));
+  });
+  db.close();
+  return value;
+}
+
+
 
 function supportsExternalBackupApi() {
   return typeof window !== "undefined" && "showSaveFilePicker" in window;
@@ -9464,6 +9499,19 @@ async function getExternalBackupPermission(handle, allowPrompt) {
     return asked === "granted";
   } catch (e) {
     console.warn("Permission check failed", e);
+    return false;
+  }
+}
+
+async function getSharedExportHtmlPermission(handle, allowPrompt) {
+  if (!handle) return false;
+  if (typeof handle.queryPermission !== "function") return true;
+  try {
+    const current = await handle.queryPermission({ mode: "readwrite" });
+    if (current === "granted") return true;
+    if (!allowPrompt || typeof handle.requestPermission !== "function") return false;
+    return (await handle.requestPermission({ mode: "readwrite" })) === "granted";
+  } catch {
     return false;
   }
 }
@@ -9728,6 +9776,68 @@ if (backup.projectsBySemester && typeof backup.projectsBySemester === "object") 
   }
 }
 
+async function writeSharedExportHtml(htmlString, allowPrompt = false) {
+  if (!supportsSharedExportHtmlApi() || !sharedExportHtmlHandle) return false;
+
+  const granted = await getSharedExportHtmlPermission(sharedExportHtmlHandle, allowPrompt);
+  if (!granted) return false;
+
+  try {
+    const writable = await sharedExportHtmlHandle.createWritable();
+    await writable.write(htmlString);
+    await writable.close();
+    return true;
+  } catch (e) {
+    console.warn("Shared HTML export write failed", e);
+    return false;
+  }
+}
+
+async function configureSharedExportHtmlFile() {
+  if (!supportsSharedExportHtmlApi()) {
+    alert("Linking a shared HTML file needs Chrome or Edge on a computer.");
+    return;
+  }
+
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: "Multi-Division Rotation Planner.html",
+      types: [{
+        description: "HTML calendar",
+        accept: { "text/html": [".html", ".htm"] }
+      }]
+    });
+    if (!handle) return;
+
+    sharedExportHtmlHandle = handle;
+    sharedExportHtmlConfigured = true;
+    await saveSharedExportHtmlHandle(handle);
+
+    alert(
+      "Shared HTML file linked.\n\n" +
+      "Choose the file in your OneDrive folder:\n" +
+      "Andy's Lesson Plans\\Multi-Division Rotation Planner.html\n\n" +
+      "Each Print with Filters will overwrite that same file."
+    );
+  } catch (e) {
+    if (e?.name === "AbortError") return;
+    console.error(e);
+    alert("Could not link shared HTML file.");
+  }
+}
+
+async function initSharedExportHtmlHandle() {
+  if (!supportsSharedExportHtmlApi()) return;
+  try {
+    const saved = await loadSharedExportHtmlHandle();
+    if (!saved) return;
+    sharedExportHtmlHandle = saved;
+    sharedExportHtmlConfigured = true;
+  } catch (e) {
+    console.warn("No persisted shared HTML handle", e);
+  }
+}
+
 async function syncBackupNow({ showToast = true } = {}) {
   const currentDiv = currentDivision || "default";
   const backupKey = `autoBackup_${currentDiv}`;
@@ -9884,6 +9994,11 @@ document.getElementById("syncBackupNowBtn")?.addEventListener("click", () => {
     alert("Backup sync failed. Local autosave is still active.");
   });
 });
+
+
+document.getElementById("linkSharedExportHtmlBtn")
+  ?.addEventListener("click", () => configureSharedExportHtmlFile());
+  
 
 document.getElementById("backupBtn").addEventListener("click", () => {
   const currentDiv = currentDivision || "default";
@@ -10589,14 +10704,24 @@ function applyPrintFilters() {
   }
 
   html += `</body></html>`;
-
   const blob = new Blob([html], { type: "text/html" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `planner-filtered-${selectedDivisions.join("-")}.html`;
-  a.click();
-  URL.revokeObjectURL(url);
+
+  writeSharedExportHtml(html, true).then(wrote => {
+    if (wrote) {
+      closePrintFilterModal();
+      alert("Shared HTML file updated (OneDrive will sync the share link).");
+      return;
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `planner-filtered-${selectedDivisions.join("-")}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+    closePrintFilterModal();
+    alert("Downloaded HTML. Link a shared file first to overwrite OneDrive automatically.");
+  });
 
   closePrintFilterModal();
   alert("Filter applied successfully. Exported with your selected filters.");
@@ -10746,6 +10871,7 @@ async function init() {
   try {
     await initExternalBackupHandle();
     await restoreNewestAvailableBackupIfNeeded();
+    await initSharedExportHtmlHandle();
   } catch (e) {
     console.warn("Startup backup check failed", e);
   }
@@ -10773,8 +10899,6 @@ if (projectsToggle) {
     hydrateScheduleForm(); // → renderPeriodSlots
     renderKnownClasses();
 
-
-// call this in init()
 ensureExpandDaysButton();
 applyCycleColors();
 renderCycleColorPickers();
@@ -11267,6 +11391,7 @@ document.getElementById("nextMonthBtn")?.addEventListener("click", () => {
     if (value === "restore") document.getElementById("restoreBtn").click();
     if (value === "setExternalBackup") document.getElementById("setExternalBackupFileBtn")?.click();
     if (value === "syncBackupNow") document.getElementById("syncBackupNowBtn")?.click();
+    if (value === "linkSharedExportHtmlBtn") document.getElementById("linkSharedExportHtmlBtn")?.click();
     if (value === "print") document.getElementById("printCalendarBtn").click();
     if (value === "export") document.getElementById("exportTestsByClassBtn").click();
     e.target.value = ""; // reset
