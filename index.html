@@ -5526,7 +5526,9 @@ function getPeriodsForDate(date, letterLike) {
   if (date && typeof customDays === "object" && customDays[date]) {
     const cd = customDays[date];
     if (String(cd.letter || "").toUpperCase() === "OFF") return [];
-    if (Array.isArray(cd.periods)) {
+    // was: if (Array.isArray(cd.periods)) {
+if (Array.isArray(cd.periods) && cd.periods.length > 0) {
+    
       return cd.periods.map(Number).filter(n => n > 0);
     }
   }
