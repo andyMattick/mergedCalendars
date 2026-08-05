@@ -7614,6 +7614,15 @@ function openDayModal(day) {
   const specialEntries = getUnifiedSpecialDaysForDate(day.date);
 
   const periods = getPeriodsForDate(day.date, effectiveLetter);
+  console.log("modal", {
+  division: currentDivision,
+  date: day.date,
+  effectiveLetter,
+  override: typeof getCustomDayForDivision === "function"
+    ? getCustomDayForDivision(day.date)
+    : getCustomDay?.(day.date),
+  periods
+});
   const dayCounts = getDayCountsForDate(day.date, periods);
   const hasSchedulablePeriodsForTimes = periods.length > 0;
   const custom = customDays?.[day.date];
