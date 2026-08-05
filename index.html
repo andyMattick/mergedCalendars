@@ -1914,28 +1914,6 @@ function applyHoverAgendaPreference() {
   document.body.classList.toggle("hide-hover-agenda", hidden);
 }
 
-function updateSharedExportHtmlStatus() {
-  const status = document.getElementById("sharedExportHtmlStatus");
-  const btn = document.getElementById("linkSharedExportHtmlBtn");
-
-  if (sharedExportHtmlConfigured && sharedExportHtmlHandle) {
-    const name = sharedExportHtmlHandle.name || "shared HTML file";
-    if (status) {
-      status.textContent = `Linked: ${name}`;
-      status.style.color = "#059669";
-    }
-
-    if (btn) btn.textContent = "Change linked HTML file";
-  } else {
-    if (status) {
-      status.textContent = "No shared HTML file linked";
-      status.style.color = "#6b7280";
-    }
-    if (banner) banner.style.display = "none";
-    if (btn) btn.textContent = "Link shared HTML file";
-  }
-}
-
 function toggleHoverAgenda() {
   const currentlyHidden = localStorage.getItem("hideHoverAgenda") === "true";
   const nextHidden = !currentlyHidden;
@@ -2601,6 +2579,81 @@ function duplicateCurrentProfile() {
   showProfileToast?.(`Duplicated as "${name.trim()}"`);
 }
 
+/**
+ * Starter notes: keep general + noTest only.
+ * Drop period notes and test-/quiz- flags.
+ */
+function scrubNotesForStarter(notes) {
+  if (!notes || typeof notes !== "object") return {};
+
+  const out = {};
+
+  Object.keys(notes).forEach(date => {
+    const entry = notes[date];
+    if (!entry || typeof entry !== "object") return;
+
+    const next = {};
+
+    if (entry.general != null && String(entry.general).trim() !== "") {
+      next.general = entry.general;
+    }
+
+    if (entry.noTest === true) {
+      next.noTest = true;
+    }
+
+    if (Object.keys(next).length > 0) {
+      out[date] = next;
+    }
+  });
+
+  return out;
+}
+
+/**
+ * Build the data object for a shareable starter profile.
+ * KEEP: general notes, noTest, customDays, specialDays, bellTimesByDivision
+ * STRIP: period notes, class names, units, projects, knownClasses
+ */
+function buildStarterDataFromSource(sourceData) {
+  const src = sourceData && typeof sourceData === "object" ? sourceData : {};
+
+  const data = {
+    currentDivision: src.currentDivision || "hs",
+    currentSemester: src.currentSemester || "sem1",
+
+    // KEEP
+    customDays: JSON.parse(JSON.stringify(src.customDays || {})),
+    specialDays: JSON.parse(JSON.stringify(src.specialDays || [])),
+    notes: scrubNotesForStarter(src.notes),
+    bellTimesByDivision: JSON.parse(
+      JSON.stringify(
+        src.bellTimesByDivision ||
+          (typeof bellTimesByDivision !== "undefined" ? bellTimesByDivision : null) ||
+          (typeof BELL_DEFAULTS !== "undefined" ? BELL_DEFAULTS : {})
+      )
+    ),
+
+    // STRIP personal teaching content
+    teacherSchedule: {},
+    teacherScheduleBySemester: { sem1: {}, sem2: {} },
+    units: {},
+    unitsBySemester: { sem1: {}, sem2: {} },
+    projects: [],
+    projectsBySemester: { sem1: [], sem2: [] },
+    knownClasses: []
+  };
+
+  // Optional: preserve hidden special toggles if you use them
+  if (src.hiddenSpecialEntryKeys) {
+    data.hiddenSpecialEntryKeys = Array.isArray(src.hiddenSpecialEntryKeys)
+      ? [...src.hiddenSpecialEntryKeys]
+      : Array.from(src.hiddenSpecialEntryKeys || []);
+  }
+
+  return data;
+}
+
 function createShareableStarterCopy() {
   const profiles = getProfiles();
   const srcId = getCurrentProfileId();
@@ -2619,34 +2672,6 @@ function createShareableStarterCopy() {
   const sourceData = JSON.parse(JSON.stringify(source.data || {}));
   const starterDivision = sourceData.currentDivision || currentDivision || "hs";
 
-  function readSourceScheduleForSemester(semKey) {
-    const scheduleKey = semKey === "sem1" ? "teacherScheduleSem1" : "teacherScheduleSem2";
-    const storageKey = `${starterDivision}-${semKey}${scheduleKey}`;
-    try {
-      const raw = localStorage.getItem(storageKey);
-      if (!raw) return {};
-      const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === "object" ? parsed : {};
-    } catch {
-      return {};
-    }
-  }
-
-  const starterTeacherScheduleBySemester = {
-    sem1: readSourceScheduleForSemester("sem1"),
-    sem2: readSourceScheduleForSemester("sem2")
-  };
-
-  if (sourceData.teacherScheduleBySemester && typeof sourceData.teacherScheduleBySemester === "object") {
-    starterTeacherScheduleBySemester.sem1 =
-      sourceData.teacherScheduleBySemester.sem1 && typeof sourceData.teacherScheduleBySemester.sem1 === "object"
-        ? JSON.parse(JSON.stringify(sourceData.teacherScheduleBySemester.sem1))
-        : starterTeacherScheduleBySemester.sem1;
-    starterTeacherScheduleBySemester.sem2 =
-      sourceData.teacherScheduleBySemester.sem2 && typeof sourceData.teacherScheduleBySemester.sem2 === "object"
-        ? JSON.parse(JSON.stringify(sourceData.teacherScheduleBySemester.sem2))
-        : starterTeacherScheduleBySemester.sem2;
-  }
   const starterNotes = {};
   if (sourceData.notes && typeof sourceData.notes === "object") {
     Object.entries(sourceData.notes).forEach(([key, rawValue]) => {
@@ -2679,14 +2704,16 @@ function createShareableStarterCopy() {
     currentDivision: starterDivision,
     currentSemester: sourceData.currentSemester || currentSemester || "sem1",
     activePackId: source.activePackId || sourceData.activePackId || "builtin",
-    teacherSchedule: JSON.parse(JSON.stringify(
-      starterTeacherScheduleBySemester[sourceData.currentSemester || currentSemester || "sem1"] ||
-      sourceData.teacherSchedule ||
-      {}
-    )),
-    teacherScheduleBySemester: JSON.parse(JSON.stringify(starterTeacherScheduleBySemester)),
-    bellTimesByDivision: JSON.parse(JSON.stringify(sourceData.bellTimesByDivision || BELL_DEFAULTS)),
+
+    // KEEP: default times
+    bellTimesByDivision: JSON.parse(
+      JSON.stringify(sourceData.bellTimesByDivision || BELL_DEFAULTS)
+    ),
+
+    // KEEP: custom days / times
     customDays: JSON.parse(JSON.stringify(sourceData.customDays || {})),
+
+    // KEEP: special tags
     specialDays: Array.isArray(sourceData.specialDays)
       ? JSON.parse(JSON.stringify(sourceData.specialDays))
       : [],
@@ -2694,24 +2721,38 @@ function createShareableStarterCopy() {
       ? [...sourceData.hiddenSpecialEntryKeys]
       : [],
     hideAllSpecialTags: !!sourceData.hideAllSpecialTags,
-    notes: starterNotes, // general + noTest only (already filtered above)
-    knownClasses: Array.isArray(sourceData.knownClasses)
-      ? JSON.parse(JSON.stringify(sourceData.knownClasses))
-      : [],
-    classColors:
-      sourceData.classColors && typeof sourceData.classColors === "object"
-        ? JSON.parse(JSON.stringify(sourceData.classColors))
-        : {},
-    cycleColors: JSON.parse(JSON.stringify(sourceData.cycleColors || {})),
-    periodCount: Number(sourceData.periodCount) || 7,
-    // Explicit blanks for shareable starter
+
+    // KEEP: general notes + noTest only (starterNotes must already be scrubbed)
+    notes: starterNotes,
+
+    // STRIP: class names / schedule
+    teacherSchedule: {},
+    teacherScheduleBySemester: { sem1: {}, sem2: {} },
+
+    // STRIP: units & projects
     units: {},
-    projects: {}
+    unitsBySemester: { sem1: {}, sem2: {} },
+    projects: {},
+    projectsBySemester: { sem1: {}, sem2: {} },
+
+    // STRIP: class name lists / colors tied to personal classes
+    knownClasses: [],
+    classColors: {},
+
+    // Optional: keep cycle colors (UI only, not personal content)
+    cycleColors: JSON.parse(JSON.stringify(sourceData.cycleColors || {})),
+    periodCount: Number(sourceData.periodCount) || 7
   };
 
-  // Explicitly enforce blank units for shareable starters.
+  // Enforce blanks again (in case emptyProfileData() filled anything)
+  starterData.teacherSchedule = {};
+  starterData.teacherScheduleBySemester = { sem1: {}, sem2: {} };
   starterData.units = {};
+  starterData.unitsBySemester = { sem1: {}, sem2: {} };
   starterData.projects = {};
+  starterData.projectsBySemester = { sem1: {}, sem2: {} };
+  starterData.knownClasses = [];
+  starterData.classColors = {};
 
   const newId = generateProfileId();
   fresh[newId] = {
@@ -2732,52 +2773,33 @@ function createShareableStarterCopy() {
     applyProfileData(starterData);
   }
 
-    // Units are stored by division+semester keys; clear both semesters so starters stay blank.
-  const unitsKeySuffix = typeof LS_UNITS_KEY === "string" ? LS_UNITS_KEY : "-units";
-  const starterDivisionKey = starterData.currentDivision || "hs";
-  ["sem1", "sem2"].forEach(semKey => {
-    localStorage.setItem(`${starterDivisionKey}-${semKey}${unitsKeySuffix}`, JSON.stringify({}));
-  });
-
   units = {};
-  if (typeof saveUnits === "function") saveUnits();
   projects = {};
-  if (typeof saveProjects === "function") saveProjects();
+  teacherSchedule = {};
 
-  ["sem1", "sem2"].forEach(semKey => {
-    const scheduleKey = semKey === "sem1" ? "teacherScheduleSem1" : "teacherScheduleSem2";
-    const storageKey = `${starterDivisionKey}-${semKey}${scheduleKey}`;
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify(starterTeacherScheduleBySemester[semKey] || {})
-    );
-  });
-
-  units = {};
-  teacherSchedule = JSON.parse(
-    JSON.stringify(starterTeacherScheduleBySemester[starterData.currentSemester] || {})
-  );
-  if (typeof saveScheduleToStorage === "function") saveScheduleToStorage();
   if (typeof saveUnits === "function") saveUnits();
+  if (typeof saveProjects === "function") saveProjects();
+  if (typeof saveScheduleToStorage === "function") saveScheduleToStorage();
   if (typeof renderUnits === "function") renderUnits();
   if (typeof saveCurrentProfile === "function") saveCurrentProfile(false);
 
-  // Final guard: starter must not keep units
-  units = {};
-  projects = {};
-  if (typeof saveUnits === "function") saveUnits();
-  if (typeof saveProjects === "function") saveProjects();
   const profilesAfter = getProfiles();
   const starterId = getCurrentProfileId();
   if (profilesAfter[starterId]?.data) {
-    profilesAfter[starterId].data.projects = {}
     profilesAfter[starterId].data.units = {};
+    profilesAfter[starterId].data.projects = {};
+    profilesAfter[starterId].data.teacherSchedule = {};
+    profilesAfter[starterId].data.teacherScheduleBySemester = { sem1: {}, sem2: {} };
+    profilesAfter[starterId].data.knownClasses = [];
+    profilesAfter[starterId].data.classColors = {};
+    // keep notes / customDays / specialDays / bellTimesByDivision from starterData
     saveProfiles(profilesAfter);
   }
 
   if (typeof renderProfileSelector === "function") renderProfileSelector();
   showProfileToast?.(`Created shareable starter "${copyName.trim()}"`);
 }
+
 
 function saveCurrentProfile(showToast = false) {
   if (typeof getCurrentProfileId !== "function" || typeof getProfiles !== "function") {
@@ -9533,38 +9555,6 @@ let externalBackupHandle = null;
 let externalBackupConfigured = false;
 let lastExternalBackupTime = null;
 let lastExternalBackupError = "";
-let sharedExportHtmlHandle = null;
-let sharedExportHtmlConfigured = false;
-const SHARED_EXPORT_HTML_HANDLE_KEY = "sharedExportHtmlHandle";
-
-function supportsSharedExportHtmlApi() {
-  return typeof window !== "undefined" && "showSaveFilePicker" in window;
-}
-
-async function saveSharedExportHtmlHandle(handle) {
-  const db = await openExternalBackupDb();
-  await new Promise((resolve, reject) => {
-    const tx = db.transaction(EXTERNAL_BACKUP_STORE_NAME, "readwrite");
-    tx.objectStore(EXTERNAL_BACKUP_STORE_NAME).put(handle, SHARED_EXPORT_HTML_HANDLE_KEY);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error || new Error("Failed to save shared HTML handle"));
-  });
-  db.close();
-}
-
-async function loadSharedExportHtmlHandle() {
-  const db = await openExternalBackupDb();
-  const value = await new Promise((resolve, reject) => {
-    const tx = db.transaction(EXTERNAL_BACKUP_STORE_NAME, "readonly");
-    const req = tx.objectStore(EXTERNAL_BACKUP_STORE_NAME).get(SHARED_EXPORT_HTML_HANDLE_KEY);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = () => reject(req.error || new Error("Failed to load shared HTML handle"));
-  });
-  db.close();
-  return value;
-}
-
-
 
 function supportsExternalBackupApi() {
   return typeof window !== "undefined" && "showSaveFilePicker" in window;
@@ -9624,19 +9614,6 @@ async function getExternalBackupPermission(handle, allowPrompt) {
     return asked === "granted";
   } catch (e) {
     console.warn("Permission check failed", e);
-    return false;
-  }
-}
-
-async function getSharedExportHtmlPermission(handle, allowPrompt) {
-  if (!handle) return false;
-  if (typeof handle.queryPermission !== "function") return true;
-  try {
-    const current = await handle.queryPermission({ mode: "readwrite" });
-    if (current === "granted") return true;
-    if (!allowPrompt || typeof handle.requestPermission !== "function") return false;
-    return (await handle.requestPermission({ mode: "readwrite" })) === "granted";
-  } catch {
     return false;
   }
 }
@@ -9901,75 +9878,6 @@ if (backup.projectsBySemester && typeof backup.projectsBySemester === "object") 
   }
 }
 
-async function writeSharedExportHtml(htmlString, allowPrompt = false) {
-  if (!supportsSharedExportHtmlApi() || !sharedExportHtmlHandle) return false;
-
-  const granted = await getSharedExportHtmlPermission(sharedExportHtmlHandle, allowPrompt);
-  if (!granted) return false;
-
-  try {
-    const writable = await sharedExportHtmlHandle.createWritable();
-    await writable.write(htmlString);
-    await writable.close();
-    return true;
-  } catch (e) {
-    console.warn("Shared HTML export write failed", e);
-    return false;
-  }
-}
-
-async function configureSharedExportHtmlFile() {
-  if (!supportsSharedExportHtmlApi()) {
-    alert("Linking a shared HTML file needs Chrome or Edge on a computer.");
-    return;
-  }
-
-  try {
-    const handle = await window.showSaveFilePicker({
-      suggestedName: "Multi-Division Rotation Planner.html",
-      types: [{
-        description: "HTML calendar",
-        accept: { "text/html": [".html", ".htm"] }
-      }]
-    });
-    if (!handle) return;
-
-
-        sharedExportHtmlHandle = handle;
-    sharedExportHtmlConfigured = true;
-    await saveSharedExportHtmlHandle(handle);
-    updateSharedExportHtmlStatus();
-    alert(
-      "Shared HTML file linked.\n\n" +
-      "Each Print with Filters will overwrite that same file."
-    );
-
-  } catch (e) {
-    if (e?.name === "AbortError") return;
-    console.error("Failed to configure shared HTML file", e);
-    alert("Could not link shared HTML file.");}
-  
-}
-
-async function initSharedExportHtmlHandle() {
-  if (!supportsSharedExportHtmlApi()) {
-    updateSharedExportHtmlStatus();
-    return;
-  }
-  try {
-    const saved = await loadSharedExportHtmlHandle();
-    if (!saved) {
-      updateSharedExportHtmlStatus();
-      return;
-    }
-    sharedExportHtmlHandle = saved;
-    sharedExportHtmlConfigured = true;
-  } catch (e) {
-    console.warn("No persisted shared HTML handle", e);
-  }
-  updateSharedExportHtmlStatus();
-}
-
 async function syncBackupNow({ showToast = true } = {}) {
   const currentDiv = currentDivision || "default";
   const backupKey = `autoBackup_${currentDiv}`;
@@ -10127,10 +10035,6 @@ document.getElementById("syncBackupNowBtn")?.addEventListener("click", () => {
   });
 });
 
-
-document.getElementById("linkSharedExportHtmlBtn")
-  ?.addEventListener("click", () => configureSharedExportHtmlFile());
-  
 
 document.getElementById("backupBtn").addEventListener("click", () => {
   const currentDiv = currentDivision || "default";
@@ -10898,29 +10802,6 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
   const blob = new Blob([html], { type: "text/html" });
   const url = URL.createObjectURL(blob);
 
-  writeSharedExportHtml(html, true).then(wrote => {
-    // Always open a live preview tab
-    window.open(url, "_blank", "noopener,noreferrer");
-
-    // Keep blob URL alive briefly so the new tab can load
-    setTimeout(() => URL.revokeObjectURL(url), 60_000);
-
-    if (wrote) {
-      closePrintFilterModal();
-      alert("Shared HTML file updated and opened in a new tab.");
-      return;
-    }
-
-    // Fallback download if no linked file
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `planner-filtered-${selectedDivisions.join("-")}.html`;
-    a.click();
-
-    closePrintFilterModal();
-    alert("Opened in a new tab and downloaded. Link a shared HTML file to also overwrite OneDrive.");
-  });
-
   closePrintFilterModal();
   alert("Filter applied successfully. Exported with your selected filters.");
 }
@@ -11069,7 +10950,7 @@ async function init() {
   try {
     await initExternalBackupHandle();
     await restoreNewestAvailableBackupIfNeeded();
-    await initSharedExportHtmlHandle();
+    
   } catch (e) {
     console.warn("Startup backup check failed", e);
   }
@@ -11651,7 +11532,7 @@ document.getElementById("nextMonthBtn")?.addEventListener("click", () => {
     });
   }
   updateAppTitle();
-  updateSharedExportHtmlStatus();
+  
 }
 
 
