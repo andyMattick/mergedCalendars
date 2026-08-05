@@ -5526,9 +5526,7 @@ function getPeriodsForDate(date, letterLike) {
   if (date && typeof customDays === "object" && customDays[date]) {
     const cd = customDays[date];
     if (String(cd.letter || "").toUpperCase() === "OFF") return [];
-    // was: if (Array.isArray(cd.periods)) {
-if (Array.isArray(cd.periods) && cd.periods.length > 0) {
-    
+    if (Array.isArray(cd.periods)) {
       return cd.periods.map(Number).filter(n => n > 0);
     }
   }
@@ -7614,15 +7612,6 @@ function openDayModal(day) {
   const specialEntries = getUnifiedSpecialDaysForDate(day.date);
 
   const periods = getPeriodsForDate(day.date, effectiveLetter);
-  console.log("modal", {
-  division: currentDivision,
-  date: day.date,
-  effectiveLetter,
-  override: typeof getCustomDayForDivision === "function"
-    ? getCustomDayForDivision(day.date)
-    : getCustomDay?.(day.date),
-  periods
-});
   const dayCounts = getDayCountsForDate(day.date, periods);
   const hasSchedulablePeriodsForTimes = periods.length > 0;
   const custom = customDays?.[day.date];
@@ -10811,11 +10800,24 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
   }
 
   html += `</body></html>`;
-  const blob = new Blob([html], { type: "text/html" });
+
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
 
+  // Preview tab (same content as before)
+  window.open(url, "_blank", "noopener,noreferrer");
+
+  // Download to Downloads folder
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `planner-filtered-${selectedDivisions.join("-")}.html`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+
   closePrintFilterModal();
-  alert("Filter applied successfully. Exported with your selected filters.");
 }
 
 function isValidClassDayForPeriod(date, period) {
