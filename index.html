@@ -10563,7 +10563,7 @@ function populatePrintFilters(preferActiveCustom = false) {
 }
 
 function getDivisionDisplayName(divisionKey) {
-  if (divisionKey === "customActive") return "Active Custom Calendar";
+  if (divisionKey === "customActive") return "Custom Calendar is Active";
   return DIVISIONS[divisionKey]?.name || String(divisionKey || "").toUpperCase();
 }
 
