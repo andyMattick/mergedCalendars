@@ -5251,6 +5251,12 @@ const STATIC_SPECIAL_DAY_ROWS = [
   ["2027-05-21", ["all"], "Baccalaureate"],
 ];
 
+const exportTitle =
+  document.querySelector(".header-center h1")?.textContent?.trim() ||
+  (typeof getCurrentConfig === "function"
+    ? `${getCurrentConfig().name} Rotation Planner`
+    : "Rotation Planner");
+
 function getSpecialDayScopeBadge(divisions) {
   if (divisions.includes("all")) return "ALL";
   return (divisions[0] || "SD").toUpperCase();
@@ -9847,7 +9853,7 @@ async function configureSharedExportHtmlFile() {
 
   try {
     const handle = await window.showSaveFilePicker({
-      suggestedName: "Multi-Division Rotation Planner.html",
+      suggestedName: "Wesleyan 26-27 Planner.html",
       types: [{
         description: "HTML calendar",
         accept: { "text/html": [".html", ".htm"] }
@@ -11032,11 +11038,18 @@ function applyPrintFilters() {
       ? `grid-template-columns: repeat(${colCount}, minmax(0, 1fr));`
       : `grid-template-columns: 1fr;`;
 
-  let html = `
-    <html>
-    <head>
-      <title>Multi-Division Rotation Planner</title>
-      <style>
+  const exportTitle =
+    document.querySelector(".header-center h1")?.textContent?.trim() ||
+    (typeof getCurrentConfig === "function"
+      ? getCurrentConfig().name + " Rotation Planner"
+      : "Rotation Planner");
+
+  let html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>${exportTitle}</title>
+<style>
 * { box-sizing: border-box; }
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
@@ -11048,30 +11061,33 @@ body {
   color: #111827;
 }
 h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; }
-.meta { text-align: center; color: #6b7280; font-size: 0.9rem; margin-bottom: 18px; }
-
-.month-nav {
+.meta { text-align: center; color: #6b7280; font-size: 0.9rem; margin-bottom: 12px; }
+.month-jump-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   justify-content: center;
-  margin: 12px 0 20px;
-  padding: 10px;
-  background: #f3f4f6;
+  padding: 10px 12px;
+  margin: 0 0 16px;
+  background: rgba(243, 244, 246, 0.97);
+  border: 1px solid #e5e7eb;
   border-radius: 10px;
 }
-.month-nav a {
-  text-decoration: none;
-  color: #1e3a8a;
-  font-weight: 600;
-  font-size: 0.9rem;
+.month-jump-link {
+  display: inline-block;
   padding: 6px 12px;
   border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: #1e40af;
   background: #fff;
-  border: 1px solid #dbeafe;
+  border: 1px solid #bfdbfe;
 }
-.month-nav a:hover { background: #dbeafe; }
-
+.month-jump-link:hover { background: #dbeafe; }
 .month-block {
   margin-bottom: 18px;
   border: 1px solid #e5e7eb;
@@ -11091,7 +11107,6 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
 }
 .month-summary::-webkit-details-marker { display: none; }
 .month-body { padding: 12px 16px 4px; }
-
 .day {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
@@ -11101,12 +11116,7 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
   page-break-inside: avoid;
 }
 .day-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 8px; }
-
-.day-columns {
-  display: grid;
-  ${colCss}
-  gap: 12px;
-}
+.day-columns { display: grid; ${colCss} gap: 12px; }
 .day-col {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -11116,7 +11126,6 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
 }
 .day-col-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; }
 .day-col-empty { color: #6b7280; font-size: 0.88rem; font-style: italic; }
-
 .special {
   display: inline-block;
   background: #f3e8ff;
@@ -11151,44 +11160,32 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
 .badge-test { color: #b91c1c; font-weight: 700; }
 .badge-quiz { color: #1d4ed8; font-weight: 700; }
 .no-test { margin-top: 8px; color: #166534; font-weight: 600; font-size: 0.9rem; }
-
 @media (max-width: 800px) {
   .day-columns { grid-template-columns: 1fr !important; }
 }
 @media print {
-  .month-nav { display: none; }
-  details.month-block { break-inside: avoid; }
-  details.month-block[open] summary {
-    break-after: avoid;
-  }
+  .month-jump-sticky { display: none; }
+  .day { break-inside: avoid; background: #fff; }
 }
-      </style>
-    </head>
-    <body>
-      <h1>Multi-Division Rotation Planner</h1>
-      <p class="meta">Divisions: ${selectedDivisions.map(getDivisionDisplayName).join(", ")}</p>
-      <p class="meta">Generated ${new Date().toLocaleDateString()}</p>
-  `;
+</style>
+</head>
+<body>
+  <h1>${exportTitle}</h1>
+  <p class="meta">Divisions: ${selectedDivisions.map(getDivisionDisplayName).join(", ")}</p>
+  <p class="meta">Generated ${new Date().toLocaleDateString()}</p>
+`;
 
   let hasContent = false;
 
- activeMonthKeys.forEach((monthKey, monthIndex) => {
-    const openAttr = " open";
-    html += `<details class="month-block" id="month-${monthIndex}"${openAttr}>`;
+  html += `<div class="month-jump-sticky">`;
+  activeMonthKeys.forEach((key, i) => {
+    html += `<a class="month-jump-link" href="#month-${i}">${getMonthLabelFromKey(key)}</a>`;
+  });
+  html += `</div>`;
 
-    html += `<summary class="month-summary" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 16px;background:#eff6ff;border-bottom:1px solid #dbeafe;cursor:pointer;list-style:none;">`;
-    html += `<span style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">`;
-
-    activeMonthKeys.forEach((key, j) => {
-      const label = getMonthLabelFromKey(key);
-      if (j === monthIndex) {
-        html += `<span style="display:inline-block;padding:6px 12px;border-radius:999px;font-size:0.9rem;font-weight:600;background:#1e3a8a;color:#fff;border:1px solid #1e3a8a;">${label}</span>`;
-      } else {
-        html += `<a href="#month-${j}" style="display:inline-block;padding:6px 12px;border-radius:999px;font-size:0.9rem;font-weight:600;background:#fff;color:#1e40af;border:1px solid #bfdbfe;text-decoration:none;margin:0;">${label}</a>`;
-      }
-    });
-
-    html += `</span></summary>`;   // ← required
+  activeMonthKeys.forEach((monthKey, monthIndex) => {
+    html += `<details class="month-block" id="month-${monthIndex}" open>`;
+    html += `<summary class="month-summary">${getMonthLabelFromKey(monthKey)}</summary>`;
     html += `<div class="month-body">`;
 
     const dateSet = new Set();
@@ -11226,7 +11223,7 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
 
           html += `<div class="day-col-title">${getDivisionDisplayName(divisionKey)} (${entry.letterLabel})</div>`;
 
-          entry.specialLabels.forEach(label => {
+          (entry.specialLabels || []).forEach(label => {
             html += `<span class="special">${label}</span>`;
           });
 
@@ -11234,7 +11231,7 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
             html += `<div class="general-note"><strong>Day notes:</strong> ${entry.general}</div>`;
           }
 
-          entry.periodRows.forEach(row => {
+          (entry.periodRows || []).forEach(row => {
             html += `<div class="period">${row.line}`;
             if (row.topicName) {
               html += `<span class="note">Topic: ${
@@ -11261,8 +11258,7 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
           html += `</div>`;
         });
 
-        html += `</div>`;
-        html += `</div>`;
+        html += `</div></div>`;
         hasContent = true;
       });
 
@@ -11273,7 +11269,16 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
     html += `<p style="text-align:center;color:#666;font-style:italic;">No matching entries found for the selected filters.</p>`;
   }
 
-  html += `</body></html>`;
+  html += `
+<script>
+document.querySelectorAll(".month-jump-link").forEach(function (a) {
+  a.addEventListener("click", function () {
+    var el = document.getElementById((a.getAttribute("href") || "").slice(1));
+    if (el) el.open = true;
+  });
+});
+<\/script>
+</body></html>`;
 
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
@@ -11291,15 +11296,12 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
         document.body.appendChild(a);
         a.click();
         a.remove();
-
         if (!previewWin) {
           alert(
-            "HTML downloaded.\n\n" +
-              "Link a shared HTML file (Chrome/Edge) to auto-save to OneDrive next time."
+            "HTML downloaded.\\n\\nLink a shared HTML file (Chrome/Edge) to auto-save to OneDrive next time."
           );
         }
       }
-
       setTimeout(() => URL.revokeObjectURL(url), 60_000);
       closePrintFilterModal?.();
     })
@@ -11309,6 +11311,8 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
       closePrintFilterModal?.();
     });
 }
+
+
 function isValidClassDayForPeriod(date, period) {
   const rotationDay = getRotationDayByDate(date);
   if (!rotationDay) return false;
@@ -11666,24 +11670,40 @@ function groupAssessmentsByClass(events) {
   const byClass = {};
 
   events.forEach(event => {
-    let courseName = event.courseName || `Period ${event.periodNum}`;
+    const period = event.period ?? event.periodNum ?? event.p;
+    let courseName = event.courseName || `Period ${period}`;
     if (courseName.toLowerCase().includes("off") || courseName.trim() === "") {
-      courseName = `Period ${event.periodNum}`;
+      courseName = `Period ${period}`;
     }
 
-    const type = (event.isTest || event.unitInfo?.hasTestToday) ? "TEST" : "QUIZ";
-    const key = `${courseName} (P${event.periodNum})`;
+    const type =
+      event.isTest || event.unitInfo?.hasTestToday ? "TEST" : "QUIZ";
+    const classKey = `${courseName} (P${period})`;
 
-    if (!byClass[key]) byClass[key] = [];
+    if (!byClass[classKey]) byClass[classKey] = [];
 
-    // Only show unit name if it exists and is not the word "TEST"
-    const unitName = event.unitInfo?.unitName;
-    const unitPart = (unitName && unitName.toUpperCase() !== "TEST") ? ` - ${unitName}` : "";
+    const unitName = event.unitInfo?.unitName || event.unitName || "";
+    const unitPart =
+      unitName && unitName.toUpperCase() !== "TEST" ? ` - ${unitName}` : "";
+    const date = String(event.date || "").slice(0, 10);
+    const details = `${date}${unitPart}`;
 
-    byClass[key].push({
-      type,
-      details: `${event.date}${unitPart}`
-    });
+    // One row per class + type + date (prefer line that has a unit name)
+    const rowKey = `${type}|${date}`;
+    const existingIdx = byClass[classKey].findIndex(
+      item => item._rowKey === rowKey
+    );
+
+    if (existingIdx === -1) {
+      byClass[classKey].push({ type, details, _rowKey: rowKey, _hasUnit: !!unitPart });
+    } else if (unitPart && !byClass[classKey][existingIdx]._hasUnit) {
+      byClass[classKey][existingIdx] = {
+        type,
+        details,
+        _rowKey: rowKey,
+        _hasUnit: true
+      };
+    }
   });
 
   return byClass;
@@ -11700,23 +11720,42 @@ function buildAssessmentsHTML(byClass) {
   });
   return html;
 }
-window.applyExportFilters = function() {
+window.applyExportFilters = function () {
   const showQuiz = document.getElementById("filterQuiz").checked;
   const showTest = document.getElementById("filterTest").checked;
 
-  const filteredEvents = window.currentAssessmentEvents.filter(event => {
-    const isTest = event.isTest || event.unitInfo?.hasTestToday;
-    return (showTest && isTest) || (showQuiz && !isTest);
+  const normalized = (window.currentAssessmentEvents || []).map(event => {
+    const isTest = !!(
+      event.isTest ||
+      event.unitInfo?.hasTestToday ||
+      event.hasTestToday
+    );
+    const isQuiz = !!(
+      event.isQuiz ||
+      event.unitInfo?.hasQuizToday ||
+      event.hasQuizToday
+    );
+    return {
+      ...event,
+      date: String(event.date || "").slice(0, 10),
+      period: event.period ?? event.periodNum ?? event.p,
+      isTest,
+      isQuiz
+    };
   });
 
-  // One row per date + period + TEST/QUIZ (prefer entry with unit name)
+  const filteredEvents = normalized.filter(event => {
+    if (event.isTest) return showTest;
+    if (event.isQuiz) return showQuiz;
+    // bare row with no flags: treat as test if it was in the list as assessment
+    return showTest;
+  });
+
   const byKey = new Map();
   filteredEvents.forEach(event => {
-    const isTest = !!(event.isTest || event.unitInfo?.hasTestToday);
-    const kind = isTest ? "TEST" : "QUIZ";
-    const date = event.date;
-    const period = event.period ?? event.periodNum;
-    const key = `${date}|${period}|${kind}`;
+    const kind = event.isQuiz && !event.isTest ? "QUIZ" : "TEST";
+    const key = `${event.date}|${event.period}|${kind}`;
+
     const unitName =
       event.unitName ||
       event.unitInfo?.unitName ||
@@ -11734,14 +11773,14 @@ window.applyExportFilters = function() {
   });
 
   const dedupedEvents = Array.from(byKey.values());
-
   const byClass = groupAssessmentsByClass(dedupedEvents);
   const newHTML = buildAssessmentsHTML(byClass);
 
   const printableArea = document.getElementById("printableArea");
   if (printableArea) {
-    printableArea.innerHTML = `<h2>Assessments Overview</h2>
-      <p><strong>Total Assessments:</strong> ${dedupedEvents.length}</p><hr>${newHTML}`;
+    printableArea.innerHTML =
+      `<h2>Assessments Overview</h2>` +
+      `<p><strong>Total Assessments:</strong> ${dedupedEvents.length}</p><hr>${newHTML}`;
   }
 };
 
