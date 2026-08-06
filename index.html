@@ -5,6 +5,103 @@
   <title>HS Faculty Planner</title>
   <style>
 
+.month-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+  padding: 12px 16px;
+  background: #eff6ff;
+  border-bottom: 1px solid #dbeafe;
+}
+.month-summary::-webkit-details-marker { display: none; }
+
+.month-other-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;              /* space between months */
+  align-items: center;
+}
+
+.month-other-link {
+  display: inline-block;
+  text-decoration: none;
+  color: #1e40af;
+  background: #fff;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin: 0;             /* gap handles spacing */
+}
+
+.month-other-link:hover {
+  background: #dbeafe;
+}
+
+.month-other-link.current {
+  background: #1e3a8a;
+  border-color: #1e3a8a;
+  color: #fff;
+  cursor: default;
+  pointer-events: none;  /* not a link */
+}
+
+@media print {
+  .month-other-links { display: none; }
+}
+
+#monthNav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+#monthChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  flex: 1;
+}
+
+#monthChips .month-chip {
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.2;
+  min-height: 36px;
+  border: 1px solid #cbd5e1;
+  background: #e2e8f0;
+  color: #1e293b;
+  cursor: pointer;
+}
+
+#monthChips .month-chip:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+}
+
+#monthChips .month-chip.active {
+  background: #1e3a8a;
+  border-color: #1e3a8a;
+  color: #fff;
+}
+
+#prevMonthBtn,
+#nextMonthBtn {
+  padding: 8px 14px;
+  font-size: 0.95rem;
+  min-height: 36px;
+}
+
 .day-columns {
   display: grid;
   grid-template-columns: 1fr; /* fallback; months override to 2 cols */
@@ -1803,11 +1900,13 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
   </section>
 
   <section id="calendar">
-    <div id="monthNav" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-      <button id="prevMonthBtn" class="secondary">◀ Prev</button>
-      <h2 id="monthTitle"></h2>
-      <button id="nextMonthBtn" class="secondary">Next ▶</button>
-    </div>
+<section id="calendar">
+  <div id="monthNav" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; gap:0.5rem; flex-wrap:wrap;">
+    <button id="prevMonthBtn" class="secondary">◀ Prev</button>
+    <div id="monthChips" style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center; flex:1;"></div>
+    <button id="nextMonthBtn" class="secondary">Next ▶</button>
+  </div>
+  <h2 id="monthTitle" style="text-align:center; margin:0.25rem 0 0.75rem;"></h2>
 
     <!-- Weekday headers will be inserted by JS -->
     <div id="calendarGrid"></div>
@@ -1897,6 +1996,68 @@ function scheduleStorageKey() {
   return `plannerSchedule:${getPlannerContextId()}`;
 }
 
+function getSchoolYearMonthKeys() {
+  // Prefer months that actually exist in rotation data
+  const fromData = typeof getCurrentMonths === "function"
+    ? getCurrentMonths().map(
+        m => `${m.year}-${String(m.month).padStart(2, "0")}`
+      )
+    : [];
+
+  if (fromData.length) return fromData;
+
+  // Fallback: Aug → Jun for current school year start
+  const startYear = 2026; // or derive from first rotation date
+  return [
+    `${startYear}-08`, `${startYear}-09`, `${startYear}-10`, `${startYear}-11`, `${startYear}-12`,
+    `${startYear + 1}-01`, `${startYear + 1}-02`, `${startYear + 1}-03`,
+    `${startYear + 1}-04`, `${startYear + 1}-05`, `${startYear + 1}-06`
+  ];
+}
+
+function monthKeyToLabel(key) {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("en-US", {
+    month: "long",
+    year: "2-digit"
+  });
+}
+
+function goToMonthKey(monthKey) {
+  const months = getCurrentMonths();
+  const idx = months.findIndex(
+    m => `${m.year}-${String(m.month).padStart(2, "0")}` === monthKey
+  );
+  if (idx < 0) return;
+  currentMonthIndex = idx;
+  renderCalendar();
+  renderMonthChips(); // refresh active style
+}
+
+function renderMonthChips() {
+  const wrap = document.getElementById("monthChips");
+  if (!wrap) return;
+
+  const months = getCurrentMonths();
+  const current = months[currentMonthIndex];
+  const currentKey = current
+    ? `${current.year}-${String(current.month).padStart(2, "0")}`
+    : "";
+
+  const keys = getSchoolYearMonthKeys();
+  wrap.innerHTML = "";
+
+  keys.forEach(key => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "month-chip";
+    btn.textContent = monthKeyToLabel(key);
+    if (key === currentKey) btn.classList.add("active");
+    btn.addEventListener("click", () => goToMonthKey(key));
+    wrap.appendChild(btn);
+  });
+}
+
 function profileHasUnits() {
   if (typeof units === "undefined" || !units) return false;
   return Object.values(units).some(
@@ -1967,6 +2128,7 @@ function deleteSelectedPack() {
   refreshPackSelect();
   if (typeof usePack === "function") usePack("builtin");
   else renderCalendar();
+  
 }
 
 function persistProfileCalendar() {
@@ -3594,6 +3756,8 @@ const LS_ROTATION_2026 = [
   { date: "2026-12-29", letter: "Christmas Break - No School" },
   { date: "2026-12-30", letter: "Christmas Break - No School" },
   { date: "2026-12-31", letter: "Christmas Break - No School" },
+
+
   { date: "2027-01-01", letter: "Christmas Break - No School" },
   { date: "2027-01-02", letter: "Christmas Break - No School" },
   { date: "2027-01-03", letter: "Christmas Break - No School" },
@@ -7393,6 +7557,9 @@ function renderCalendar() {
     });
 
     monthGrid.appendChild(cell);
+    if (typeof renderMonthChips === "function") {
+    renderMonthChips();
+  }
   }
 
   calendarRoot.appendChild(monthGrid);
@@ -10258,17 +10425,26 @@ function populatePrintFilters(preferActiveCustom = false) {
   const periodFilters = document.getElementById("printPeriodFilters");
   const monthFilters = document.getElementById("printMonthFilters");
 
+  if (!divisionFilters || !unitFilter || !periodFilters || !monthFilters) return;
+
   const selectedUnit = unitFilter.value;
   const selectedPeriods = new Set(
-    Array.from(periodFilters.querySelectorAll('input[type="checkbox"]:checked')).map(input => input.value)
+    Array.from(periodFilters.querySelectorAll('input[type="checkbox"]:checked')).map(
+      input => input.value
+    )
   );
   const selectedMonths = new Set(
-    Array.from(monthFilters.querySelectorAll('input[type="checkbox"]:checked')).map(input => input.value)
+    Array.from(monthFilters.querySelectorAll('input[type="checkbox"]:checked')).map(
+      input => input.value
+    )
   );
 
   const selectedDivisions = new Set(
-    Array.from(divisionFilters.querySelectorAll('input[type="checkbox"]:checked')).map(input => input.value)
+    Array.from(divisionFilters.querySelectorAll('input[type="checkbox"]:checked')).map(
+      input => input.value
+    )
   );
+
   if (preferActiveCustom && activePackId && activePackId !== "builtin") {
     selectedDivisions.clear();
     selectedDivisions.add("customActive");
@@ -10276,49 +10452,114 @@ function populatePrintFilters(preferActiveCustom = false) {
     if (activePackId && activePackId !== "builtin") selectedDivisions.add("customActive");
     else selectedDivisions.add(currentDivision);
   }
+
   const activeDivisions = Array.from(selectedDivisions);
 
-  const monthKeys = getMonthKeysForDivisions(activeDivisions);
-  const currentMonths = getCurrentMonths();
-  const currentMonthKey = currentMonths[currentMonthIndex]
-    ? `${currentMonths[currentMonthIndex].year}-${String(currentMonths[currentMonthIndex].month).padStart(2, "0")}`
-    : "";
+  // --- Month keys from the same rotation data the calendar uses (sem1 / sem2) ---
+  function monthKeysFromDays(days) {
+    const keys = new Set();
+    (days || []).forEach(day => {
+      if (day && typeof day.date === "string" && day.date.length >= 7) {
+        keys.add(day.date.slice(0, 7));
+      }
+    });
+    return [...keys].sort();
+  }
 
-  const unitNames = getUnitNamesForDivisions(activeDivisions);
-  const periodNumbers = getMaxPeriodsForDivisions(activeDivisions);
+  let monthKeys = [];
+
+  if (activeDivisions.includes("customActive") && activePackId && activePackId !== "builtin") {
+    const pack = typeof savedPacks !== "undefined"
+      ? savedPacks.find(p => p.id === activePackId)
+      : null;
+    monthKeys = monthKeysFromDays(pack?.days);
+  } else {
+    const snapDivision = currentDivision;
+    const snapPack = activePackId;
+    const keySet = new Set();
+
+    activeDivisions.forEach(divisionKey => {
+      if (divisionKey === "customActive") return;
+      currentDivision = divisionKey;
+      activePackId = "builtin";
+      monthKeysFromDays(
+        typeof getCurrentRotationData === "function" ? getCurrentRotationData() : []
+      ).forEach(k => keySet.add(k));
+    });
+
+    currentDivision = snapDivision;
+    activePackId = snapPack;
+    monthKeys = [...keySet].sort();
+  }
+
+  if (!monthKeys.length && typeof getMonthKeysForDivisions === "function") {
+    monthKeys = getMonthKeysForDivisions(activeDivisions) || [];
+  }
+
+  const unitNames =
+    typeof getUnitNamesForDivisions === "function"
+      ? getUnitNamesForDivisions(activeDivisions)
+      : [];
+  const periodNumbers =
+    typeof getMaxPeriodsForDivisions === "function"
+      ? getMaxPeriodsForDivisions(activeDivisions)
+      : [];
 
   const divisionChoices = [...Object.keys(DIVISIONS)];
-  if (activePackId && activePackId !== "builtin") divisionChoices.unshift("customActive");
+  if (activePackId && activePackId !== "builtin") {
+    divisionChoices.unshift("customActive");
+  }
 
-  divisionFilters.innerHTML = divisionChoices.map(divisionKey => {
-    const checked = activeDivisions.includes(divisionKey) ? "checked" : "";
-    return `<label class="check-row"><input type="checkbox" value="${divisionKey}" ${checked}> ${getDivisionDisplayName(divisionKey)}</label>`;
-  }).join("");
+  divisionFilters.innerHTML = divisionChoices
+    .map(divisionKey => {
+      const checked = activeDivisions.includes(divisionKey) ? "checked" : "";
+      return `<label class="check-row"><input type="checkbox" value="${divisionKey}" ${checked}> ${getDivisionDisplayName(divisionKey)}</label>`;
+    })
+    .join("");
 
   divisionFilters.querySelectorAll('input[type="checkbox"]').forEach(input => {
     input.addEventListener("change", () => {
-      const anyChecked = divisionFilters.querySelector('input[type="checkbox"]:checked');
-      if (!anyChecked) {
-        input.checked = true;
-      }
+      const anyChecked = divisionFilters.querySelector(
+        'input[type="checkbox"]:checked'
+      );
+      if (!anyChecked) input.checked = true;
       populatePrintFilters();
     });
   });
 
-  unitFilter.innerHTML = `<option value="">All units</option>${unitNames.map(name => `<option value="${name}">${name}</option>`).join("")}`;
+  unitFilter.innerHTML =
+    `<option value="">All units</option>` +
+    unitNames.map(name => `<option value="${name}">${name}</option>`).join("");
   unitFilter.value = selectedUnit;
 
-  periodFilters.innerHTML = periodNumbers.map(periodNum => {
-    return `<label class="check-row"><input type="checkbox" value="${periodNum}" ${selectedPeriods.size === 0 || selectedPeriods.has(String(periodNum)) ? "checked" : ""}> Period ${periodNum}</label>`;
-  }).join("");
+  periodFilters.innerHTML = periodNumbers
+    .map(periodNum => {
+      const checked =
+        selectedPeriods.size === 0 || selectedPeriods.has(String(periodNum))
+          ? "checked"
+          : "";
+      return `<label class="check-row"><input type="checkbox" value="${periodNum}" ${checked}> Period ${periodNum}</label>`;
+    })
+    .join("");
 
-  monthFilters.innerHTML = monthKeys.map(monthKey => {
-    const monthLabel = getMonthLabelFromKey(monthKey);
-    const shouldCheck = selectedMonths.size
-      ? selectedMonths.has(monthKey)
-      : monthKey === currentMonthKey;
-    return `<label class="check-row"><input type="checkbox" value="${monthKey}" ${shouldCheck ? "checked" : ""}> ${monthLabel}</label>`;
-  }).join("");
+  // Default: all months in this semester checked (not only the current month)
+  monthFilters.innerHTML = monthKeys
+    .map(monthKey => {
+      const monthLabel =
+        typeof getMonthLabelFromKey === "function"
+          ? getMonthLabelFromKey(monthKey)
+          : monthKey;
+      const shouldCheck = selectedMonths.size
+        ? selectedMonths.has(monthKey)
+        : true;
+      return `<label class="check-row"><input type="checkbox" value="${monthKey}" ${shouldCheck ? "checked" : ""}> ${monthLabel}</label>`;
+    })
+    .join("");
+
+  if (!monthKeys.length) {
+    monthFilters.innerHTML =
+      '<span class="small" style="color:#6b7280;">No months for this semester.</span>';
+  }
 }
 
 function getDivisionDisplayName(divisionKey) {
@@ -10931,18 +11172,23 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
 
   let hasContent = false;
 
-  html += `<nav class="month-nav">`;
-  activeMonthKeys.forEach((monthKey, i) => {
-    html += `<a href="#month-${i}">${getMonthLabelFromKey(monthKey)}</a>${
-      i < activeMonthKeys.length - 1 ? " " : ""
-    }`;
-  });
-  html += `</nav>`;
-
-  activeMonthKeys.forEach((monthKey, monthIndex) => {
+ activeMonthKeys.forEach((monthKey, monthIndex) => {
     const openAttr = " open";
     html += `<details class="month-block" id="month-${monthIndex}"${openAttr}>`;
-    html += `<summary class="month-summary">${getMonthLabelFromKey(monthKey)}</summary>`;
+
+    html += `<summary class="month-summary" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 16px;background:#eff6ff;border-bottom:1px solid #dbeafe;cursor:pointer;list-style:none;">`;
+    html += `<span style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">`;
+
+    activeMonthKeys.forEach((key, j) => {
+      const label = getMonthLabelFromKey(key);
+      if (j === monthIndex) {
+        html += `<span style="display:inline-block;padding:6px 12px;border-radius:999px;font-size:0.9rem;font-weight:600;background:#1e3a8a;color:#fff;border:1px solid #1e3a8a;">${label}</span>`;
+      } else {
+        html += `<a href="#month-${j}" style="display:inline-block;padding:6px 12px;border-radius:999px;font-size:0.9rem;font-weight:600;background:#fff;color:#1e40af;border:1px solid #bfdbfe;text-decoration:none;margin:0;">${label}</a>`;
+      }
+    });
+
+    html += `</span></summary>`;   // ← required
     html += `<div class="month-body">`;
 
     const dateSet = new Set();
@@ -11454,23 +11700,48 @@ function buildAssessmentsHTML(byClass) {
   });
   return html;
 }
-
 window.applyExportFilters = function() {
   const showQuiz = document.getElementById("filterQuiz").checked;
   const showTest = document.getElementById("filterTest").checked;
 
   const filteredEvents = window.currentAssessmentEvents.filter(event => {
-    const isTest = event.isTest || event.unitInfo.hasTestToday;
+    const isTest = event.isTest || event.unitInfo?.hasTestToday;
     return (showTest && isTest) || (showQuiz && !isTest);
   });
 
-  const byClass = groupAssessmentsByClass(filteredEvents);
+  // One row per date + period + TEST/QUIZ (prefer entry with unit name)
+  const byKey = new Map();
+  filteredEvents.forEach(event => {
+    const isTest = !!(event.isTest || event.unitInfo?.hasTestToday);
+    const kind = isTest ? "TEST" : "QUIZ";
+    const date = event.date;
+    const period = event.period ?? event.periodNum;
+    const key = `${date}|${period}|${kind}`;
+    const unitName =
+      event.unitName ||
+      event.unitInfo?.unitName ||
+      event.unitInfo?.name ||
+      "";
+
+    const prev = byKey.get(key);
+    if (!prev) {
+      byKey.set(key, event);
+      return;
+    }
+    const prevName =
+      prev.unitName || prev.unitInfo?.unitName || prev.unitInfo?.name || "";
+    if (!prevName && unitName) byKey.set(key, event);
+  });
+
+  const dedupedEvents = Array.from(byKey.values());
+
+  const byClass = groupAssessmentsByClass(dedupedEvents);
   const newHTML = buildAssessmentsHTML(byClass);
 
   const printableArea = document.getElementById("printableArea");
   if (printableArea) {
     printableArea.innerHTML = `<h2>Assessments Overview</h2>
-      <p><strong>Total Assessments:</strong> ${filteredEvents.length}</p><hr>${newHTML}`;
+      <p><strong>Total Assessments:</strong> ${dedupedEvents.length}</p><hr>${newHTML}`;
   }
 };
 
