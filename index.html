@@ -1523,6 +1523,10 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
         <button id="backupBtn" class="secondary">Backup Data</button>
         <button id="restoreBtn" class="secondary">Restore Data</button>
         <button id="setExternalBackupFileBtn" class="secondary">Set Auto Backup File</button>
+        <button type="button" id="linkSharedExportHtmlBtn" class="secondary">
+          Link shared HTML file
+        </button>
+<span id="sharedExportHtmlStatus" class="small" style="margin-left:8px;"></span>
         <button id="syncBackupNowBtn" class="secondary">Sync Backup Now</button>
      
         <input id="restoreInput" type="file" accept=".json" style="display:none;">
@@ -9557,6 +9561,14 @@ let externalBackupConfigured = false;
 let lastExternalBackupTime = null;
 let lastExternalBackupError = "";
 
+let sharedExportHtmlHandle = null;
+let sharedExportHtmlConfigured = false;
+const SHARED_EXPORT_HTML_HANDLE_KEY = "sharedExportHtmlHandle";
+
+function supportsSharedExportHtmlApi() {
+  return typeof window !== "undefined" && "showSaveFilePicker" in window;
+}
+
 function supportsExternalBackupApi() {
   return typeof window !== "undefined" && "showSaveFilePicker" in window;
 }
@@ -9577,6 +9589,134 @@ function openExternalBackupDb() {
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error || new Error("Failed to open backup DB"));
   });
+}
+
+async function saveSharedExportHtmlHandle(handle) {
+  const db = await openExternalBackupDb();
+  await new Promise((resolve, reject) => {
+    const tx = db.transaction(EXTERNAL_BACKUP_STORE_NAME, "readwrite");
+    tx.objectStore(EXTERNAL_BACKUP_STORE_NAME).put(handle, SHARED_EXPORT_HTML_HANDLE_KEY);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error || new Error("Failed to save shared HTML handle"));
+  });
+  db.close();
+}
+
+async function loadSharedExportHtmlHandle() {
+  const db = await openExternalBackupDb();
+  const value = await new Promise((resolve, reject) => {
+    const tx = db.transaction(EXTERNAL_BACKUP_STORE_NAME, "readonly");
+    const req = tx.objectStore(EXTERNAL_BACKUP_STORE_NAME).get(SHARED_EXPORT_HTML_HANDLE_KEY);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error || new Error("Failed to load shared HTML handle"));
+  });
+  db.close();
+  return value;
+}
+
+async function getSharedExportHtmlPermission(handle, allowPrompt) {
+  if (!handle) return false;
+  if (typeof handle.queryPermission !== "function") return true;
+  try {
+    const current = await handle.queryPermission({ mode: "readwrite" });
+    if (current === "granted") return true;
+    if (!allowPrompt || typeof handle.requestPermission !== "function") return false;
+    return (await handle.requestPermission({ mode: "readwrite" })) === "granted";
+  } catch {
+    return false;
+  }
+}
+
+async function writeSharedExportHtml(htmlString, allowPrompt = false) {
+  if (!supportsSharedExportHtmlApi() || !sharedExportHtmlHandle) return false;
+  if (!htmlString || htmlString.length < 500) return false;
+
+  const granted = await getSharedExportHtmlPermission(sharedExportHtmlHandle, allowPrompt);
+  if (!granted) return false;
+
+  try {
+    const writable = await sharedExportHtmlHandle.createWritable();
+    await writable.write(htmlString);
+    await writable.close();
+    return true;
+  } catch (e) {
+    console.warn("Shared HTML export write failed", e);
+    return false;
+  }
+}
+
+async function configureSharedExportHtmlFile() {
+  if (!supportsSharedExportHtmlApi()) {
+    alert("Linking a shared HTML file needs Chrome or Edge on a computer.");
+    return;
+  }
+
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: "Multi-Division Rotation Planner.html",
+      types: [{
+        description: "HTML calendar",
+        accept: { "text/html": [".html", ".htm"] }
+      }],
+      excludeAcceptAllOption: true
+    });
+    if (!handle) return;
+
+    if (handle.name && !/\.html?$/i.test(handle.name)) {
+      alert(`Please choose a .html file (got "${handle.name}").`);
+      return;
+    }
+
+    sharedExportHtmlHandle = handle;
+    sharedExportHtmlConfigured = true;
+    await saveSharedExportHtmlHandle(handle);
+    updateSharedExportHtmlStatus?.();
+
+    alert(
+      "Shared HTML file linked.\n\n" +
+      "Print with Filters will overwrite this file (e.g. in OneDrive)."
+    );
+  } catch (e) {
+    if (e?.name === "AbortError") return;
+    console.error(e);
+    alert("Could not link shared HTML file.");
+  }
+}
+
+async function initSharedExportHtmlHandle() {
+  if (!supportsSharedExportHtmlApi()) {
+    updateSharedExportHtmlStatus?.();
+    return;
+  }
+  try {
+    const saved = await loadSharedExportHtmlHandle();
+    if (saved) {
+      sharedExportHtmlHandle = saved;
+      sharedExportHtmlConfigured = true;
+    }
+  } catch (e) {
+    console.warn("No persisted shared HTML handle", e);
+  }
+  updateSharedExportHtmlStatus?.();
+}
+
+function updateSharedExportHtmlStatus() {
+  const status = document.getElementById("sharedExportHtmlStatus");
+  const btn = document.getElementById("linkSharedExportHtmlBtn");
+  if (sharedExportHtmlConfigured && sharedExportHtmlHandle) {
+    const name = sharedExportHtmlHandle.name || "shared HTML file";
+    if (status) {
+      status.textContent = `Linked: ${name}`;
+      status.style.color = "#059669";
+    }
+    if (btn) btn.textContent = "Change linked HTML file";
+  } else {
+    if (status) {
+      status.textContent = "No shared HTML file linked";
+      status.style.color = "#6b7280";
+    }
+    if (btn) btn.textContent = "Link shared HTML file";
+  }
 }
 
 async function saveExternalBackupHandle(handle) {
@@ -10029,6 +10169,9 @@ document.getElementById("setExternalBackupFileBtn")?.addEventListener("click", (
   configureExternalBackupFile();
 });
 
+document.getElementById("linkSharedExportHtmlBtn")
+  ?.addEventListener("click", () => configureSharedExportHtmlFile());
+
 document.getElementById("syncBackupNowBtn")?.addEventListener("click", () => {
   syncBackupNow({ showToast: true }).catch(err => {
     console.error("Manual sync failed", err);
@@ -10439,7 +10582,10 @@ function initCollapsibleSections() {
 
   applyState();
 }
+
 function applyPrintFilters() {
+  const previewWin = window.open("about:blank", "_blank");
+
   const selectedUnitText = document.getElementById("printUnitFilter").value.toLowerCase().trim();
   const selectedDivisions = Array.from(
     document.querySelectorAll('#printDivisionFilters input[type="checkbox"]:checked')
@@ -10452,6 +10598,7 @@ function applyPrintFilters() {
   ).map(input => input.value);
 
   if (!selectedDivisions.length) {
+    if (previewWin) previewWin.close();
     alert("Select at least one division.");
     return;
   }
@@ -10548,12 +10695,54 @@ function applyPrintFilters() {
             letterLabel: schoolDay.letter || day.letter || "No classes",
             specialLabels: specialEntries.map(entry => entry.label),
             general: hasGeneral
-              ? (typeof noteToHtml === "function" ? noteToHtml(dayNotes.general) : dayNotes.general)
+              ? typeof noteToHtml === "function"
+                ? noteToHtml(dayNotes.general)
+                : dayNotes.general
               : "",
             periodRows,
             noTest: !!dayNotes.noTest
           };
         });
+      });
+
+      // Every calendar day in selected months (weekends + pre-school)
+      activeMonthKeys.forEach(monthKey => {
+        const [yStr, mStr] = monthKey.split("-");
+        const y = Number(yStr);
+        const m = Number(mStr);
+        const lastDay = new Date(y, m, 0).getDate();
+
+        for (let dayNum = 1; dayNum <= lastDay; dayNum++) {
+          const date = `${yStr}-${mStr}-${String(dayNum).padStart(2, "0")}`;
+          if (byDate[date]) continue;
+
+          const dayNotes = loadNotesForDate(date);
+          const hasGeneralNote =
+            dayNotes && dayNotes.general && String(dayNotes.general).trim();
+          const specialEntriesExtra =
+            typeof getUnifiedSpecialDaysForDate === "function"
+              ? getUnifiedSpecialDaysForDate(date)
+              : [];
+
+          if (!hasGeneralNote && !dayNotes?.noTest && !specialEntriesExtra.length) {
+            continue;
+          }
+
+          byDate[date] = {
+            weekdayName: new Date(date + "T12:00:00").toLocaleDateString("en-US", {
+              weekday: "long"
+            }),
+            letterLabel: "No classes",
+            specialLabels: specialEntriesExtra.map(entry => entry.label),
+            general: hasGeneralNote
+              ? typeof noteToHtml === "function"
+                ? noteToHtml(dayNotes.general)
+                : dayNotes.general
+              : "",
+            periodRows: [],
+            noTest: !!dayNotes.noTest
+          };
+        }
       });
 
       divisionEntries[divisionKey] = byDate;
@@ -10569,13 +10758,11 @@ function applyPrintFilters() {
     bellTimesByDivision = JSON.parse(JSON.stringify(stateSnapshot.bellTimesByDivision || {}));
   }
 
-const colCount = Math.max(1, selectedDivisions.length);
-const colCss = colCount > 1
-  ? `grid-template-columns: repeat(${colCount}, minmax(0, 1fr));`
-  : `grid-template-columns: 1fr;`;
-
-// inside the html template:
-
+  const colCount = Math.max(1, selectedDivisions.length);
+  const colCss =
+    colCount > 1
+      ? `grid-template-columns: repeat(${colCount}, minmax(0, 1fr));`
+      : `grid-template-columns: 1fr;`;
 
   let html = `
     <html>
@@ -10701,9 +10888,13 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
   .day-columns { grid-template-columns: 1fr !important; }
 }
 @media print {
-  body { margin: 12px; max-width: none; }
-  .day { break-inside: avoid; background: #fff; }
-}      </style>
+  .month-nav { display: none; }
+  details.month-block { break-inside: avoid; }
+  details.month-block[open] summary {
+    break-after: avoid;
+  }
+}
+      </style>
     </head>
     <body>
       <h1>Multi-Division Rotation Planner</h1>
@@ -10715,12 +10906,14 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
 
   html += `<nav class="month-nav">`;
   activeMonthKeys.forEach((monthKey, i) => {
-    html += `<a href="#month-${i}">${getMonthLabelFromKey(monthKey)}</a>${i < activeMonthKeys.length - 1 ? " " : ""}`;
+    html += `<a href="#month-${i}">${getMonthLabelFromKey(monthKey)}</a>${
+      i < activeMonthKeys.length - 1 ? " " : ""
+    }`;
   });
   html += `</nav>`;
 
   activeMonthKeys.forEach((monthKey, monthIndex) => {
-    const openAttr = monthIndex === 0 ? " open" : "";
+    const openAttr = " open";
     html += `<details class="month-block" id="month-${monthIndex}"${openAttr}>`;
     html += `<summary class="month-summary">${getMonthLabelFromKey(monthKey)}</summary>`;
     html += `<div class="month-body">`;
@@ -10732,65 +10925,73 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
       });
     });
 
-    Array.from(dateSet).sort().forEach(date => {
-      const anyEntry = selectedDivisions.some(divisionKey => !!divisionEntries[divisionKey]?.[date]);
-      if (!anyEntry) return;
+    Array.from(dateSet)
+      .sort()
+      .forEach(date => {
+        const anyEntry = selectedDivisions.some(
+          divisionKey => !!divisionEntries[divisionKey]?.[date]
+        );
+        if (!anyEntry) return;
 
-      const weekdayName = new Date(date + "T12:00:00").toLocaleDateString("en-US", { weekday: "long" });
-      html += `<div class="day">`;
-      html += `<div class="day-title">${date} - ${weekdayName}</div>`;
-      html += `<div class="day-columns">`;
-
-      selectedDivisions.forEach(divisionKey => {
-        const entry = divisionEntries[divisionKey]?.[date] || null;
-        html += `<div class="day-col">`;
-
-        if (!entry) {
-          html += `<div class="day-col-title">${getDivisionDisplayName(divisionKey)}</div>`;
-          html += `<div class="day-col-empty">No matching entries.</div>`;
-          html += `</div>`;
-          return;
-        }
-
-        html += `<div class="day-col-title">${getDivisionDisplayName(divisionKey)} (${entry.letterLabel})</div>`;
-
-        entry.specialLabels.forEach(label => {
-          html += `<span class="special">${label}</span>`;
+        const weekdayName = new Date(date + "T12:00:00").toLocaleDateString("en-US", {
+          weekday: "long"
         });
+        html += `<div class="day">`;
+        html += `<div class="day-title">${date} - ${weekdayName}</div>`;
+        html += `<div class="day-columns">`;
 
-        if (entry.general) {
-          html += `<div class="general-note"><strong>Day notes:</strong> ${entry.general}</div>`;
-        }
+        selectedDivisions.forEach(divisionKey => {
+          const entry = divisionEntries[divisionKey]?.[date] || null;
+          html += `<div class="day-col">`;
 
-        entry.periodRows.forEach(row => {
-          html += `<div class="period">${row.line}`;
-          if (row.topicName) {
-            html += `<span class="note">Topic: ${typeof noteToHtml === "function" ? noteToHtml(row.topicName) : row.topicName}</span>`;
+          if (!entry) {
+            html += `<div class="day-col-title">${getDivisionDisplayName(divisionKey)}</div>`;
+            html += `<div class="day-col-empty">No matching entries.</div>`;
+            html += `</div>`;
+            return;
           }
-          if (row.note) {
-            html += `<span class="note">Note: ${
-              typeof noteToHtml === "function" ? noteToHtml(row.note) : row.note
-            }</span>`;
+
+          html += `<div class="day-col-title">${getDivisionDisplayName(divisionKey)} (${entry.letterLabel})</div>`;
+
+          entry.specialLabels.forEach(label => {
+            html += `<span class="special">${label}</span>`;
+          });
+
+          if (entry.general) {
+            html += `<div class="general-note"><strong>Day notes:</strong> ${entry.general}</div>`;
           }
-          if (row.isTest) {
-            html += ` <span class="badge-test">(TEST)</span>`;
-          } else if (row.isQuiz) {
-            html += ` <span class="badge-quiz">(QUIZ)</span>`;
+
+          entry.periodRows.forEach(row => {
+            html += `<div class="period">${row.line}`;
+            if (row.topicName) {
+              html += `<span class="note">Topic: ${
+                typeof noteToHtml === "function" ? noteToHtml(row.topicName) : row.topicName
+              }</span>`;
+            }
+            if (row.note) {
+              html += `<span class="note">Note: ${
+                typeof noteToHtml === "function" ? noteToHtml(row.note) : row.note
+              }</span>`;
+            }
+            if (row.isTest) {
+              html += ` <span class="badge-test">(TEST)</span>`;
+            } else if (row.isQuiz) {
+              html += ` <span class="badge-quiz">(QUIZ)</span>`;
+            }
+            html += `</div>`;
+          });
+
+          if (entry.noTest) {
+            html += `<div class="no-test">NO TEST TODAY</div>`;
           }
+
           html += `</div>`;
         });
-
-        if (entry.noTest) {
-          html += `<div class="no-test">NO TEST TODAY</div>`;
-        }
 
         html += `</div>`;
+        html += `</div>`;
+        hasContent = true;
       });
-
-      html += `</div>`;
-      html += `</div>`;
-      hasContent = true;
-    });
 
     html += `</div></details>`;
   });
@@ -10804,22 +11005,37 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
 
-  // Preview tab (same content as before)
-  window.open(url, "_blank", "noopener,noreferrer");
+  if (previewWin) {
+    previewWin.location.href = url;
+  }
 
-  // Download to Downloads folder
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `planner-filtered-${selectedDivisions.join("-")}.html`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+  writeSharedExportHtml(html, true)
+    .then(wrote => {
+      if (!wrote) {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `planner-filtered-${selectedDivisions.join("-")}.html`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
 
-  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        if (!previewWin) {
+          alert(
+            "HTML downloaded.\n\n" +
+              "Link a shared HTML file (Chrome/Edge) to auto-save to OneDrive next time."
+          );
+        }
+      }
 
-  closePrintFilterModal();
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      closePrintFilterModal?.();
+    })
+    .catch(err => {
+      console.warn(err);
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      closePrintFilterModal?.();
+    });
 }
-
 function isValidClassDayForPeriod(date, period) {
   const rotationDay = getRotationDayByDate(date);
   if (!rotationDay) return false;
@@ -10958,11 +11174,13 @@ function ensureExpandDaysButton() {
 
 // --- Init ---
 async function init() {
+
   applyHoverAgendaPreference()
   ensureDefaultProfile();
 
   try {
     await initExternalBackupHandle();
+    await initSharedExportHtmlHandle();
     await restoreNewestAvailableBackupIfNeeded();
     
   } catch (e) {
@@ -12097,7 +12315,7 @@ setInterval(() => {
 
 <div id="profileToast"></div>
 
-
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 </body>
 </html>
 
