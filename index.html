@@ -5530,9 +5530,9 @@ function getPeriodsForDate(date, letterLike) {
   if (date && typeof customDays === "object" && customDays[date]) {
     const cd = customDays[date];
     if (String(cd.letter || "").toUpperCase() === "OFF") return [];
-    if (Array.isArray(cd.periods)) {
-      return cd.periods.map(Number).filter(n => n > 0);
-    }
+      if (Array.isArray(cd.periods) && cd.periods.length > 0) {
+  return cd.periods.map(Number).filter(n => n > 0);
+}
   }
 
   const pack = typeof getActivePack === "function" ? getActivePack() : null;
@@ -5542,7 +5542,7 @@ function getPeriodsForDate(date, letterLike) {
     const d = pack.days.find(x => x.date === date);
     if (d) {
       if (String(d.letter || "").toUpperCase() === "OFF") return [];
-      if (Array.isArray(d.periods)) {
+      if (Array.isArray(d.periods) && d.periods.length > 0) {
         return d.periods.map(Number).filter(n => n > 0);
       }
     }
@@ -7926,11 +7926,18 @@ function handleSaveNotes() {
   // Built-in special schedule (which periods meet)
   if (!getActivePack || !getActivePack()) {
     const ssEnabled = document.getElementById("modalSpecialScheduleEnabled")?.checked;
-    if (ssEnabled) {
+  if (ssEnabled) {
       const periods = Array.from(
         document.querySelectorAll(".modal-ss-period-cb:checked")
-      ).map(el => Number(el.value));
-      setSpecialSchedule(currentModalDay.date, periods);
+      )
+        .map(el => Number(el.value))
+        .filter(n => n > 0);
+
+      if (periods.length) {
+        setSpecialSchedule(currentModalDay.date, periods);
+      } else if (typeof clearSpecialSchedule === "function") {
+        clearSpecialSchedule(currentModalDay.date);
+      }
     } else if (
       typeof hasSpecialSchedule === "function" &&
       hasSpecialSchedule(currentModalDay.date)
@@ -7938,6 +7945,7 @@ function handleSaveNotes() {
       clearSpecialSchedule(currentModalDay.date);
     }
   }
+  
   // Custom pack: letter + optional period limit
   if (typeof getActivePack === "function" && getActivePack()) {
     const pack = getActivePack();
@@ -8217,15 +8225,34 @@ function setSpecialSchedule(date, periods, label = "Special Schedule") {
   if (!date) return;
 
   const existing = customDays[date] || {};
+  const cleaned = (periods || []).map(Number).filter(n => n > 0);
+
+  // Don't store an empty override — that hides all periods
+  if (!cleaned.length) {
+    if (Object.prototype.hasOwnProperty.call(existing, "periods")) {
+      delete existing.periods;
+      if (!existing.letter && !existing.label && !existing.slotTimes && !existing.slotTimesByDivision) {
+        delete customDays[date];
+      } else {
+        customDays[date] = existing;
+      }
+      saveCustomDays();
+    }
+    return;
+  }
+
   const letter =
     existing.letter && String(existing.letter).toUpperCase() !== "OFF"
       ? existing.letter
-      : (getRotationDayByDate(date)?.letter || "SPECIAL");
+      : getCurrentRotationData().find(d => d.date === date)?.letter ||
+        existing.letter ||
+        "SPECIAL";
 
   customDays[date] = {
+    ...existing, // keep slotTimes, division, etc.
     letter,
     label: label || existing.label || "Special Schedule",
-    periods: (periods || []).map(Number).filter(n => n > 0)
+    periods: cleaned
   };
   saveCustomDays();
 }
