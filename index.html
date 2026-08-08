@@ -1617,13 +1617,10 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
       
       <div class="header-left">
 
-        <button id="backupBtn" class="secondary">Backup Data</button>
+        
         <button id="restoreBtn" class="secondary">Restore Data</button>
-        <button id="setExternalBackupFileBtn" class="secondary">Set Auto Backup File</button>
-        <button type="button" id="linkSharedExportHtmlBtn" class="secondary">
-          Link shared HTML file
-        </button>
-<span id="sharedExportHtmlStatus" class="small" style="margin-left:8px;"></span>
+
+        
         <button id="syncBackupNowBtn" class="secondary">Sync Backup Now</button>
      
         <input id="restoreInput" type="file" accept=".json" style="display:none;">
@@ -1631,9 +1628,8 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
         <option value="">Save / Restore / Print</option>
         <option value="backup">Backup Data</option>
         <option value="restore">Restore Data</option>
-        <option value="setExternalBackup">Set Auto Backup File</option>
         <option value="syncBackupNow">Sync Backup Now</option>
-        <option value="print">Print with Filters</option>
+        <option value="print">Print / Sync HTML</option>
         <option value="export">Export Tests/Quizzes</option>
       </select>
 
@@ -1688,11 +1684,29 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
             <label><input type="radio" name="semester" value="sem2"> 2nd</label>
           </div>
         </div>
+                <button id="setExternalBackupFileBtn" class="secondary">Set Auto Backup File</button>
+        <div class="backup-file-row" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:8px 0;">
+  <button type="button" id="linkExternalBackupBtn" class="secondary">
+    Set auto backup file
+  </button>
+  <span id="externalBackupStatus" class="small" style="color:#6b7280;">
+    No auto backup file linked
+  </span>
+</div>
+
+<div class="backup-file-row" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:8px 0;">
+  <button type="button" id="linkSharedExportHtmlBtn" class="secondary">
+    Link shared HTML file
+  </button>
+  <span id="sharedExportHtmlStatus" class="small" style="color:#6b7280;">
+    No shared HTML file linked
+  </span>
+</div>
 
       </div>
 
       <div class="header-right">
-        <button id="printCalendarBtn" class="secondary">Print with Filters</button>
+        <button id="printCalendarBtn" class="secondary">Print / Sync HTML</button>
         <button id="exportTestsByClassBtn" class="secondary">Export Tests/Quizzes by Class</button>
       <button id="darkModeToggle" class="secondary">Dark Mode</button>
       <button id="mobileViewBtn" class="secondary">Mobile View</button>
@@ -4260,6 +4274,14 @@ function loadProfile(id) {
     showProfileToast(`Loaded ${profileName} on ${calendarLabel}`);
   }
 
+    // after applyProfileData / renders...
+  if (typeof refreshLinkedFileHandles === "function") {
+    refreshLinkedFileHandles();
+  } else {
+    initSharedExportHtmlHandle?.();
+    initExternalBackupHandle?.();
+  }
+
   return true;
 }
 function emptyProfileData() {
@@ -5260,6 +5282,19 @@ const exportTitle =
 function getSpecialDayScopeBadge(divisions) {
   if (divisions.includes("all")) return "ALL";
   return (divisions[0] || "SD").toUpperCase();
+}
+
+function getExternalBackupHandleKey(profileId) {
+  const id =
+    profileId ||
+    (typeof getCurrentProfileId === "function" && getCurrentProfileId()) ||
+    "default";
+  return `externalBackupHandle:${id}`;
+}
+
+function getSharedExportHtmlHandleKey(profileId) {
+  const id = profileId || (typeof getCurrentProfileId === "function" && getCurrentProfileId()) || "default";
+  return `sharedExportHtmlHandle:${id}`;
 }
 
 function getSpecialDayColor(divisions) {
@@ -9791,29 +9826,30 @@ function openExternalBackupDb() {
   });
 }
 
-async function saveSharedExportHtmlHandle(handle) {
+async function saveSharedExportHtmlHandle(handle, profileId) {
+  const key = getSharedExportHtmlHandleKey(profileId);
   const db = await openExternalBackupDb();
   await new Promise((resolve, reject) => {
     const tx = db.transaction(EXTERNAL_BACKUP_STORE_NAME, "readwrite");
-    tx.objectStore(EXTERNAL_BACKUP_STORE_NAME).put(handle, SHARED_EXPORT_HTML_HANDLE_KEY);
+    tx.objectStore(EXTERNAL_BACKUP_STORE_NAME).put(handle, key);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error || new Error("Failed to save shared HTML handle"));
   });
   db.close();
 }
 
-async function loadSharedExportHtmlHandle() {
+async function loadSharedExportHtmlHandle(profileId) {
+  const key = getSharedExportHtmlHandleKey(profileId);
   const db = await openExternalBackupDb();
   const value = await new Promise((resolve, reject) => {
     const tx = db.transaction(EXTERNAL_BACKUP_STORE_NAME, "readonly");
-    const req = tx.objectStore(EXTERNAL_BACKUP_STORE_NAME).get(SHARED_EXPORT_HTML_HANDLE_KEY);
+    const req = tx.objectStore(EXTERNAL_BACKUP_STORE_NAME).get(key);
     req.onsuccess = () => resolve(req.result || null);
     req.onerror = () => reject(req.error || new Error("Failed to load shared HTML handle"));
   });
   db.close();
   return value;
 }
-
 async function getSharedExportHtmlPermission(handle, allowPrompt) {
   if (!handle) return false;
   if (typeof handle.queryPermission !== "function") return true;
@@ -9869,12 +9905,15 @@ async function configureSharedExportHtmlFile() {
 
     sharedExportHtmlHandle = handle;
     sharedExportHtmlConfigured = true;
-    await saveSharedExportHtmlHandle(handle);
+    await saveSharedExportHtmlHandle(
+      handle,
+      typeof getCurrentProfileId === "function" ? getCurrentProfileId() : "default"
+    );
     updateSharedExportHtmlStatus?.();
 
     alert(
       "Shared HTML file linked.\n\n" +
-      "Print with Filters will overwrite this file (e.g. in OneDrive)."
+        "Print / Sync HTML will overwrite this file (e.g. in OneDrive)."
     );
   } catch (e) {
     if (e?.name === "AbortError") return;
@@ -9884,12 +9923,20 @@ async function configureSharedExportHtmlFile() {
 }
 
 async function initSharedExportHtmlHandle() {
+  const profileId =
+    typeof getCurrentProfileId === "function" ? getCurrentProfileId() : "default";
+
+  sharedExportHtmlHandle = null;
+  sharedExportHtmlConfigured = false;
+
   if (!supportsSharedExportHtmlApi()) {
     updateSharedExportHtmlStatus?.();
     return;
   }
+
   try {
-    const saved = await loadSharedExportHtmlHandle();
+    const saved = await loadSharedExportHtmlHandle(profileId);
+    
     if (saved) {
       sharedExportHtmlHandle = saved;
       sharedExportHtmlConfigured = true;
@@ -9897,7 +9944,58 @@ async function initSharedExportHtmlHandle() {
   } catch (e) {
     console.warn("No persisted shared HTML handle", e);
   }
+
   updateSharedExportHtmlStatus?.();
+}
+
+async function loadExternalBackupHandle(profileId) {
+  const key = getExternalBackupHandleKey(profileId);
+  console.log("LOAD backup key", key);
+
+  const db = await openExternalBackupDb();
+  const value = await new Promise((resolve, reject) => {
+    const tx = db.transaction(EXTERNAL_BACKUP_STORE_NAME, "readonly");
+    const req = tx.objectStore(EXTERNAL_BACKUP_STORE_NAME).get(key);
+    req.onsuccess = () => resolve(req.result || null);
+    req.onerror = () => reject(req.error);
+  });
+  db.close();
+
+  console.log(
+    "LOAD backup result",
+    profileId,
+    value ? value.name : null,
+    "configured →",
+    !!value
+  );
+
+  return value;
+}
+
+async function refreshLinkedFileHandles() {
+  if (typeof initSharedExportHtmlHandle === "function") {
+    await initSharedExportHtmlHandle();
+  }
+  if (typeof initExternalBackupHandle === "function") {
+    await initExternalBackupHandle();
+  }
+}
+
+function updateExternalBackupStatus() {
+  const status = document.getElementById("externalBackupStatus");
+  const btn = document.getElementById("linkExternalBackupBtn");
+  if (!status) return;
+
+  if (externalBackupConfigured && externalBackupHandle) {
+    const name = externalBackupHandle.name || "backup file";
+    status.textContent = `Linked: ${name}`;
+    status.style.color = "#059669";
+    if (btn) btn.textContent = "Change auto backup file";
+  } else {
+    status.textContent = "No auto backup file linked";
+    status.style.color = "#6b7280";
+    if (btn) btn.textContent = "Set auto backup file";
+  }
 }
 
 function updateSharedExportHtmlStatus() {
@@ -9919,29 +10017,18 @@ function updateSharedExportHtmlStatus() {
   }
 }
 
-async function saveExternalBackupHandle(handle) {
+async function saveExternalBackupHandle(handle, profileId) {
+  const key = getExternalBackupHandleKey(profileId);
+  console.log("SAVE backup key", key, "file", handle?.name);
+
   const db = await openExternalBackupDb();
   await new Promise((resolve, reject) => {
     const tx = db.transaction(EXTERNAL_BACKUP_STORE_NAME, "readwrite");
-    const store = tx.objectStore(EXTERNAL_BACKUP_STORE_NAME);
-    store.put(handle, EXTERNAL_BACKUP_HANDLE_KEY);
+    tx.objectStore(EXTERNAL_BACKUP_STORE_NAME).put(handle, key);
     tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error || new Error("Failed to save backup handle"));
+    tx.onerror = () => reject(tx.error);
   });
   db.close();
-}
-
-async function loadExternalBackupHandle() {
-  const db = await openExternalBackupDb();
-  const value = await new Promise((resolve, reject) => {
-    const tx = db.transaction(EXTERNAL_BACKUP_STORE_NAME, "readonly");
-    const store = tx.objectStore(EXTERNAL_BACKUP_STORE_NAME);
-    const req = store.get(EXTERNAL_BACKUP_HANDLE_KEY);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = () => reject(req.error || new Error("Failed to load backup handle"));
-  });
-  db.close();
-  return value;
 }
 
 async function getExternalBackupPermission(handle, allowPrompt) {
@@ -10336,11 +10423,21 @@ async function configureExternalBackupFile() {
 
     externalBackupHandle = handle;
     externalBackupConfigured = true;
-    await saveExternalBackupHandle(handle);
 
+    // per-profile save
+await saveExternalBackupHandle(
+  handle,
+  typeof getCurrentProfileId === "function" ? getCurrentProfileId() : "default"
+);
+updateExternalBackupStatus?.();
+  updateAutoBackupStatusText?.();
+
+    // then your existing first write / alerts...
     const snapshot = buildBackupSnapshot();
     const wrote = await writeExternalBackupSnapshot(snapshot, true);
+    
     if (wrote) {
+      showProfileToast?.(`Auto backup file: ${handle.name}`);
       alert("External auto-backup file set. Future autosaves will overwrite this file every 5 minutes.");
     } else {
       alert("Backup file selected, but write permission is not currently granted. Local autosave will continue.");
@@ -10353,16 +10450,30 @@ async function configureExternalBackupFile() {
 }
 
 async function initExternalBackupHandle() {
-  if (!supportsExternalBackupApi()) return;
+  const profileId =
+    typeof getCurrentProfileId === "function" ? getCurrentProfileId() : "default";
+
+  externalBackupHandle = null;
+  externalBackupConfigured = false;
+
+  if (!supportsExternalBackupApi()) {
+    updateExternalBackupStatus?.();
+    updateAutoBackupStatusText?.();
+    return;
+  }
+
   try {
-    const savedHandle = await loadExternalBackupHandle();
-    if (!savedHandle) return;
-    externalBackupHandle = savedHandle;
-    externalBackupConfigured = true;
-    updateAutoBackupStatusText();
+    const saved = await loadExternalBackupHandle(profileId);
+    if (saved) {
+      externalBackupHandle = saved;
+      externalBackupConfigured = true;
+    }
   } catch (e) {
     console.warn("No persisted external backup handle", e);
   }
+
+  updateExternalBackupStatus?.();
+  updateAutoBackupStatusText?.();
 }
 
 document.getElementById("setExternalBackupFileBtn")?.addEventListener("click", () => {
@@ -10380,20 +10491,6 @@ document.getElementById("syncBackupNowBtn")?.addEventListener("click", () => {
 });
 
 
-document.getElementById("backupBtn").addEventListener("click", () => {
-  const currentDiv = currentDivision || "default";
-  const backup = buildBackupSnapshot();
-
-  const dataStr = JSON.stringify(backup, null, 2);
-  const linkElement = document.createElement('a');
-  linkElement.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-  linkElement.download = `hs-planner-backup-${currentDiv}-${new Date().toISOString().slice(0,10)}.json`;
-  document.body.appendChild(linkElement);
-  linkElement.click();
-  document.body.removeChild(linkElement);
-
-  alert(`✅ Backup created for ${currentDiv}!`);
-});
 
 document.getElementById("restoreBtn").addEventListener("click", () => {
   const input = document.createElement("input");
@@ -10681,109 +10778,252 @@ function populateNewUserProfileChoices() {
   );
   const currentId = typeof getCurrentProfileId === "function" ? getCurrentProfileId() : "";
 
-  const options = ['<option value="">Keep current profile</option>'];
-  profiles.forEach(p => {
+  const options = [
+    '<option value="">Keep current profile</option>',
+    '<option value="__new_blank__">+ Create new blank profile…</option>'
+  ];
+   
+profiles.forEach(p => {
+    if (!p?.id) return;
     const selected = p.id === currentId ? "selected" : "";
-    options.push(`<option value="${p.id}" ${selected}>${p.name}</option>`);
+    const name = String(p.name || "Profile").replace(/</g, "&lt;");
+    options.push(`<option value="${p.id}" ${selected}>${name}</option>`);
   });
+
   sel.innerHTML = options.join("");
+}
+
+function showNewUserWorking(msg) {
+  let el = document.getElementById("newUserWorkingOverlay");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "newUserWorkingOverlay";
+    el.style.cssText = [
+      "position:fixed",
+      "inset:0",
+      "z-index:99999",
+      "display:flex",
+      "align-items:center",
+      "justify-content:center",
+      "background:rgba(15,23,42,0.45)",
+      "color:#fff",
+      "font:600 1.05rem system-ui,sans-serif",
+      "text-align:center",
+      "padding:24px"
+    ].join(";");
+    document.body.appendChild(el);
+  }
+  el.textContent = msg || "Setting up your profile…";
+  el.style.display = "flex";
+}
+
+function hideNewUserWorking() {
+  const el = document.getElementById("newUserWorkingOverlay");
+  if (el) el.style.display = "none";
+}
+
+function showNewUserWorking(msg) {
+  let el = document.getElementById("newUserWorkingOverlay");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "newUserWorkingOverlay";
+    el.style.cssText = [
+      "position:fixed",
+      "inset:0",
+      "z-index:99999",
+      "display:flex",
+      "align-items:center",
+      "justify-content:center",
+      "background:rgba(15,23,42,0.45)",
+      "color:#fff",
+      "font:600 1.05rem system-ui,sans-serif",
+      "text-align:center",
+      "padding:24px"
+    ].join(";");
+    document.body.appendChild(el);
+  }
+  el.textContent = msg || "Setting up…";
+  el.style.display = "flex";
+}
+
+function hideNewUserWorking() {
+  const el = document.getElementById("newUserWorkingOverlay");
+  if (el) el.style.display = "none";
 }
 
 function applyNewUserSetup() {
   const profileId = document.getElementById("newUserProfileSelect")?.value || "";
-  if (profileId && typeof loadProfile === "function") {
-    const loaded = loadProfile(profileId);
-    if (!loaded) {
-      alert("Could not load the selected profile.");
-      return;
-    }
+
+  // Prompt first (needs user gesture; before overlay)
+  let newBlankName = null;
+  if (profileId === "__new_blank__") {
+    newBlankName = prompt("Name for your new profile?", "My Planner");
+    if (!newBlankName || !newBlankName.trim()) return;
   }
 
-  const selected = document.querySelector('input[name="newUserCalendarType"]:checked')?.value || "default";
+  const workingMsg =
+    profileId === "__new_blank__"
+      ? "Creating your blank profile…"
+      : profileId
+        ? "Loading profile…"
+        : "Applying setup…";
 
-  if (selected === "default") {
-    const division = document.getElementById("newUserDivision")?.value || "hs";
-    const semester = document.getElementById("newUserSemester")?.value || "sem1";
+  showNewUserWorking(workingMsg);
 
-    const divisionSelect = document.getElementById("divisionSelector") || document.getElementById("divisionSelect");
-    if (divisionSelect) {
-      divisionSelect.value = division;
-      divisionSelect.dispatchEvent(new Event("change", { bubbles: true }));
-    } else {
-      currentDivision = division;
-      localStorage.setItem("currentDivision", currentDivision);
-    }
+  // Paint overlay, then do heavy work
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      try {
+        if (profileId === "__new_blank__") {
+          if (typeof saveCurrentProfile === "function") {
+            saveCurrentProfile(false);
+          }
+          if (typeof createProfile !== "function") {
+            alert("Create profile is not available.");
+            return;
+          }
+          createProfile(newBlankName.trim(), "teacher", false);
+          showProfileToast?.(
+            `Created blank profile "${newBlankName.trim()}"`
+          );
+        } else if (profileId) {
+          if (typeof loadProfile !== "function") {
+            alert("Could not load the selected profile.");
+            return;
+          }
+          const loaded = loadProfile(profileId);
+          if (!loaded) {
+            alert("Could not load the selected profile.");
+            return;
+          }
+        }
 
-    const semesterSelect = document.getElementById("semesterSelector") || document.getElementById("semesterSelect");
-    if (semesterSelect) {
-      semesterSelect.value = semester;
-      semesterSelect.dispatchEvent(new Event("change", { bubbles: true }));
-    } else {
-      currentSemester = semester;
-      localStorage.setItem("currentSemester", currentSemester);
-    }
+        showNewUserWorking("Applying calendar setup…");
 
-    if (typeof usePack === "function") {
-      usePack("builtin");
-    } else {
-      activePackId = "builtin";
-      if (typeof savePackLibrary === "function") savePackLibrary();
-    }
+        const selected =
+          document.querySelector(
+            'input[name="newUserCalendarType"]:checked'
+          )?.value || "default";
 
-    if (typeof closeHelp === "function") closeHelp();
-    showProfileToast?.("Default Wesleyan calendar applied.");
-    return;
-  }
+        if (selected === "default") {
+          const division =
+            document.getElementById("newUserDivision")?.value || "hs";
+          const semester =
+            document.getElementById("newUserSemester")?.value || "sem1";
 
-  const map = [
-    ["newUserPackName", "packName"],
-    ["newUserPackStart", "packStart"],
-    ["newUserPackEnd", "packEnd"],
-    ["newUserPackLetters", "packLetters"],
-    ["newUserPackPeriodCount", "packPeriodCount"],
-    ["newUserPackSkipWeekends", "packSkipWeekends"]
-  ];
+          const divisionSelect =
+            document.getElementById("divisionSelector") ||
+            document.getElementById("divisionSelect");
+          if (divisionSelect) {
+            divisionSelect.value = division;
+            divisionSelect.dispatchEvent(
+              new Event("change", { bubbles: true })
+            );
+          } else {
+            currentDivision = division;
+            localStorage.setItem("currentDivision", currentDivision);
+          }
 
-  map.forEach(([fromId, toId]) => {
-    const from = document.getElementById(fromId);
-    const to = document.getElementById(toId);
-    if (!from || !to) return;
-    if (from.type === "checkbox") to.checked = from.checked;
-    else to.value = from.value;
+          const semesterSelect =
+            document.getElementById("semesterSelector") ||
+            document.getElementById("semesterSelect");
+          if (semesterSelect) {
+            semesterSelect.value = semester;
+            semesterSelect.dispatchEvent(
+              new Event("change", { bubbles: true })
+            );
+          } else {
+            currentSemester = semester;
+            localStorage.setItem("currentSemester", currentSemester);
+          }
+
+          if (typeof usePack === "function") {
+            usePack("builtin");
+          } else {
+            activePackId = "builtin";
+            if (typeof savePackLibrary === "function") savePackLibrary();
+          }
+
+          if (typeof closeHelp === "function") closeHelp();
+          showProfileToast?.("Default Wesleyan calendar applied.");
+          return;
+        }
+
+        const map = [
+          ["newUserPackName", "packName"],
+          ["newUserPackStart", "packStart"],
+          ["newUserPackEnd", "packEnd"],
+          ["newUserPackLetters", "packLetters"],
+          ["newUserPackPeriodCount", "packPeriodCount"],
+          ["newUserPackSkipWeekends", "packSkipWeekends"]
+        ];
+
+        map.forEach(([fromId, toId]) => {
+          const from = document.getElementById(fromId);
+          const to = document.getElementById(toId);
+          if (!from || !to) return;
+          if (from.type === "checkbox") to.checked = from.checked;
+          else to.value = from.value;
+        });
+
+        if (typeof renderPackInputPreview === "function") {
+          renderPackInputPreview();
+        }
+        if (typeof renderCustomBellTimesEditor === "function") {
+          renderCustomBellTimesEditor();
+        }
+
+        const customDivision =
+          document.getElementById("newUserCustomDivision")?.value ||
+          currentDivision ||
+          "hs";
+        const divisionSelect =
+          document.getElementById("divisionSelector") ||
+          document.getElementById("divisionSelect");
+        if (divisionSelect) {
+          divisionSelect.value = customDivision;
+          divisionSelect.dispatchEvent(
+            new Event("change", { bubbles: true })
+          );
+        } else {
+          currentDivision = customDivision;
+          localStorage.setItem("currentDivision", currentDivision);
+        }
+
+        const startVal = (
+          document.getElementById("packStart")?.value || ""
+        ).trim();
+        const endVal = (
+          document.getElementById("packEnd")?.value || ""
+        ).trim();
+        if (!startVal || !endVal) {
+          alert("Please enter start and end dates for the custom calendar.");
+          return;
+        }
+
+        const customSection = document.querySelector(
+          '.config-section[data-section-key="custom-calendar"]'
+        );
+        if (customSection?.classList.contains("collapsed")) {
+          customSection
+            .querySelector(".config-section-toggle")
+            ?.click();
+        }
+        customSection?.scrollIntoView({
+          behavior: "smooth",
+          block: "start"
+        });
+
+        if (typeof closeHelp === "function") closeHelp();
+        if (typeof createAndUsePackFromForm === "function") {
+          createAndUsePackFromForm({ promptSetup: true });
+        }
+      } finally {
+        setTimeout(hideNewUserWorking, 400);
+      }
+    }, 30);
   });
-
-  if (typeof renderPackInputPreview === "function") renderPackInputPreview();
-  if (typeof renderCustomBellTimesEditor === "function") renderCustomBellTimesEditor();
-
-  const customDivision = document.getElementById("newUserCustomDivision")?.value || currentDivision || "hs";
-  const divisionSelect = document.getElementById("divisionSelector") || document.getElementById("divisionSelect");
-  if (divisionSelect) {
-    divisionSelect.value = customDivision;
-    divisionSelect.dispatchEvent(new Event("change", { bubbles: true }));
-  } else {
-    currentDivision = customDivision;
-    localStorage.setItem("currentDivision", currentDivision);
-  }
-
-  const startVal = (document.getElementById("packStart")?.value || "").trim();
-  const endVal = (document.getElementById("packEnd")?.value || "").trim();
-  if (!startVal || !endVal) {
-    alert("Please enter start and end dates for the custom calendar.");
-    return;
-  }
-
-  const customSection = document.querySelector('.config-section[data-section-key="custom-calendar"]');
-  if (customSection?.classList.contains("collapsed")) {
-    customSection.querySelector(".config-section-toggle")?.click();
-  }
-  customSection?.scrollIntoView({ behavior: "smooth", block: "start" });
-
-  if (typeof closeHelp === "function") closeHelp();
-  if (typeof createAndUsePackFromForm === "function") {
-    createAndUsePackFromForm({ promptSetup: true });
-  }
 }
-
 function openGuidedCalendarSetupFromCustomSection() {
   const ok = confirm("Create a new calendar now using guided setup?");
   if (!ok) return;
@@ -11455,11 +11695,10 @@ async function init() {
   applyHoverAgendaPreference()
   ensureDefaultProfile();
 
-  try {
+try {
     await initExternalBackupHandle();
     await initSharedExportHtmlHandle();
     await restoreNewestAvailableBackupIfNeeded();
-    
   } catch (e) {
     console.warn("Startup backup check failed", e);
   }
@@ -12020,6 +12259,16 @@ document.getElementById("nextMonthBtn")?.addEventListener("click", () => {
     }
   });
 
+  document
+  .getElementById("linkExternalBackupBtn")
+  ?.addEventListener("click", () => {
+    if (typeof configureExternalBackupFile === "function") {
+      configureExternalBackupFile(); // your existing picker
+    } else if (typeof setExternalBackupFile === "function") {
+      setExternalBackupFile();
+    }
+  });
+
   document.getElementById("toggleSpecialTagsBtn").addEventListener("click", () => {
     hideAllSpecialTags = !hideAllSpecialTags;
     document.getElementById("toggleSpecialTagsBtn").textContent = hideAllSpecialTags 
@@ -12035,7 +12284,7 @@ document.getElementById("nextMonthBtn")?.addEventListener("click", () => {
     // Dropdown listeners
   document.getElementById("leftActions1").addEventListener("change", (e) => {
     const value = e.target.value;
-    if (value === "backup") document.getElementById("backupBtn").click();
+    
     if (value === "restore") document.getElementById("restoreBtn").click();
     if (value === "setExternalBackup") document.getElementById("setExternalBackupFileBtn")?.click();
     if (value === "syncBackupNow") document.getElementById("syncBackupNowBtn")?.click();
@@ -12325,7 +12574,8 @@ setInterval(() => {
     <div class="modal">
       <div class="modal-header">
         <div>
-          <div>Print Calendar</div>
+          <div>Print / Sync HTML</div>
+          <div class="small">Printing the calendar will overwrite the existing HTML file.</div>
           <div class="small">Filter by division, month, period, and unit before printing.</div>
         </div>
         <button class="secondary" id="closePrintFilterBtn">Close</button>
@@ -12615,7 +12865,7 @@ setInterval(() => {
         <!-- PRINTING & EXPORT -->
         <section class="help-section" data-help-section="printing">
           <h2>Printing & Export</h2>
-          <p>Use <strong>Print with Filters</strong> for a clean, printable calendar.</p>
+          <p>Use <strong>Print Calendar / Sync HTML file</strong> for a clean, printable calendar.</p>
           <ul>
             <li>Filter by month, period, and unit</li>
             <li>Includes class notes, special tags, and “NO TEST” flags</li>
