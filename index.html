@@ -10035,6 +10035,51 @@ function updateExternalBackupStatus() {
   }
 }
 
+function getPrintUnitOptions(selectedPeriods) {
+  const periodSet =
+    Array.isArray(selectedPeriods) && selectedPeriods.length
+      ? new Set(selectedPeriods.map(Number))
+      : null; // null = all periods
+
+  const options = []; // { value, label }
+  const seen = new Set();
+
+  const periodCount =
+    typeof getCurrentPeriodCount === "function"
+      ? getCurrentPeriodCount()
+      : 7;
+
+  for (let p = 1; p <= periodCount; p++) {
+    if (periodSet && !periodSet.has(p)) continue;
+
+    const courseName =
+      (typeof teacherSchedule !== "undefined" && teacherSchedule[p]) ||
+      `Period ${p}`;
+
+    const list =
+      typeof getUnitsForPeriod === "function"
+        ? getUnitsForPeriod(p) || []
+        : (units && units[p]) || [];
+
+    (Array.isArray(list) ? list : []).forEach(u => {
+      const name = (u && (u.name || u.unitName) || "").trim();
+      if (!name) return;
+
+      const key = `${p}::${name.toLowerCase()}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+
+      options.push({
+        value: name, // keep filter matching unit name text
+        label: `${courseName} (P${p}) — ${name}`
+      });
+    });
+  }
+
+  options.sort((a, b) => a.label.localeCompare(b.label));
+  return options;
+}
+
 function updateSharedExportHtmlStatus() {
   const status = document.getElementById("sharedExportHtmlStatus");
   const btn = document.getElementById("linkSharedExportHtmlBtn");
@@ -10636,10 +10681,6 @@ function populatePrintFilters(preferActiveCustom = false) {
     monthKeys = getMonthKeysForDivisions(activeDivisions) || [];
   }
 
-  const unitNames =
-    typeof getUnitNamesForDivisions === "function"
-      ? getUnitNamesForDivisions(activeDivisions)
-      : [];
   const periodNumbers =
     typeof getMaxPeriodsForDivisions === "function"
       ? getMaxPeriodsForDivisions(activeDivisions)
@@ -10650,6 +10691,7 @@ function populatePrintFilters(preferActiveCustom = false) {
     divisionChoices.unshift("customActive");
   }
 
+  // 1) Divisions
   divisionFilters.innerHTML = divisionChoices
     .map(divisionKey => {
       const checked = activeDivisions.includes(divisionKey) ? "checked" : "";
@@ -10667,11 +10709,7 @@ function populatePrintFilters(preferActiveCustom = false) {
     });
   });
 
-  unitFilter.innerHTML =
-    `<option value="">All units</option>` +
-    unitNames.map(name => `<option value="${name}">${name}</option>`).join("");
-  unitFilter.value = selectedUnit;
-
+  // 2) Periods first
   periodFilters.innerHTML = periodNumbers
     .map(periodNum => {
       const checked =
@@ -10682,7 +10720,47 @@ function populatePrintFilters(preferActiveCustom = false) {
     })
     .join("");
 
-  // Default: all months in this semester checked (not only the current month)
+  periodFilters.querySelectorAll('input[type="checkbox"]').forEach(input => {
+    input.addEventListener("change", () => {
+      populatePrintFilters();
+    });
+  });
+
+  // 3) Units from periods that are checked NOW
+  const periodsForUnits = new Set(
+    Array.from(
+      periodFilters.querySelectorAll('input[type="checkbox"]:checked')
+    ).map(input => input.value)
+  );
+
+  const unitOptions =
+    typeof getPrintUnitOptionsForDivisions === "function"
+      ? getPrintUnitOptionsForDivisions(activeDivisions, periodsForUnits)
+      : typeof getPrintUnitOptions === "function"
+        ? getPrintUnitOptions([...periodsForUnits].map(Number))
+        : [];
+
+  const prevUnit = selectedUnit; // from top of function
+
+  unitFilter.innerHTML =
+    `<option value="">All units</option>` +
+    unitOptions
+      .map(o => {
+        const value = String(o.value).replace(/"/g, "&quot;");
+        const label = String(o.label)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;");
+        return `<option value="${value}">${label}</option>`;
+      })
+      .join("");
+
+  if (prevUnit && [...unitFilter.options].some(opt => opt.value === prevUnit)) {
+    unitFilter.value = prevUnit;
+  } else {
+    unitFilter.value = "";
+  }
+
+  // 4) Months
   monthFilters.innerHTML = monthKeys
     .map(monthKey => {
       const monthLabel =
@@ -10692,7 +10770,9 @@ function populatePrintFilters(preferActiveCustom = false) {
       const shouldCheck = selectedMonths.size
         ? selectedMonths.has(monthKey)
         : true;
-      return `<label class="check-row"><input type="checkbox" value="${monthKey}" ${shouldCheck ? "checked" : ""}> ${monthLabel}</label>`;
+      return `<label class="check-row"><input type="checkbox" value="${monthKey}" ${
+        shouldCheck ? "checked" : ""
+      }> ${monthLabel}</label>`;
     })
     .join("");
 
@@ -11592,7 +11672,6 @@ document.querySelectorAll(".month-jump-link").forEach(function (a) {
     a.click();
     a.remove();
   };
-
 if (overwriteLinkedHtml && typeof writeSharedExportHtml === "function") {
     const ok = confirm(
       "This will replace your linked backup HTML file with this export.\n\n" +
