@@ -3,7 +3,15 @@
   <meta charset="UTF-8" />
   <title>HS Faculty Planner</title>
   <style>
-
+.homework {
+  display: block;
+  margin-top: 4px;
+  padding: 6px 8px;
+  background: #fff7ed;
+  border-left: 3px solid #ea580c;
+  border-radius: 0 6px 6px 0;
+  font-size: 0.88rem;
+}
 .month-summary {
   display: flex;
   flex-wrap: wrap;
@@ -7281,6 +7289,11 @@ function renderCalendar() {
     const hasSchedulablePeriodsForTimes = periodsForDay.length > 0;
 
     const dayNotes = loadNotesForDate(iso);
+    const hasGeneral =
+      dayNotes.general && String(dayNotes.general).trim();
+
+          // in periodRows push:
+            
     const specialEntries = getUnifiedSpecialDaysForDate(iso);
 
     const dayIsNoTest =
@@ -7853,7 +7866,6 @@ generalBlock.appendChild(
 );
 body.appendChild(generalBlock);
 
-
   // Show existing special tags (unchanged)
   if (specialEntries.length > 0) {
     const existingBlock = document.createElement("div");
@@ -7990,6 +8002,26 @@ block.appendChild(
   buildNoteEditor(String(periodNum), existingNotes[periodNum] || "")
 );
 
+    const hwWrap = document.createElement("div");
+    hwWrap.style.marginTop = "8px";
+    const hwLabel = document.createElement("label");
+    hwLabel.innerHTML = `<strong>Homework (Period ${periodNum})</strong>`;
+    hwLabel.style.display = "block";
+    hwLabel.style.marginBottom = "4px";
+
+    const hwInput = document.createElement("textarea");
+    hwInput.className = "modal-hw";
+    hwInput.dataset.period = String(periodNum);
+    hwInput.rows = 2;
+    hwInput.placeholder = "HW for this class…";
+    hwInput.style.cssText =
+      "width:100%; padding:8px; border-radius:8px; border:1px solid #d1d5db;";
+    hwInput.value = existingNotes[`hw-${periodNum}`] || "";
+
+    hwWrap.appendChild(hwLabel);
+    hwWrap.appendChild(hwInput);
+    block.appendChild(hwWrap);
+
     body.appendChild(block);
   });
 
@@ -8085,6 +8117,13 @@ function handleSaveNotes() {
     const period = doc.dataset.period;
     if (!period) return;
     notesObj[period] = doc.innerHTML.trim();
+  });
+
+  // Per-period homework
+  body.querySelectorAll(".modal-hw").forEach(el => {
+    const period = el.dataset.period;
+    if (!period) return;
+    notesObj[`hw-${period}`] = String(el.value || "").trim();
   });
 
   // Built-in day letter override (only when #modalDayLetter exists)
@@ -11096,6 +11135,10 @@ function initCollapsibleSections() {
 }
 
 function applyPrintFilters() {
+    const includeNotes =
+    document.getElementById("printIncludeNotes")?.checked !== false;
+  const includeHomework =
+    document.getElementById("printIncludeHomework")?.checked === true;
   const previewWin = window.open("about:blank", "_blank");
 
   const selectedUnitText = document.getElementById("printUnitFilter").value.toLowerCase().trim();
@@ -11108,7 +11151,9 @@ function applyPrintFilters() {
   const selectedMonths = Array.from(
     document.querySelectorAll('#printMonthFilters input[type="checkbox"]:checked')
   ).map(input => input.value);
-
+    const overwriteLinkedHtml =
+    document.getElementById("printOverwriteHtml")?.checked === true;
+    
   if (!selectedDivisions.length) {
     if (previewWin) previewWin.close();
     alert("Select at least one division.");
@@ -11160,8 +11205,11 @@ function applyPrintFilters() {
           const periodsForDay = getPeriodsForDate(day.date, schoolDay.letter);
           const dayNotes = loadNotesForDate(day.date);
           const specialEntries = getUnifiedSpecialDaysForDate(day.date);
-          const hasGeneral = dayNotes.general && String(dayNotes.general).trim();
-          const filteredPeriods = periodsForDay.filter(
+          const hasGeneral =
+            includeNotes &&
+            dayNotes.general &&
+            String(dayNotes.general).trim();
+                    const filteredPeriods = periodsForDay.filter(
             p => selectedPeriods.length === 0 || selectedPeriods.includes(p)
           );
 
@@ -11170,6 +11218,7 @@ function applyPrintFilters() {
 
           const periodRows = [];
           filteredPeriods.forEach(periodNum => {
+            
             const unitInfo = getUnitProgress(periodNum, countsForDay[periodNum], day.date);
 
             if (
@@ -11192,7 +11241,8 @@ function applyPrintFilters() {
             periodRows.push({
               line,
               topicName: unitInfo.topicName || "",
-              note: dayNotes[periodNum] || "",
+              note: includeNotes ? dayNotes[periodNum] || "" : "",
+              homework: includeHomework ? dayNotes[`hw-${periodNum}`] || "" : "",
               isTest: !!(unitInfo.hasTestToday || dayNotes[`test-${periodNum}`]),
               isQuiz: !!(unitInfo.hasQuizToday || dayNotes[`quiz-${periodNum}`])
             });
@@ -11481,6 +11531,11 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
                 typeof noteToHtml === "function" ? noteToHtml(row.note) : row.note
               }</span>`;
             }
+            if (row.homework) {
+              html += `<div class="homework"><strong>HW:</strong> ${
+                typeof noteToHtml === "function" ? noteToHtml(row.homework) : row.homework
+              }</div>`;
+            }
             if (row.isTest) {
               html += ` <span class="badge-test">(TEST)</span>`;
             } else if (row.isQuiz) {
@@ -11492,7 +11547,6 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
           if (entry.noTest) {
             html += `<div class="no-test">NO TEST TODAY</div>`;
           }
-
           html += `</div>`;
         });
 
@@ -11525,29 +11579,53 @@ document.querySelectorAll(".month-jump-link").forEach(function (a) {
     previewWin.location.href = url;
   }
 
-  writeSharedExportHtml(html, true)
-    .then(wrote => {
-      if (!wrote) {
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `planner-filtered-${selectedDivisions.join("-")}.html`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        if (!previewWin) {
-          alert(
-            "HTML downloaded.\\n\\nLink a shared HTML file (Chrome/Edge) to auto-save to OneDrive next time."
-          );
+  const finish = () => {
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    closePrintFilterModal?.();
+  };
+
+  const downloadFallback = () => {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `planner-filtered-${selectedDivisions.join("-")}.html`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
+if (overwriteLinkedHtml && typeof writeSharedExportHtml === "function") {
+    const ok = confirm(
+      "This will replace your linked backup HTML file with this export.\n\n" +
+        "Continue and overwrite the linked file?"
+    );
+    if (!ok) {
+      // User cancelled overwrite — preview only (optional download)
+      finish();
+      return;
+    }
+
+    writeSharedExportHtml(html, true)
+      .then(wrote => {
+        if (!wrote) {
+          downloadFallback();
+          if (!previewWin) {
+            alert(
+              "No linked HTML (or permission missing).\nHTML downloaded instead."
+            );
+          }
+        } else {
+          showProfileToast?.("Linked HTML file updated");
         }
-      }
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-      closePrintFilterModal?.();
-    })
-    .catch(err => {
-      console.warn(err);
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
-      closePrintFilterModal?.();
-    });
+        finish();
+      })
+      .catch(err => {
+        console.warn(err);
+        downloadFallback();
+        finish();
+      });
+  } else {
+    finish();
+  }
 }
 
 
@@ -12598,6 +12676,23 @@ setInterval(() => {
             <label>Periods</label>
             <div id="printPeriodFilters" class="print-filter-checkboxes"></div>
           </div>
+<label class="check-row" style="display:block; margin-top:10px;">
+  <input type="checkbox" id="printOverwriteHtml" checked>
+  Overwrite linked HTML file
+</label>
+          <p class="small" style="margin:4px 0 0; color:#6b7280;">
+            Off = preview/download only. On = also write the linked OneDrive/HTML file.
+          </p>
+          <label class="check-row" style="display:block; margin-top:8px;">
+            <input type="checkbox" id="printIncludeNotes" checked>
+            Include personal notes
+          </label>
+
+          <label class="check-row" style="display:block; margin-top:8px;">
+  <input type="checkbox" id="printIncludeHomework" checked>
+  Include homework
+</label>
+          
         </div>
       </div>
       <div class="modal-footer print-filter-actions">
