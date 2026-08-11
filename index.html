@@ -11238,8 +11238,10 @@ function initCollapsibleSections() {
 }
 
 function applyPrintFilters() {
-    const includeNotes =
-    document.getElementById("printIncludeNotes")?.checked !== false;
+  const includeDailyNotes =
+    document.getElementById("printIncludeDailyNotes")?.checked !== false;
+  const includePeriodNotes =
+    document.getElementById("printIncludePeriodNotes")?.checked !== false;
   const includeHomework =
     document.getElementById("printIncludeHomework")?.checked === true;
   const previewWin = window.open("about:blank", "_blank");
@@ -11309,8 +11311,9 @@ function applyPrintFilters() {
           const dayNotes = loadNotesForDate(day.date);
           const specialEntries = getUnifiedSpecialDaysForDate(day.date);
           const hasGeneral =
-            includeNotes &&
+            includeDailyNotes &&
             dayNotes.general &&
+            String(dayNotes.general).trim();
             String(dayNotes.general).trim();
                     const filteredPeriods = periodsForDay.filter(
             p => selectedPeriods.length === 0 || selectedPeriods.includes(p)
@@ -11341,11 +11344,15 @@ function applyPrintFilters() {
               line += ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})`;
             }
 
-            periodRows.push({
+periodRows.push({
               line,
               topicName: unitInfo.topicName || "",
-              note: includeNotes ? dayNotes[periodNum] || "" : "",
-              homework: includeHomework ? dayNotes[`hw-${periodNum}`] || "" : "",
+              note: includePeriodNotes
+                ? (dayNotes[periodNum] || dayNotes[String(periodNum)] || "")
+                : "",
+              homework: includeHomework
+                ? (dayNotes[`hw-${periodNum}`] || "")
+                : "",
               isTest: !!(unitInfo.hasTestToday || dayNotes[`test-${periodNum}`]),
               isQuiz: !!(unitInfo.hasQuizToday || dayNotes[`quiz-${periodNum}`])
             });
@@ -11382,8 +11389,12 @@ function applyPrintFilters() {
           if (byDate[date]) continue;
 
           const dayNotes = loadNotesForDate(date);
+
           const hasGeneralNote =
-            dayNotes && dayNotes.general && String(dayNotes.general).trim();
+            includeDailyNotes &&
+            dayNotes &&
+            dayNotes.general &&
+            String(dayNotes.general).trim();
           const specialEntriesExtra =
             typeof getUnifiedSpecialDaysForDate === "function"
               ? getUnifiedSpecialDaysForDate(date)
@@ -12786,14 +12797,17 @@ setInterval(() => {
             Off = preview/download only. On = also write the linked OneDrive/HTML file.
           </p>
           <label class="check-row" style="display:block; margin-top:8px;">
-            <input type="checkbox" id="printIncludeNotes" checked>
-            Include personal notes
+            <input type="checkbox" id="printIncludeDailyNotes" checked>
+            Include daily notes (general)
           </label>
-
-          <label class="check-row" style="display:block; margin-top:8px;">
-  <input type="checkbox" id="printIncludeHomework" checked>
-  Include homework
-</label>
+          <label class="check-row" style="display:block; margin-top:6px;">
+            <input type="checkbox" id="printIncludePeriodNotes" checked>
+            Include period notes
+          </label>
+          <label class="check-row" style="display:block; margin-top:6px;">
+            <input type="checkbox" id="printIncludeHomework" checked>
+            Include homework
+          </label>
           
         </div>
       </div>
