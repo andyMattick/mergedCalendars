@@ -11358,13 +11358,34 @@ periodRows.push({
             });
           });
 
+                    const periodFilterOn = selectedPeriods.length > 0;
+          const unitFilterOn = !!selectedUnitText;
+
+          // Filtered print: no matching class rows → skip day (C, F, OFF, etc.)
+          if ((periodFilterOn || unitFilterOn) && periodRows.length === 0) {
+            return;
+          }
+
+          if (!periodRows.length && !hasGeneral) return;
+          
+          // Filtering by class/period/unit: only days that actually have a matching row
+          if ((periodFilterOn || unitFilterOn) && !periodRows.length) {
+            return; // skip this day entirely — no "No classes" stub
+          }
+
+          // Unfiltered (or notes-only days): keep old behavior
           if (!periodRows.length && !hasGeneral) return;
 
           byDate[day.date] = {
             weekdayName: new Date(day.date + "T12:00:00").toLocaleDateString("en-US", {
               weekday: "long"
             }),
-            letterLabel: schoolDay.letter || day.letter || "No classes",
+                        letterLabel: (() => {
+              const L = schoolDay?.letter || day.letter || "";
+              if (L && normalizeLetter(L)) return L;
+              if (L && !/no class|no school|holiday|break/i.test(String(L))) return L;
+              return L || "No classes";
+            })(),
             specialLabels: specialEntries.map(entry => entry.label),
             general: hasGeneral
               ? typeof noteToHtml === "function"
@@ -11379,6 +11400,9 @@ periodRows.push({
 
       // Every calendar day in selected months (weekends + pre-school)
       activeMonthKeys.forEach(monthKey => {
+        if (selectedPeriods.length > 0 || selectedUnitText) {
+          return; // don't inject notes-only / empty days while class-filtering
+        }
         const [yStr, mStr] = monthKey.split("-");
         const y = Number(yStr);
         const m = Number(mStr);
