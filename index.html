@@ -9925,18 +9925,30 @@ async function getSharedExportHtmlPermission(handle, allowPrompt) {
 
 async function writeSharedExportHtml(htmlString, allowPrompt = false) {
   if (!supportsSharedExportHtmlApi() || !sharedExportHtmlHandle) return false;
-  if (!htmlString || htmlString.length < 500) return false;
 
-  const granted = await getSharedExportHtmlPermission(sharedExportHtmlHandle, allowPrompt);
+  const text = String(htmlString ?? "");
+  if (text.length < 500) {
+    console.warn("Shared HTML export skipped: html too short", text.length);
+    return false;
+  }
+
+  const granted = await getSharedExportHtmlPermission(
+    sharedExportHtmlHandle,
+    allowPrompt
+  );
   if (!granted) return false;
 
   try {
-    const writable = await sharedExportHtmlHandle.createWritable();
-    await writable.write(htmlString);
+    const writable = await sharedExportHtmlHandle.createWritable({
+      keepExistingData: false // explicit; still replaces content
+    });
+    await writable.write({ type: "write", position: 0, data: text });
     await writable.close();
+    console.log("Shared HTML export wrote bytes", text.length);
     return true;
   } catch (e) {
     console.warn("Shared HTML export write failed", e);
+    // File may already be truncated — download fallback is important
     return false;
   }
 }
@@ -11740,6 +11752,14 @@ if (overwriteLinkedHtml && typeof writeSharedExportHtml === "function") {
       finish();
       return;
     }
+
+      console.log("export html length", html.length);
+
+  if (html.length < 500) {
+    alert("Export HTML was empty/short — not overwriting linked file.");
+    finish();
+    return;
+  }
 
     writeSharedExportHtml(html, true)
       .then(wrote => {
