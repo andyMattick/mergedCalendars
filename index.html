@@ -1702,11 +1702,9 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
 
 <div class="backup-file-row" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:8px 0;">
   <button type="button" id="linkSharedExportHtmlBtn" class="secondary">
-    Link shared HTML file
-  </button>
-  <span id="sharedExportHtmlStatus" class="small" style="color:#6b7280;">
-    No shared HTML file linked
-  </span>
+  Link shared HTML file
+</button>
+<span id="sharedExportHtmlStatus" class="small">No linked HTML file</span>
 </div>
 
       </div>
@@ -9922,6 +9920,43 @@ async function getSharedExportHtmlPermission(handle, allowPrompt) {
     return false;
   }
 }
+function updateSharedExportHtmlStatus() {
+  const status = document.getElementById("sharedExportHtmlStatus");
+  const btn = document.getElementById("linkSharedExportHtmlBtn");
+  if (!status) {
+    console.warn("missing #sharedExportHtmlStatus");
+    return;
+  }
+
+  if (sharedExportHtmlConfigured && sharedExportHtmlHandle) {
+    const name = sharedExportHtmlHandle.name || "HTML file";
+    let lastText = "";
+    try {
+      const last = localStorage.getItem("sharedExportHtmlLastUpdated");
+      if (last) {
+        const d = new Date(last);
+        if (!Number.isNaN(d.getTime())) {
+          lastText =
+            " · Updated " +
+            d.toLocaleString(undefined, {
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit"
+            });
+        }
+      }
+    } catch (_) {}
+
+    status.textContent = `Linked: ${name}${lastText}`;
+    status.style.color = "#059669";
+    if (btn) btn.textContent = "Change linked HTML file";
+  } else {
+    status.textContent = "No linked HTML file";
+    status.style.color = "#6b7280";
+    if (btn) btn.textContent = "Link shared HTML file";
+  }
+}
 
 async function writeSharedExportHtml(htmlString, allowPrompt = false) {
   if (!supportsSharedExportHtmlApi() || !sharedExportHtmlHandle) return false;
@@ -9942,9 +9977,18 @@ async function writeSharedExportHtml(htmlString, allowPrompt = false) {
     const writable = await sharedExportHtmlHandle.createWritable({
       keepExistingData: false // explicit; still replaces content
     });
-    await writable.write({ type: "write", position: 0, data: text });
-    await writable.close();
     console.log("Shared HTML export wrote bytes", text.length);
+
+    await writable.write(htmlString);
+    await writable.close();
+
+    const iso = new Date().toISOString();
+    try {
+      localStorage.setItem("sharedExportHtmlLastUpdated", iso);
+    } catch (_) {}
+    if (typeof updateSharedExportHtmlStatus === "function") {
+      updateSharedExportHtmlStatus();
+    }
     return true;
   } catch (e) {
     console.warn("Shared HTML export write failed", e);
@@ -10118,18 +10162,34 @@ function getPrintUnitOptions(selectedPeriods) {
 function updateSharedExportHtmlStatus() {
   const status = document.getElementById("sharedExportHtmlStatus");
   const btn = document.getElementById("linkSharedExportHtmlBtn");
+  if (!status) return;
+
   if (sharedExportHtmlConfigured && sharedExportHtmlHandle) {
-    const name = sharedExportHtmlHandle.name || "shared HTML file";
-    if (status) {
-      status.textContent = `Linked: ${name}`;
-      status.style.color = "#059669";
-    }
+    const name = sharedExportHtmlHandle.name || "HTML file";
+    let lastText = "";
+    try {
+      const last = localStorage.getItem("sharedExportHtmlLastUpdated");
+      if (last) {
+        const d = new Date(last);
+        if (!Number.isNaN(d.getTime())) {
+          lastText =
+            " · Updated " +
+            d.toLocaleString(undefined, {
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit"
+            });
+        }
+      }
+    } catch (_) {}
+
+    status.textContent = `Linked: ${name}${lastText}`;
+    status.style.color = "#059669";
     if (btn) btn.textContent = "Change linked HTML file";
   } else {
-    if (status) {
-      status.textContent = "No shared HTML file linked";
-      status.style.color = "#6b7280";
-    }
+    status.textContent = "No linked HTML file";
+    status.style.color = "#6b7280";
     if (btn) btn.textContent = "Link shared HTML file";
   }
 }
@@ -11721,7 +11781,6 @@ document.querySelectorAll(".month-jump-link").forEach(function (a) {
 });
 <\/script>
 </body></html>`;
-
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
 
@@ -11742,18 +11801,8 @@ document.querySelectorAll(".month-jump-link").forEach(function (a) {
     a.click();
     a.remove();
   };
-if (overwriteLinkedHtml && typeof writeSharedExportHtml === "function") {
-    const ok = confirm(
-      "This will replace your linked backup HTML file with this export.\n\n" +
-        "Continue and overwrite the linked file?"
-    );
-    if (!ok) {
-      // User cancelled overwrite — preview only (optional download)
-      finish();
-      return;
-    }
 
-      console.log("export html length", html.length);
+  console.log("export html length", html.length);
 
   if (html.length < 500) {
     alert("Export HTML was empty/short — not overwriting linked file.");
@@ -11761,17 +11810,17 @@ if (overwriteLinkedHtml && typeof writeSharedExportHtml === "function") {
     return;
   }
 
+  if (overwriteLinkedHtml && typeof writeSharedExportHtml === "function") {
     writeSharedExportHtml(html, true)
       .then(wrote => {
         if (!wrote) {
           downloadFallback();
-          if (!previewWin) {
-            alert(
-              "No linked HTML (or permission missing).\nHTML downloaded instead."
-            );
-          }
+          showProfileToast?.(
+            "Linked HTML not updated (permission?). Downloaded instead."
+          );
         } else {
           showProfileToast?.("Linked HTML file updated");
+          updateSharedExportHtmlStatus?.();
         }
         finish();
       })
@@ -11784,7 +11833,6 @@ if (overwriteLinkedHtml && typeof writeSharedExportHtml === "function") {
     finish();
   }
 }
-
 
 function isValidClassDayForPeriod(date, period) {
   const rotationDay = getRotationDayByDate(date);
