@@ -5741,6 +5741,7 @@ function getPeriodsForDate(date, letterLike) {
   if (date && typeof customDays === "object" && customDays[date]) {
     const cd = customDays[date];
     if (String(cd.letter || "").toUpperCase() === "OFF") return [];
+
       if (Array.isArray(cd.periods) && cd.periods.length > 0) {
   return cd.periods.map(Number).filter(n => n > 0);
 }
@@ -6109,19 +6110,33 @@ function getLocalTodayISO() {
 function getRotationDayByDate(iso) {
   if (!iso) return null;
 
-  const override = getCustomDayForDivision(iso);
+  const override = typeof getCustomDay === "function" ? getCustomDay(iso) : customDays?.[iso];
+  const overrideLetter = override?.letter;
 
-  // Only override letter if this division actually stored one
-  if (override && override.letter != null && override.letter !== "") {
+  // Real letter override (A–G, OFF, etc.)
+  if (overrideLetter != null && String(overrideLetter).trim() !== "") {
     return {
       date: iso,
-      letter: override.letter,
+      letter: overrideLetter,
       label: override.label || ""
     };
   }
 
-  // Built-in HS / MS / LS list for current division
-  return getCurrentRotationData().find(day => day.date === iso) || null;
+  // slotTimes-only (or empty) custom day → use built-in rotation
+  const base =
+    typeof getCurrentRotationData === "function"
+      ? getCurrentRotationData().find(day => day.date === iso)
+      : null;
+
+  if (base) {
+    return {
+      date: iso,
+      letter: base.letter,
+      label: override?.label || base.label || ""
+    };
+  }
+
+  return null;
 }
 
 function formatAgendaDateLine(date, letterText) {
@@ -7628,7 +7643,15 @@ function openDayModal(day) {
   const body = document.getElementById("modalBody");
 
   const override = getCustomDayForDivision(day.date);
-  const effectiveLetter = override ? override.letter : day.letter;
+  const effectiveLetter =
+  (override?.letter != null && String(override.letter).trim() !== ""
+    ? override.letter
+    : null) ||
+  day.letter ||
+  (typeof getCurrentRotationData === "function"
+    ? getCurrentRotationData().find(d => d.date === day.date)?.letter
+    : null) ||
+  "";
 
   dateLabel.textContent = formatDateLabel(day.date);
 
