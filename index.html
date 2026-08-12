@@ -373,14 +373,6 @@ body.dark .period-label {
   font-weight: 600;
 }
 
-body.hide-hover-agenda .day-cell:hover .hover-agenda,
-body.hide-hover-agenda .hover-agenda {
-  display: none !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  animation: none !important;
-}
-
 body.dark .unit-row > .small {
   color: #e5e7eb;
 }
@@ -459,30 +451,6 @@ body.dark {
   color: var(--no-cycle-fg) !important;
 }
 
-.hover-agenda {
-  display: none;
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: var(--card-bg);
-  color: var(--fg);
-  border: 1px solid var(--card-border);
-  border-radius: 8px;
-  padding: 16px;
-  width: 320px;
-  max-height: 60vh;
-  overflow-y: auto;
-  z-index: 200;
-  box-shadow: 0 15px 35px rgba(0,0,0,0.3);
-  font-size: 0.9rem;
-  pointer-events: none; /* so it doesn't block clicks */
-}
-
-.day-cell:hover .hover-agenda {
-  display: block;
-  pointer-events: auto;
-}
         :root {
       --bg: #f5f5f7;
       --fg: #222;
@@ -525,51 +493,6 @@ body.dark {
 
 .day-cell:hover .tooltip {
   display: block;
-}
-
-.day-cell .hover-agenda {
-  display: none;
-  opacity: 0;
-  pointer-events: none;
-
-  position: fixed;
-  left: 50%;
-  top: 12px;                    /* top of screen, not center */
-  bottom: auto;
-  transform: translateX(-50%);  /* only center horizontally */
-
-  width: min(520px, 92vw);
-  max-height: 40vh;
-  overflow: auto;
-
-  z-index: 2000;
-  background: var(--card-bg);
-  color: var(--fg);
-  border: 1px solid var(--card-border);
-  padding: 0.75rem 1rem;
-  font-size: 0.85rem;
-  border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-}
-
-.day-cell:hover .hover-agenda {
-  display: block;
-  animation: hoverAgendaIn 0s 0.75s forwards; /* shorter delay if you want */
-}
-
-@keyframes hoverAgendaIn {
-  to {
-    opacity: 1;
-  }
-}
-
-/* No hover agenda while day modal is open */
-body.modal-open .day-cell:hover .hover-agenda,
-body.modal-open .hover-agenda {
-  display: none !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-  animation: none !important;
 }
 
 body.dark .day-cell .day-expand-btn {
@@ -1555,6 +1478,31 @@ body.dark .agenda-note.empty {
   gap: 1rem;
 }
 
+.header-settings { margin-top: 8px; }
+.header-settings summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #e5e7eb;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.1);
+  display: inline-block;
+  list-style: none;
+}
+.header-settings summary::-webkit-details-marker { display: none; }
+.header-settings summary:hover { background: rgba(255,255,255,0.18); }
+.header-settings-body {
+  margin-top: 10px;
+  padding: 12px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 10px;
+  text-align: left;
+}
+.header-settings .backup-file-row { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:8px 0; }
+.header-settings .backup-file-row .small { color:#d1d5db; }
+.header-settings .selector-group { justify-content: flex-start; color: #e5e7eb; }
+
 /* FORCE Period labels to be visible in dark mode */
 body.dark .period-label,
 body.dark strong.period-label {
@@ -1616,6 +1564,164 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
   opacity: 0.95;
 }
 
+/* ====== Day / Week view ====== */
+.view-toggle-bar { display:flex; gap:8px; justify-content:center; margin-bottom:14px; }
+.view-toggle-btn { padding:8px 18px; border-radius:999px; border:2px solid var(--card-border); background:var(--card-bg); color:var(--fg); font-weight:700; font-size:0.95rem; cursor:pointer; }
+.view-toggle-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+.day-view-nav { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }
+.day-view-title { text-align:center; }
+.day-view-date { font-size:1.4rem; font-weight:800; }
+.today-pill { background:#facc15; color:#78350f; padding:2px 10px; border-radius:999px; font-size:0.75rem; margin-left:6px; }
+.day-view-letter { font-size:0.95rem; color:var(--accent); font-weight:700; margin-top:2px; }
+.day-view-off { text-align:center; font-size:1.2rem; font-weight:700; background:#fef3c7; color:#92400e; padding:16px; border-radius:12px; margin-bottom:16px; }
+body.dark .day-view-off { background:#3a2e0f; color:#fde68a; }
+.day-view-specials { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:12px; }
+.day-view-general-note { background:#eff6ff; border-left:4px solid var(--accent); padding:12px 16px; border-radius:0 10px 10px 0; margin-bottom:16px; font-size:1rem; }
+body.dark .day-view-general-note { background:#1f2937; }
+.day-view-notest { background:#dcfce7; color:#166534; font-weight:700; text-align:center; padding:8px; border-radius:8px; margin-bottom:16px; }
+body.dark .day-view-notest { background:#14352a; color:#bbf7d0; }
+.day-view-empty { text-align:center; color:#6b7280; font-style:italic; padding:24px; }
+.day-view-periods { display:flex; flex-direction:column; gap:14px; }
+.day-view-period-card { background:var(--card-bg); border:1px solid var(--card-border); border-left:6px solid #999; border-radius:12px; padding:16px 18px; box-shadow:0 2px 6px rgba(0,0,0,0.06); }
+.dvp-header { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:8px; }
+.dvp-time { font-size:0.85rem; font-weight:700; color:#6b7280; background:rgba(148,163,184,0.15); padding:2px 8px; border-radius:6px; }
+.dvp-course { font-size:1.15rem; font-weight:800; flex:1; }
+.dvp-badges { display:flex; gap:6px; }
+.dvp-unit { font-size:0.9rem; color:#6b7280; margin-bottom:6px; }
+.dvp-note { font-size:0.95rem; margin-bottom:6px; }
+.dvp-note.dvp-empty { color:#9ca3af; font-style:italic; }
+.dvp-homework { background:#fff7ed; border-left:3px solid #ea580c; padding:6px 10px; border-radius:0 6px 6px 0; font-size:0.9rem; margin-bottom:6px; }
+.dvp-lessonplan { background:#f0fdf4; border-left:3px solid #16a34a; padding:8px 10px; border-radius:0 6px 6px 0; font-size:0.9rem; margin-bottom:8px; line-height:1.4; }
+body.dark .dvp-lessonplan { background:#0f2b1a; }
+.dvp-project { color:#b91c1c; font-weight:700; font-size:0.9rem; margin-bottom:6px; }
+.day-view-footer { text-align:center; margin-top:20px; }
+
+.week-view-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.week-view-title { font-size:1.1rem; font-weight:700; }
+.week-view-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+.week-day-col { background:var(--card-bg); border:1px solid var(--card-border); border-radius:12px; padding:10px; cursor:pointer; transition:transform 0.1s ease; min-height:220px; }
+.week-day-col:hover { transform:translateY(-2px); box-shadow:0 4px 10px rgba(0,0,0,0.1); }
+.wdc-today { border:2px solid #facc15; background:#fffbeb; }
+body.dark .wdc-today { background:#3a2e0f; }
+.wdc-header { text-align:center; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--card-border); }
+.wdc-weekday { font-size:0.75rem; text-transform:uppercase; color:#6b7280; font-weight:700; }
+.wdc-date { font-size:1.1rem; font-weight:800; }
+.wdc-letter { font-size:0.8rem; color:var(--accent); font-weight:700; }
+.wdc-off { text-align:center; color:#92400e; font-weight:700; padding:16px 4px; font-size:0.9rem; }
+.wdc-off-sub { font-weight:500; font-size:0.75rem; }
+.wdc-empty { text-align:center; color:#9ca3af; font-style:italic; font-size:0.85rem; padding:16px 4px; }
+.wdc-period { border-left:4px solid #999; background:rgba(148,163,184,0.08); border-radius:0 8px 8px 0; padding:6px 8px; margin-bottom:6px; }
+.wdc-period-top { display:flex; justify-content:space-between; align-items:center; }
+.wdc-period-num { font-size:0.7rem; font-weight:800; color:#6b7280; }
+.wdc-course { font-size:0.85rem; font-weight:700; line-height:1.2; }
+.wdc-topic { font-size:0.75rem; color:#6b7280; }
+.wdc-specials { margin-top:8px; display:flex; flex-wrap:wrap; gap:4px; }
+.wdc-special-pill { background:#f3e8ff; color:#6b21a8; font-size:0.65rem; font-weight:700; padding:2px 6px; border-radius:999px; }
+
+@media (max-width: 900px) {
+  .week-view-grid { grid-template-columns:repeat(5, minmax(140px,1fr)); overflow-x:auto; }
+}
+
+/* Clickable affordances on day/week views */
+.day-view-period-card { cursor:pointer; transition:transform .12s ease, box-shadow .12s ease; }
+.day-view-period-card:hover { transform:translateY(-2px); box-shadow:0 6px 14px rgba(0,0,0,0.12); }
+.wdc-period { cursor:pointer; transition:transform .1s ease; }
+.wdc-period:hover { transform:translateX(2px); background:rgba(148,163,184,0.18); }
+.wdc-header { position:relative; }
+.wdc-edit-btn { position:absolute; top:0; right:0; background:none; border:none; font-size:0.9rem; cursor:pointer; padding:2px 4px; border-radius:6px; opacity:0.55; }
+.wdc-edit-btn:hover { opacity:1; background:rgba(148,163,184,0.25); }
+
+/* Friendlier month view refresh */
+.day-cell {
+  border-radius: 12px !important;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.day-cell:hover:not(.empty) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.14);
+  z-index: 2;
+}
+.day-cell.today { box-shadow: 0 0 0 3px #facc15aa; }
+.classes-list li { border-radius: 6px; }
+
+/* ====== Unit Day Planner card strip ====== */
+.unit-days-strip { display:flex; flex-direction:column; gap:10px; }
+.unit-day-card { display:flex; flex-direction:column; gap:8px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:10px; padding:10px 12px; }
+.unit-day-card.unit-day-shift { opacity:0.6; background:repeating-linear-gradient(45deg, rgba(148,163,184,0.08), rgba(148,163,184,0.08) 6px, transparent 6px, transparent 12px); }
+.udc-top-row { display:grid; grid-template-columns:78px 1fr auto; align-items:center; gap:10px; }
+.udc-num { font-weight:800; font-size:0.85rem; color:var(--accent); text-align:center; background:rgba(37,99,235,0.1); border-radius:8px; padding:6px 4px; line-height:1.3; }
+.udc-date { font-weight:600; font-size:0.62rem; color:var(--accent); opacity:0.8; white-space:nowrap; margin-top:2px; }
+.udc-topic { margin-bottom:0 !important; }
+.udc-toggles { display:flex; gap:6px; }
+.udc-toggle { display:inline-flex; align-items:center; gap:4px; padding:6px 10px; border-radius:999px; border:1.5px solid var(--card-border); font-size:0.8rem; font-weight:700; cursor:pointer; user-select:none; color:var(--fg); opacity:0.55; }
+.udc-toggle input { display:none; }
+.udc-toggle-quiz:has(input:checked) { background:#dbeafe; border-color:#1d4ed8; color:#1d4ed8; opacity:1; }
+.udc-toggle-test:has(input:checked) { background:#fee2e2; border-color:#b91c1c; color:#b91c1c; opacity:1; }
+.udc-lessonplan-row { border-top:1px dashed var(--card-border); padding-top:8px; }
+.udc-lessonplan-toggle { background:none; border:none; color:var(--accent); font-size:0.8rem; font-weight:700; cursor:pointer; padding:2px 0; }
+.udc-lessonplan-text { width:100%; margin-top:6px; padding:8px 10px; border-radius:8px; border:1px solid var(--card-border); font-size:0.85rem; font-family:inherit; resize:vertical; background:var(--card-bg); color:var(--fg); }
+@media (max-width: 600px) {
+  .udc-top-row { grid-template-columns:44px 1fr; }
+  .udc-toggles { grid-column:1 / -1; justify-content:flex-end; }
+}
+
+/* Unified unit editor top fields */
+.unit-editor-fields { display:grid; grid-template-columns:2fr 1fr 1fr; gap:10px; margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid var(--card-border); }
+.unit-editor-fields label { font-size:0.8rem; font-weight:700; }
+.unit-editor-fields input { margin-top:4px; margin-bottom:0; }
+@media (max-width:600px) { .unit-editor-fields { grid-template-columns:1fr; } }
+.unit-days-strip-label { font-weight:800; font-size:0.9rem; margin-bottom:10px; color:var(--fg); }
+#unitDaysBackdrop .modal { border-radius:14px; overflow:hidden; }
+
+/* Optional unit details — collapsed by default, native <details> */
+.unit-details-section { margin-bottom:16px; border:1px solid var(--card-border); border-radius:10px; padding:2px 12px; background:rgba(148,163,184,0.06); }
+.unit-details-section summary { cursor:pointer; font-weight:700; font-size:0.85rem; padding:10px 0; color:var(--fg); }
+.unit-details-section[open] summary { border-bottom:1px solid var(--card-border); }
+.unit-details-grid { display:flex; flex-direction:column; gap:10px; padding:12px 0; }
+.unit-details-grid label { font-size:0.8rem; font-weight:700; }
+.unit-details-grid textarea { margin-top:4px; margin-bottom:0; width:100%; font-family:inherit; }
+
+/* Units sidebar — period heading */
+.unit-heading { display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; padding:10px 12px; border-radius:10px; font-weight:700; }
+.unit-heading:hover { background:rgba(148,163,184,0.12); }
+.unit-heading-title { flex:1; }
+.unit-heading-badge { font-size:0.72rem; font-weight:700; color:#6b7280; background:rgba(148,163,184,0.15); padding:2px 8px; border-radius:999px; }
+
+/* Quick-add unit card */
+.unit-quickadd { background:rgba(37,99,235,0.05); border:1.5px dashed var(--accent); border-radius:12px; padding:12px 14px; margin-bottom:14px; }
+body.dark .unit-quickadd { background:rgba(59,130,246,0.08); }
+.unit-quickadd-title { font-weight:800; font-size:0.9rem; margin-bottom:8px; color:var(--accent); }
+
+/* Compact unit summary card in sidebar */
+.unit-summary-card { border-left-width:6px; border-left-style:solid; border-radius:12px; padding:12px 14px; margin-bottom:10px; }
+.unit-summary-card .unit-actions { flex-wrap:wrap; margin-top:10px; }
+.unit-summary-header { display:flex; align-items:center; gap:12px; cursor:pointer; border-radius:8px; padding:4px; }
+.unit-summary-header:hover { background:rgba(148,163,184,0.12); }
+.unit-summary-daybadge { flex-shrink:0; width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.78rem; }
+.unit-summary-text { flex:1; min-width:0; }
+.unit-summary-name { font-weight:800; font-size:1rem; }
+.unit-summary-dates { font-size:0.8rem; color:#6b7280; margin-top:2px; }
+.unit-edit-btn { font-weight:700; }
+
+/* Day-edit modal: teacher-friendly period cards + jump nav */
+.modal-period-jumpnav { position:sticky; top:-1px; z-index:5; display:flex; flex-wrap:wrap; gap:6px; margin:0 -1rem 14px; padding:10px 1rem 12px; background:var(--card-bg); border-bottom:1px solid var(--card-border); }
+.modal-period-jump-btn { background:var(--card-bg); border:2px solid; border-radius:999px; padding:4px 12px; font-weight:800; font-size:0.8rem; cursor:pointer; }
+.modal-period-block { border:1px solid var(--card-border); border-left-width:6px; border-left-style:solid; border-radius:10px; padding:14px 16px; background:var(--card-bg); box-shadow:0 1px 3px rgba(0,0,0,0.05); scroll-margin-top:12px; }
+.modal-period-course { font-size:1.05rem; font-weight:800; margin-bottom:6px; }
+.modal-period-toggles { display:flex; gap:8px; margin:8px 0; }
+.modal-period-lessonplan { background:#f0fdf4; border-left:3px solid #16a34a; padding:8px 10px; border-radius:0 6px 6px 0; font-size:0.88rem; margin-bottom:10px; line-height:1.4; }
+body.dark .modal-period-lessonplan { background:#0f2b1a; }
+.modal-period-lessonplan-text { margin:4px 0; }
+.modal-lessonplan-btn { margin-bottom:10px; }
+.modal-period-notes-label { font-size:0.78rem; font-weight:700; color:#6b7280; margin-bottom:4px; }
+.modal-period-flash { animation: modalPeriodFlash 1.4s ease; }
+@keyframes modalPeriodFlash {
+  0%, 100% { box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  20%, 55% { box-shadow: 0 0 0 4px #facc15aa; }
+}
+
   </style>
 </head>
 <body>
@@ -1644,7 +1750,6 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
         <option value="mobile">Toggle Desktop / Mobile View</option>
         <option value="special">Toggle Special Tags On / Off</option>
         <option value="dark">Toggle Light / Dark Mode</option>
-        <option value="hover">Toggle Hover Agenda On / Off</option>
       </select>
 
               <select id="profileActions" class="header-select" aria-label="Profile actions">
@@ -1676,36 +1781,45 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
           <option value="sem2">2nd Semester</option>
         </select>
 
-        <div class="selector-group">
-          <div>
-            <strong>Division:</strong>
-            <label><input type="radio" name="division" value="hs" checked> HS</label>
-            <label><input type="radio" name="division" value="ms"> MS</label>
-            <label><input type="radio" name="division" value="ls"> LS</label>
-            <label><input type="radio" name="division" value="other"> Other</label>
-          </div>
-          <div>
-            <strong>Semester:</strong>
-            <label><input type="radio" name="semester" value="sem1" checked> 1st</label>
-            <label><input type="radio" name="semester" value="sem2"> 2nd</label>
-          </div>
-        </div>
-                <button id="setExternalBackupFileBtn" class="secondary">Set Auto Backup File</button>
-        <div class="backup-file-row" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:8px 0;">
-  <button type="button" id="linkExternalBackupBtn" class="secondary">
-    Set auto backup file
-  </button>
-  <span id="externalBackupStatus" class="small" style="color:#6b7280;">
-    No auto backup file linked
-  </span>
-</div>
+        <details class="header-settings">
+          <summary>⚙️ Calendar settings</summary>
+          <div class="header-settings-body">
 
-<div class="backup-file-row" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:8px 0;">
-  <button type="button" id="linkSharedExportHtmlBtn" class="secondary">
-  Link shared HTML file
-</button>
-<span id="sharedExportHtmlStatus" class="small">No linked HTML file</span>
-</div>
+            <div class="selector-group">
+
+              <div>
+                <strong>Division:</strong>
+                <label><input type="radio" name="division" value="hs" checked> HS</label>
+                <label><input type="radio" name="division" value="ms"> MS</label>
+                <label><input type="radio" name="division" value="ls"> LS</label>
+                <label><input type="radio" name="division" value="other"> Other</label>
+              </div>
+              <div>
+                <strong>Semester:</strong>
+                <label><input type="radio" name="semester" value="sem1" checked> 1st</label>
+                <label><input type="radio" name="semester" value="sem2"> 2nd</label>
+              </div>
+            </div>
+            <div class="backup-file-row">
+              <button type="button" id="linkExternalBackupBtn" class="secondary">
+                Set auto backup file
+              </button>
+              <span id="externalBackupStatus" class="small">
+                No auto backup file linked
+              </span>
+                <div class="backup-file-row">
+              <button type="button" id="helpBtn" class="secondary">❓ Help</button>
+            </div>
+            </div>
+
+            <div class="backup-file-row">
+              <button type="button" id="linkSharedExportHtmlBtn" class="secondary">
+                Link shared HTML file
+              </button>
+              <span id="sharedExportHtmlStatus" class="small">No linked HTML file</span>
+            </div>
+          </div>
+        </details>
 
       </div>
 
@@ -1715,13 +1829,10 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
       <button id="darkModeToggle" class="secondary">Dark Mode</button>
       <button id="mobileViewBtn" class="secondary">Mobile View</button>
       <button id="toggleSpecialTagsBtn" class="secondary">Remove Special Tags</button>
-      <button id="helpBtn" class="secondary">? Help</button>
-
+      
 
 </div>
           <button type="button" id="toggleExpandDaysBtn">Expand calendar view</button>
-
-      <button id="jumpTodayBtn" class="secondary">Jump To Today</button>
     </div>
       </div>
     </div>
@@ -1733,7 +1844,7 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
     <div class="config-section" data-section-key="rotation">
   <button class="config-section-toggle" type="button">
     <span class="config-chevron">▼</span>
-    <span>Rotation Rules</span>
+    <span>🔄 Rotation Rules</span>
   </button>
 
   <div class="config-section-body">
@@ -1760,7 +1871,7 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
     <div class="config-section" data-section-key="schedule">
       <button class="config-section-toggle" type="button">
         <span class="config-chevron">▼</span>
-        <span>Teacher Schedule</span>
+        <span>👥 Teacher Schedule</span>
       </button>
       <div class="config-section-body">
         <form id="scheduleForm">
@@ -1773,7 +1884,7 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
     <div class="config-section" data-section-key="custom-calendar">
       <button class="config-section-toggle" type="button">
         <span class="config-chevron">▼</span>
-        <span>Custom calendar</span>
+        <span>📅 Custom calendar</span>
       </button>
 
       <div class="config-section-body">
@@ -1856,7 +1967,7 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
     <div class="config-section" data-section-key="units">
       <button class="config-section-toggle" type="button">
         <span class="config-chevron">▼</span>
-        <span>Units per Class</span>
+        <span>📚 Units per Class</span>
       </button>
       <div class="config-section-body">
         <div id="unitsContainer"></div>
@@ -1867,7 +1978,7 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
 <div class="config-section" data-section-key="projects">
   <button class="config-section-toggle" type="button">
     <span class="config-chevron">▼</span>
-    <span>Projects</span>
+    <span>🎯 Projects</span>
   </button>
   <div class="config-section-body">
     <div id="projectsList"></div>
@@ -1877,7 +1988,7 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
     <div class="config-section" data-section-key="special">
       <button class="config-section-toggle" type="button">
         <span class="config-chevron">▼</span>
-        <span>Special Days</span>
+        <span>🎉 Special Days</span>
       </button>
       <div class="config-section-body">
         <div class="special-color-key" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; font-size:0.75rem;">
@@ -1908,7 +2019,7 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
     <div class="config-section" data-section-key="summary">
       <button class="config-section-toggle" type="button">
         <span class="config-chevron">▼</span>
-        <span>Summary</span>
+        <span>📊 Summary</span>
       </button>
       <div class="config-section-body">
         <div id="summaryStats" class="small"></div>
@@ -1919,6 +2030,11 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
 
   <section id="calendar">
 <section id="calendar">
+  <div class="view-toggle-bar">
+    <button type="button" class="view-toggle-btn active" data-view="month">📅 Month</button>
+    <button type="button" class="view-toggle-btn" data-view="week">📆 Week</button>
+    <button type="button" class="view-toggle-btn" data-view="day">☀️ Day</button>
+  </div>
   <div id="monthNav" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; gap:0.5rem; flex-wrap:wrap;">
     <button id="prevMonthBtn" class="secondary">◀ Prev</button>
     <div id="monthChips" style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center; flex:1;"></div>
@@ -1928,6 +2044,9 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
 
     <!-- Weekday headers will be inserted by JS -->
     <div id="calendarGrid"></div>
+
+    <div id="dayViewContainer" style="display:none;"></div>
+    <div id="weekViewContainer" style="display:none;"></div>
 
   </section>
 </main>
@@ -2090,38 +2209,6 @@ function getProfileCalendarLabel() {
       ? savedPacks.find(p => p.id === activePackId)
       : null;
   return pack?.name ? `Pack: ${pack.name}` : "Custom pack";
-}
-
-function applyHoverAgendaPreference() {
-  const hidden = localStorage.getItem("hideHoverAgenda") === "true";
-  document.body.classList.toggle("hide-hover-agenda", hidden);
-}
-
-function toggleHoverAgenda() {
-  const currentlyHidden = localStorage.getItem("hideHoverAgenda") === "true";
-  const nextHidden = !currentlyHidden;
-
-  localStorage.setItem("hideHoverAgenda", nextHidden ? "true" : "false");
-  applyHoverAgendaPreference();
-
-  const message = nextHidden
-    ? "Hover agenda: OFF"
-    : "Hover agenda: ON";
-
-  // Simple alert
-  alert(message);
-
-  // Optional: toast instead of alert (comment out alert above if you prefer this)
-  /*
-  const notice = document.createElement("div");
-  notice.style.cssText =
-    "position:fixed;bottom:20px;left:50%;transform:translateX(-50%);" +
-    "background:#1f2933;color:#fff;padding:10px 20px;border-radius:6px;" +
-    "z-index:300;font-size:0.9rem;";
-  notice.textContent = message;
-  document.body.appendChild(notice);
-  setTimeout(() => notice.remove(), 2000);
-  */
 }
 
 function savePackLibrary() {
@@ -2985,36 +3072,6 @@ function createShareableStarterCopy() {
 }
 
 
-function saveCurrentProfile(showToast = false) {
-  if (typeof getCurrentProfileId !== "function" || typeof getProfiles !== "function") {
-    console.warn("Profile helpers missing");
-    return;
-  }
-  const id = getCurrentProfileId();
-  if (!id) {
-    console.warn("No current profile id");
-    return;
-  }
-  const profiles = getProfiles();
-  if (!profiles[id]) {
-    console.warn("Profile not found:", id);
-    return;
-  }
-  if (typeof collectCurrentProfileData === "function") {
-    profiles[id].data = collectCurrentProfileData();
-  }
-
-  // Remember which calendar this profile is using
-  profiles[id].activePackId =
-    typeof activePackId !== "undefined" && activePackId
-      ? activePackId
-      : "builtin";
-
-  profiles[id].updatedAt = new Date().toISOString();
-  if (typeof saveProfiles === "function") saveProfiles(profiles);
-
-  if (showToast) showProfileToast(`Profile "${profiles[id].name}" updated`);
-}
     // --- Rotation rules (HS A–G) ---
     const HS_ROTATION_RULES = {
       A: [1,2,3,4,5],
@@ -4603,13 +4660,6 @@ function getCurrentConfig() {
   return DIVISIONS[currentDivision] || DIVISIONS.hs;
 }
 
-function toLocalISO(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
 /**
  * Fill instructional days with a repeating letter cycle.
  * Weekends: letter "" if skipWeekends; still included if you want full grid later.
@@ -5418,6 +5468,7 @@ function normalizeUnit(unit, index) {
       topic: (raw.topic || "").trim(),
       quiz: !!raw.quiz,
       test: !!raw.test,
+      lessonPlan: (raw.lessonPlan || "").trim(),
       shiftDay: !!raw.shiftDay
     });
   }
@@ -5438,7 +5489,10 @@ function normalizeUnit(unit, index) {
     length,
     startDate: unit?.startDate || "",
     days,
-    shiftedUnit: !!unit?.shiftedUnit
+    shiftedUnit: !!unit?.shiftedUnit,
+    description: (unit?.description || "").trim(),
+    objectives: (unit?.objectives || "").trim(),
+    materials: (unit?.materials || "").trim()
   };
 }
 
@@ -5663,18 +5717,6 @@ function hideSpecialEntryByKey(key) {
   if (!key) return;
   hiddenSpecialEntryKeys.add(key);
   saveHiddenSpecialEntries();
-}
-
-function getCustomDayForDivision(date, division = currentDivision) {
-  const c = customDays[date];
-  if (!c) return null;
-  // New shape
-  if (c.byDivision?.[division]) return c.byDivision[division];
-  // Legacy: only if tagged for this division
-  if (c.division && c.division !== division) return null;
-  // Legacy untagged = treat as HS only (your specials were created on HS)
-  if (!c.division && division !== "hs") return null;
-  return c;
 }
 
 function unhideSpecialEntryByKey(key) {
@@ -5968,7 +6010,9 @@ function getUnitProgress(periodNum, dayCount, classDate) {
     dayInUnit: instructionalDay,
     unitLength: displayedInstructionalLength,
     hasQuizToday: !isShiftDay && !!dayPlan.quiz,
-    hasTestToday: !isShiftDay && !!dayPlan.test
+    hasTestToday: !isShiftDay && !!dayPlan.test,
+    lessonPlan: isShiftDay ? "" : (dayPlan.lessonPlan || "").trim(),
+    dayIndexInUnit: planIndex
   };
 }
 
@@ -6150,137 +6194,6 @@ function closeTodayAgendaModal() {
   const backdrop = document.getElementById("todayAgendaBackdrop");
   if (backdrop) backdrop.style.display = "none";
 }
-
-function openTodayAgendaModal() {
-  const todayISO = getLocalTodayISO();
-  const schoolDay = getRotationDayByDate(todayISO);
-  const dayNotes = loadNotesForDate(todayISO);
-  const specialEntries = getUnifiedSpecialDaysForDate(todayISO);
-  const noTestPolicyDay = isAutoNoTestDay(todayISO) || !!dayNotes.noTest;
-  const periods = schoolDay ? getPeriodsForDate(todayISO, schoolDay.letter) : [];
-  const hasSchedulablePeriodsForTimes = periods.length > 0;
-  const dayCounts = getDayCountsForDate(todayISO, periods);
-
-  const backdrop = document.getElementById("todayAgendaBackdrop");
-  const dateLine = document.getElementById("todayAgendaDateLine");
-  const badgeRow = document.getElementById("todayAgendaBadges");
-  const body = document.getElementById("todayAgendaBody");
-
-  const letterText = schoolDay?.letter || `No ${getCurrentConfig().name} classes`;
-  dateLine.textContent = formatAgendaDateLine(todayISO, letterText);
-  badgeRow.innerHTML = "";
-  body.innerHTML = "";
-
-  specialEntries.forEach(specialDay => {
-    const specialBadge = document.createElement("span");
-    specialBadge.className = "special-day-badge";
-    specialBadge.textContent = `${specialDay.badgeText}: ${specialDay.label}`;
-    specialBadge.title = specialDay.label;
-    specialBadge.style.background = hexToRgba(specialDay.color, 0.45);
-    specialBadge.style.color = "#1f2937";
-    specialBadge.style.borderColor = specialDay.color;
-    badgeRow.appendChild(specialBadge);
-  });
-
-if (dayNotes.noTest && !isAutoNoTestDay(todayISO)) {
-  const noTestBadge = document.createElement("span");
-  noTestBadge.className = "status-badge no-test-day";
-  noTestBadge.textContent = "NO TEST TODAY";
-  badgeRow.appendChild(noTestBadge);
-} else if (dayNotes.isTestDay) {
-    const testBadge = document.createElement("span");
-    testBadge.className = "status-badge test-day";
-    testBadge.textContent = "TEST DAY";
-    badgeRow.appendChild(testBadge);
-  }
-
-  if (!periods.length) {
-    const emptyBlock = document.createElement("div");
-    emptyBlock.className = "agenda-note empty";
-    emptyBlock.textContent = schoolDay ? "No class periods are scheduled for this day." : "No calendar entry found for today.";
-    body.appendChild(emptyBlock);
-
-    const generalNote = (dayNotes.general || "").trim();
-    if (generalNote) {
-      const general = document.createElement("div");
-      general.className = "agenda-period-card";
-      const generalTitle = document.createElement("div");
-      generalTitle.className = "agenda-period-title";
-      generalTitle.textContent = "General Note";
-      const generalText = document.createElement("div");
-      generalText.className = "agenda-note";
-      generalText.textContent = generalNote;
-      general.appendChild(generalTitle);
-      general.appendChild(generalText);
-      body.appendChild(general);
-    }
-
-    backdrop.style.display = "flex";
-    return;
-  }
-
-  const periodList = document.createElement("div");
-  periodList.className = "agenda-period-list";
-
-  periods.forEach(periodNum => {
-    const unitInfo = getUnitProgress(periodNum, dayCounts[periodNum], todayISO);
-    const card = document.createElement("div");
-    card.className = "agenda-period-card";
-
-    const title = document.createElement("div");
-    title.className = "agenda-period-title";
-    const bellTime = getBellTimeForPeriodOnDate(todayISO, periodNum, periods);
-    title.textContent =
-      bellTime && hasSchedulablePeriodsForTimes
-        ? `${bellTime}: ${periodNum}: ${unitInfo.courseName}`
-        : `${periodNum}: ${unitInfo.courseName}`;
-    card.appendChild(title);
-
-    const note = document.createElement("div");
-    const noteText = (dayNotes[periodNum] || "").trim();
-    note.className = `agenda-note ${noteText ? "" : "empty"}`.trim();
-    note.textContent = noteText ? `Note: ${noteText}` : "No notes";
-    card.appendChild(note);
-
-    const infoRow = document.createElement("div");
-    infoRow.className = "agenda-badge-row";
-
-    if (unitInfo.unitIndex !== null) {
-      const unitBadge = document.createElement("span");
-      unitBadge.className = "special-day-badge";
-      const topic = unitInfo.topicName ? `: ${unitInfo.topicName}` : "";
-      const dayCounter = (unitInfo.dayInUnit && unitInfo.unitLength)
-        ? ` (Day ${unitInfo.dayInUnit}/${unitInfo.unitLength})`
-        : "";
-      unitBadge.textContent = `${unitInfo.unitName || `Unit ${unitInfo.unitIndex + 1}`}${topic}${dayCounter}`;
-      infoRow.appendChild(unitBadge);
-    }
-
-    if (unitInfo.hasQuizToday) {
-      const quizBadge = document.createElement("span");
-      quizBadge.className = "assessment-badge quiz";
-      quizBadge.textContent = "Quiz";
-      infoRow.appendChild(quizBadge);
-    }
-
-    if (unitInfo.hasTestToday) {
-      const testBadge = document.createElement("span");
-      testBadge.className = "assessment-badge test";
-      testBadge.textContent = "Test";
-      infoRow.appendChild(testBadge);
-    }
-
-    if (infoRow.childElementCount) {
-      card.appendChild(infoRow);
-    }
-
-    periodList.appendChild(card);
-  });
-
-  body.appendChild(periodList);
-  backdrop.style.display = "flex";
-}
-
 
     // --- LocalStorage keys ---
     const LS_SCHEDULE_KEY = "-schedule";
@@ -6762,20 +6675,6 @@ function renderProfileSelector() {
     .join("");
 }
 
-function showProfileToast(message) {
-  const el = document.getElementById("profileToast");
-  if (!el) {
-    console.warn("profileToast element missing");
-    return;
-  }
-  el.textContent = message;
-  el.classList.add("show");
-  clearTimeout(window._profileToastTimer);
-  window._profileToastTimer = setTimeout(() => {
-    el.classList.remove("show");
-  }, 1500);
-}
-
 function wireProfileUI() {
   const select = document.getElementById("profileSelect");
   const actions = document.getElementById("profileActions");
@@ -6950,14 +6849,6 @@ function renderPeriodSlots() {
 }
 
 
-// Helper
-window.assignPeriodClass = function(period, className) {
-  if (className) teacherSchedule[period] = className;
-  else delete teacherSchedule[period];
-  saveScheduleToStorage();
-  renderCalendar();
-};
-
 window.setClassColorForPeriod = function(period, color) {
   const map = getClassColors();
   map[`P${period}`] = color;
@@ -6965,29 +6856,6 @@ window.setClassColorForPeriod = function(period, color) {
   renderCalendar();
   renderPeriodSlots();
 };
-
-
-
-function addKnownClass() {
-  const input = document.getElementById("newClassName");
-  if (!input || !input.value.trim()) return;
-
-  const className = input.value.trim();
-
-  let knownClasses = [];
-  try {
-    const saved = localStorage.getItem("knownClasses");
-    if (saved) knownClasses = JSON.parse(saved);
-  } catch (e) {}
-
-  if (!knownClasses.includes(className)) {
-    knownClasses.push(className);
-    localStorage.setItem("knownClasses", JSON.stringify(knownClasses));
-  }
-
-  renderKnownClasses();
-  input.value = "";
-}
 
 function renderRotationLegend() {
   const legend = document.getElementById("rotationRulesLegend");
@@ -7338,75 +7206,6 @@ function renderCalendar() {
 
     if (iso === todayISO) cell.classList.add("today");
 
-    // Hover agenda
-    const hoverAgenda = document.createElement("div");
-    hoverAgenda.className = "hover-agenda";
-
-    const weekdayName = dateObj.toLocaleDateString("en-US", { weekday: "long" });
-    let hoverContent = `<strong>${cleanDate} — ${weekdayName}${codedLabel}</strong><br><br>`;
-    let hasContent = false;
-
-    if (isOff) {
-      hasContent = true;
-      hoverContent += `<span style="color:#6b7280;font-weight:600;">OFF — No classes</span><br><br>`;
-    }
-
-    if (dayNotes.general && String(dayNotes.general).trim()) {
-      hasContent = true;
-      hoverContent += `${typeof noteToHtml === "function" ? noteToHtml(dayNotes.general) : dayNotes.general}<br><br>`;
-    }
-
-    if (dayNotes.noTest) {
-      hasContent = true;
-      hoverContent += `<span style="color:#166534;font-weight:600;">NO TEST TODAY</span><br>`;
-    }
-
-    if (specialEntries.length) {
-      hasContent = true;
-      hoverContent += `<span style="color:#7c3aed;">${specialEntries.map(e => e.label).join(", ")}</span><br><br>`;
-    }
-
-    if (!isOff && periodsForDay.length) {
-      periodsForDay.forEach(periodNum => {
-        const unitInfo = getUnitProgress(periodNum, (classCounts[periodNum] || 0) + 1, iso);
-        hasContent = true;
-        const bellTime = getBellTimeForPeriodOnDate(iso, periodNum, periodsForDay);
-        const hoverTitle =
-          bellTime && hasSchedulablePeriodsForTimes
-            ? `${bellTime}: ${periodNum}: ${unitInfo.courseName}`
-            : `${periodNum}: ${unitInfo.courseName}`;
-        hoverContent += `<strong>${hoverTitle}</strong>`;
-        if (unitInfo.unitName) hoverContent += ` — ${unitInfo.unitName}`;
-        if (unitInfo.topicName) hoverContent += ` (${unitInfo.topicName})`;
-        if (unitInfo.dayInUnit && unitInfo.unitLength) {
-          hoverContent += ` [Day ${unitInfo.dayInUnit}/${unitInfo.unitLength}]`;
-        }
-        if (dayNotes[periodNum]) {
-          hoverContent += `<br><span style="color:#555;">Note: ${
-            typeof noteToHtml === "function" ? noteToHtml(dayNotes[periodNum]) : dayNotes[periodNum]
-          }</span>`;
-        }
-        if (unitInfo.hasTestToday || dayNotes[`test-${periodNum}`]) {
-          hoverContent += ` <span style="color:#b91c1c;font-weight:600;">(TEST)</span>`;
-        } else if (unitInfo.hasQuizToday || dayNotes[`quiz-${periodNum}`]) {
-          hoverContent += ` <span style="color:#1d4ed8;font-weight:600;">(QUIZ)</span>`;
-        }
-        if (typeof getProjectsForPeriod === "function") {
-          getProjectsForPeriod(periodNum)
-            .filter(p => p.dueDate === iso)
-            .forEach(p => {
-              hoverContent += ` <span style="color:#b91c1c;font-weight:600;">(PROJECT: ${p.name})</span>`;
-            });
-        }
-        hoverContent += `<br><br>`;
-      });
-    }
-
-    if (hasContent || dayNotes.noTest || specialEntries.length) {
-      hoverAgenda.innerHTML = hoverContent;
-      cell.appendChild(hoverAgenda);
-    }
-
     // Header
     const header = document.createElement("div");
     header.className = "day-cell-header";
@@ -7601,12 +7400,8 @@ function renderCalendar() {
       header.appendChild(badgeRow);
     }
 
-    // Put header at top of cell (after hover if present)
-    if (cell.firstChild && cell.firstChild.classList?.contains("hover-agenda")) {
-      cell.insertBefore(header, cell.children[1] || null);
-    } else {
-      cell.insertBefore(header, cell.firstChild);
-    }
+    // Put header at top of cell
+    cell.insertBefore(header, cell.firstChild);
 
     if (hasTestOnNoTest) {
       cell.classList.add("has-test-on-no-test");
@@ -7630,6 +7425,285 @@ function renderCalendar() {
   calendarRoot.appendChild(monthGrid);
   localStorage.setItem(LS_CLASS_COUNT_KEY, JSON.stringify(classCounts));
   renderSummary();
+  refreshCurrentView();
+}
+
+// ====================== DAY / WEEK VIEW ======================
+let currentAppView = "month";
+let currentDayViewISO = null;
+let currentWeekAnchorISO = null;
+
+function buildDaySummaryData(iso) {
+  const schoolDay = getRotationDayByDate(iso);
+  const override = typeof getCustomDay === "function" ? getCustomDay(iso) : null;
+  const isOff = !!(override && String(override.letter).toUpperCase() === "OFF");
+  const rawLetter = schoolDay?.letter || "";
+  const isNoSchool = isOff ||
+    /no school|holiday|break|labor day|thanksgiving|christmas/i.test(String(rawLetter)) ||
+    (!!schoolDay && !normalizeLetter(rawLetter) && /no school|holiday|break/i.test(String(rawLetter)));
+  const letter = isOff ? "OFF" : rawLetter;
+
+  let noSchoolLabel = "";
+  if (isOff) noSchoolLabel = (override?.label || "").trim();
+  else if (isNoSchool) noSchoolLabel = String(rawLetter).replace(/[-–—]/g," ").replace(/\bno school\b/gi,"").replace(/\s+/g," ").trim();
+
+  const dateObj = new Date(iso + "T12:00:00");
+  const weekdayName = dateObj.toLocaleDateString("en-US", { weekday: "long" });
+  const periodsForDay = (schoolDay && !isOff && !isNoSchool) ? getPeriodsForDate(iso, schoolDay.letter) : [];
+  const dayNotes = loadNotesForDate(iso);
+  const specialEntries = getUnifiedSpecialDaysForDate(iso);
+  const dayIsNoTest = !!dayNotes.noTest || (typeof isAutoNoTestDay === "function" && isAutoNoTestDay(iso));
+  const counts = countScheduledClassesBefore(iso);
+
+  const periods = periodsForDay.map(periodNum => {
+    counts[periodNum] = (counts[periodNum] || 0) + 1;
+    const unitInfo = getUnitProgress(periodNum, counts[periodNum], iso);
+    const bellTime = getBellTimeForPeriodOnDate(iso, periodNum, periodsForDay);
+    const isTest = !!(unitInfo.hasTestToday || dayNotes[`test-${periodNum}`]);
+    const isQuiz = !!(unitInfo.hasQuizToday || dayNotes[`quiz-${periodNum}`]);
+    const projectsDue = (typeof getProjectsForPeriod === "function" ? getProjectsForPeriod(periodNum) : []).filter(p => p.dueDate === iso);
+    return {
+      periodNum, courseName: unitInfo.courseName, color: getColorForPeriod(periodNum),
+      bellTime, unitName: unitInfo.unitName, topicName: unitInfo.topicName,
+      dayInUnit: unitInfo.dayInUnit, unitLength: unitInfo.unitLength,
+      isTest, isQuiz, note: dayNotes[periodNum] || "", homework: dayNotes[`hw-${periodNum}`] || "",
+      lessonPlan: unitInfo.lessonPlan || "",
+      projectsDue
+    };
+  });
+
+  return {
+    iso, weekdayName, letter, isOff, isNoSchool, noSchoolLabel,
+    generalNote: dayNotes.general || "", noTest: dayIsNoTest, specialEntries, periods
+  };
+}
+
+function jumpToUnitLessonPlan(periodNum, unitIndex, dayIndexInUnit) {
+  if (unitIndex === null || unitIndex === undefined) return;
+  closeDayModal();
+  openUnitDaysEditor(periodNum, unitIndex);
+  setTimeout(() => {
+    const tbody = document.getElementById("unitDaysTableBody");
+    const card = tbody?.querySelectorAll(".unit-day-card")[dayIndexInUnit];
+    if (!card) return;
+    const toggleBtn = card.querySelector(".udc-lessonplan-toggle");
+    const textarea = card.querySelector(".unit-day-lessonplan");
+    if (textarea && textarea.style.display === "none" && toggleBtn) {
+      toggleBtn.click();
+    }
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.add("modal-period-flash");
+    setTimeout(() => card.classList.remove("modal-period-flash"), 1400);
+    textarea?.focus();
+  }, 80);
+}
+
+function openEditForDate(iso, periodNum) {
+  const schoolDay = getRotationDayByDate(iso);
+  openDayModal({
+    date: iso,
+    letter: schoolDay ? schoolDay.letter : `No ${getCurrentConfig().name} classes`
+  });
+  if (periodNum) {
+    setTimeout(() => {
+      const target = document.getElementById("modalPeriodBlock-" + periodNum);
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        target.classList.add("modal-period-flash");
+        setTimeout(() => target.classList.remove("modal-period-flash"), 1400);
+      }
+    }, 60);
+  }
+}
+
+function renderDayView(iso) {
+  currentDayViewISO = iso;
+  const data = buildDaySummaryData(iso);
+  const container = document.getElementById("dayViewContainer");
+  if (!container) return;
+  const isToday = iso === getLocalTodayISO();
+
+  let html = `
+    <div class="day-view-nav">
+      <button type="button" class="secondary" id="dayViewPrevBtn">◀ Prev Day</button>
+      <div class="day-view-title">
+        <div class="day-view-date">${data.weekdayName}, ${formatDateLabel(iso)}${isToday ? ' <span class="today-pill">Today</span>' : ''}</div>
+        ${!data.isOff && !data.isNoSchool && data.letter ? `<div class="day-view-letter">Letter Day: <strong>${data.letter}</strong></div>` : ''}
+      </div>
+      <button type="button" class="secondary" id="dayViewNextBtn">Next Day ▶</button>
+    </div>`;
+
+  if (data.isOff || data.isNoSchool) {
+    html += `<div class="day-view-off">🎉 No School${data.noSchoolLabel ? ` — ${data.noSchoolLabel}` : ''}</div>`;
+  }
+  if (data.specialEntries.length) {
+    html += `<div class="day-view-specials">` + data.specialEntries.map(e =>
+      `<span class="special-day-badge" style="background:${hexToRgba(e.color||'#e9d5ff',0.45)};border-color:${e.color||'#e9d5ff'};">${e.badgeText}: ${e.label}</span>`
+    ).join("") + `</div>`;
+  }
+  if (data.generalNote) html += `<div class="day-view-general-note">📌 ${noteToHtml(data.generalNote)}</div>`;
+  if (data.noTest) html += `<div class="day-view-notest">✅ No Test Today</div>`;
+  if (!data.periods.length && !data.isOff && !data.isNoSchool) {
+    html += `<div class="day-view-empty">No classes scheduled today.</div>`;
+  }
+
+  html += `<div class="day-view-periods">`;
+  data.periods.forEach(p => {
+    html += `
+      <div class="day-view-period-card" data-period="${p.periodNum}" style="border-left-color:${p.color};">
+        <div class="dvp-header">
+          <span class="dvp-time">${p.bellTime || ''}</span>
+          <span class="dvp-course" style="color:${p.color};">Period ${p.periodNum}: ${p.courseName}</span>
+          <div class="dvp-badges">
+            ${p.isTest ? `<span class="assessment-badge test">📝 Test</span>` : ''}
+            ${p.isQuiz ? `<span class="assessment-badge quiz">✏️ Quiz</span>` : ''}
+          </div>
+        </div>
+        ${p.unitName ? `<div class="dvp-unit">${p.unitName}${p.topicName ? `: ${p.topicName}` : ''}${p.dayInUnit ? ` (Day ${p.dayInUnit}/${p.unitLength})` : ''}</div>` : ''}
+        ${p.lessonPlan ? `<div class="dvp-lessonplan"><strong>📝 Lesson Plan</strong><br>${noteToHtml(p.lessonPlan)}</div>` : ''}
+        ${p.note ? `<div class="dvp-note">${noteToHtml(p.note)}</div>` : `<div class="dvp-note dvp-empty">No notes yet</div>`}
+        ${p.homework ? `<div class="dvp-homework">📚 HW: ${noteToHtml(p.homework)}</div>` : ''}
+        ${p.projectsDue.map(pr => `<div class="dvp-project">🎯 Project due: ${pr.name}</div>`).join('')}
+      </div>`;
+  });
+  html += `</div>`;
+  html += `<div class="day-view-footer"><button type="button" id="dayViewEditBtn">✏️ Edit this day</button></div>`;
+
+  container.innerHTML = html;
+  document.getElementById("dayViewPrevBtn")?.addEventListener("click", () => goToDayView(-1));
+  document.getElementById("dayViewNextBtn")?.addEventListener("click", () => goToDayView(1));
+  document.getElementById("dayViewEditBtn")?.addEventListener("click", () => openEditForDate(iso));
+  container.querySelectorAll(".day-view-period-card").forEach(card => {
+    card.addEventListener("click", () => openEditForDate(iso, Number(card.dataset.period)));
+  });
+  const dayViewOffBanner = container.querySelector(".day-view-off");
+  if (dayViewOffBanner) {
+    dayViewOffBanner.style.cursor = "pointer";
+    dayViewOffBanner.addEventListener("click", () => openEditForDate(iso));
+  }
+}
+
+function goToDayView(deltaDays) {
+  const d = new Date(currentDayViewISO + "T12:00:00");
+  d.setDate(d.getDate() + deltaDays);
+  renderDayView(toLocalISO(d));
+}
+
+function getWeekdaysForDate(iso) {
+  const d = new Date(iso + "T12:00:00");
+  const dow = d.getDay();
+  const diffToMonday = (dow === 0 ? -6 : 1 - dow);
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diffToMonday);
+  const days = [];
+  for (let i = 0; i < 5; i++) {
+    const dd = new Date(monday);
+    dd.setDate(monday.getDate() + i);
+    days.push(toLocalISO(dd));
+  }
+  return days;
+}
+
+function renderWeekView(anchorIso) {
+  currentWeekAnchorISO = anchorIso;
+  const container = document.getElementById("weekViewContainer");
+  if (!container) return;
+  const weekDates = getWeekdaysForDate(anchorIso);
+  const todayISO = getLocalTodayISO();
+  const rangeLabel = `${formatDateLabel(weekDates[0])} \u2013 ${formatDateLabel(weekDates[weekDates.length-1])}`;
+
+  let html = `
+    <div class="week-view-nav">
+      <button type="button" class="secondary" id="weekViewPrevBtn">◀ Prev Week</button>
+      <div class="week-view-title">${rangeLabel}</div>
+      <button type="button" class="secondary" id="weekViewNextBtn">Next Week ▶</button>
+    </div>
+    <div class="week-view-grid">`;
+
+  weekDates.forEach(iso => {
+    const data = buildDaySummaryData(iso);
+    const isToday = iso === todayISO;
+    html += `<div class="week-day-col ${isToday ? 'wdc-today' : ''}" data-date="${iso}">`;
+    html += `<div class="wdc-header">
+        <button type="button" class="wdc-edit-btn" data-edit-date="${iso}" title="Edit this day">✏️</button>
+        <div class="wdc-weekday">${data.weekdayName.slice(0,3)}</div>
+        <div class="wdc-date">${formatDateLabel(iso).split(",")[0]}</div>
+        ${!data.isOff && !data.isNoSchool && data.letter ? `<div class="wdc-letter">${data.letter}</div>` : ''}
+      </div>`;
+    if (data.isOff || data.isNoSchool) {
+      html += `<div class="wdc-off">Off${data.noSchoolLabel ? `<br><span class="wdc-off-sub">${data.noSchoolLabel}</span>` : ''}</div>`;
+    } else if (!data.periods.length) {
+      html += `<div class="wdc-empty">No classes</div>`;
+    } else {
+      data.periods.forEach(p => {
+        html += `<div class="wdc-period" data-period="${p.periodNum}" style="border-left-color:${p.color};">
+          <div class="wdc-period-top">
+            <span class="wdc-period-num">P${p.periodNum}</span>
+            ${p.isTest ? '<span>📝</span>' : ''}${p.isQuiz ? '<span>✏️</span>' : ''}
+          </div>
+          <div class="wdc-course">${p.courseName}</div>
+          ${p.topicName ? `<div class="wdc-topic">${p.topicName}</div>` : ''}
+        </div>`;
+      });
+    }
+    if (data.specialEntries.length) {
+      html += `<div class="wdc-specials">` + data.specialEntries.map(e =>
+        `<span class="wdc-special-pill" title="${e.label}">${e.badgeText}</span>`).join("") + `</div>`;
+    }
+    html += `</div>`;
+  });
+
+  html += `</div>`;
+  container.innerHTML = html;
+
+  document.getElementById("weekViewPrevBtn")?.addEventListener("click", () => goToWeekView(-7));
+  document.getElementById("weekViewNextBtn")?.addEventListener("click", () => goToWeekView(7));
+  container.querySelectorAll(".week-day-col").forEach(col => {
+    col.addEventListener("click", () => switchView("day", col.dataset.date));
+  });
+  container.querySelectorAll(".wdc-edit-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openEditForDate(btn.dataset.editDate);
+    });
+  });
+  container.querySelectorAll(".wdc-period").forEach(el => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const col = el.closest(".week-day-col");
+      if (col) openEditForDate(col.dataset.date, Number(el.dataset.period));
+    });
+  });
+}
+
+function goToWeekView(deltaDays) {
+  const d = new Date(currentWeekAnchorISO + "T12:00:00");
+  d.setDate(d.getDate() + deltaDays);
+  renderWeekView(toLocalISO(d));
+}
+
+function refreshCurrentView() {
+  if (currentAppView === "day") renderDayView(currentDayViewISO || getLocalTodayISO());
+  else if (currentAppView === "week") renderWeekView(currentWeekAnchorISO || getLocalTodayISO());
+}
+
+function switchView(view, iso) {
+  currentAppView = view;
+  ["monthNav", "monthTitle", "calendarGrid"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = view === "month" ? "" : "none";
+  });
+  const dayContainer = document.getElementById("dayViewContainer");
+  const weekContainer = document.getElementById("weekViewContainer");
+  if (dayContainer) dayContainer.style.display = view === "day" ? "" : "none";
+  if (weekContainer) weekContainer.style.display = view === "week" ? "" : "none";
+
+  document.querySelectorAll(".view-toggle-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.view === view);
+  });
+
+  if (view === "day") renderDayView(iso || currentDayViewISO || getLocalTodayISO());
+  else if (view === "week") renderWeekView(iso || currentWeekAnchorISO || getLocalTodayISO());
 }
 
 function openDayModal(day) {
@@ -7944,7 +8018,27 @@ body.appendChild(generalBlock);
   `;
   body.appendChild(noTestBlock);
 
-  // Per-Period Notes + Test Checkbox (unchanged)
+  // Per-Period Notes + Test Checkbox — teacher-friendly cards with quick jump nav
+  if (periods.length > 1) {
+    const jumpNav = document.createElement("div");
+    jumpNav.className = "modal-period-jumpnav";
+    jumpNav.innerHTML = periods.map(pn => {
+      const jumpColor = getColorForPeriod(pn);
+      return `<button type="button" class="modal-period-jump-btn" data-jump="${pn}" style="border-color:${jumpColor};color:${jumpColor};">P${pn}</button>`;
+    }).join("");
+    body.appendChild(jumpNav);
+    jumpNav.querySelectorAll(".modal-period-jump-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const target = document.getElementById("modalPeriodBlock-" + btn.dataset.jump);
+        if (target) {
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+          target.classList.add("modal-period-flash");
+          setTimeout(() => target.classList.remove("modal-period-flash"), 1400);
+        }
+      });
+    });
+  }
+
   periods.forEach(periodNum => {
     const unitInfo = getUnitProgress(periodNum, dayCounts[periodNum], day.date);
     const slotIndex = periods.indexOf(periodNum);
@@ -7956,11 +8050,16 @@ body.appendChild(generalBlock);
         ? existingSlotTimes[slotIndex]
         : "";
     const bellTimeForInput = savedBellTime || defaultBellTime;
+    const periodColor = getColorForPeriod(periodNum);
 
     const block = document.createElement("div");
-    block.className = "note-block";
+    block.className = "note-block modal-period-block";
+    block.id = `modalPeriodBlock-${periodNum}`;
+    block.style.borderLeftColor = periodColor;
 
-    const label = document.createElement("label");
+    const label = document.createElement("div");
+    label.className = "modal-period-course";
+    label.style.color = periodColor;
     label.textContent = unitInfo.displayText;
     block.appendChild(label);
 
@@ -7988,36 +8087,48 @@ body.appendChild(generalBlock);
     timeRow.appendChild(timeInput);
     block.appendChild(timeRow);
 
-    const testRow = document.createElement("div");
-    testRow.className = "check-row";
-    testRow.innerHTML = `
-      <input type="checkbox" id="test-period-${periodNum}" 
-             ${existingNotes[`test-${periodNum}`] || unitInfo.hasTestToday ? 'checked' : ''}>
-      <label for="test-period-${periodNum}">Test Today (Period ${periodNum})</label>
+    const togglesWrap = document.createElement("div");
+    togglesWrap.className = "modal-period-toggles";
+    togglesWrap.innerHTML = `
+      <label class="udc-toggle udc-toggle-quiz">
+        <input type="checkbox" id="quiz-period-${periodNum}" ${existingNotes[`quiz-${periodNum}`] || unitInfo.hasQuizToday ? 'checked' : ''}>
+        <span>✏️ Quiz Today</span>
+      </label>
+      <label class="udc-toggle udc-toggle-test">
+        <input type="checkbox" id="test-period-${periodNum}" ${existingNotes[`test-${periodNum}`] || unitInfo.hasTestToday ? 'checked' : ''}>
+        <span>📝 Test Today</span>
+      </label>
     `;
-    block.appendChild(testRow);
+    block.appendChild(togglesWrap);
 
-    // Inside the periods.forEach loop, after the Test checkbox
-    const quizRow = document.createElement("div");
-    quizRow.className = "check-row";
-    quizRow.innerHTML = `
-      <input type="checkbox" id="quiz-period-${periodNum}" 
-            ${existingNotes[`quiz-${periodNum}`] || unitInfo.hasQuizToday ? 'checked' : ''}>
-      <label for="quiz-period-${periodNum}">Quiz Today (Period ${periodNum})</label>
-    `;
-    block.appendChild(quizRow);
-
-    if (unitInfo.unitIndex !== null) {
-      const editUnitBtn = document.createElement("button");
-      editUnitBtn.type = "button";
-      editUnitBtn.className = "secondary";
-      editUnitBtn.textContent = "Edit Unit";
-      editUnitBtn.addEventListener("click", () => {
-        closeDayModal();
-        openUnitDaysEditor(periodNum, unitInfo.unitIndex);
+    if (unitInfo.lessonPlan) {
+      const lpWrap = document.createElement("div");
+      lpWrap.className = "modal-period-lessonplan";
+      lpWrap.innerHTML = `<strong>📝 Lesson Plan</strong><div class="modal-period-lessonplan-text">${noteToHtml(unitInfo.lessonPlan)}</div>`;
+      const lpEditBtn = document.createElement("button");
+      lpEditBtn.type = "button";
+      lpEditBtn.className = "secondary modal-lessonplan-btn";
+      lpEditBtn.textContent = "✏️ Edit Lesson Plan";
+      lpEditBtn.addEventListener("click", () => {
+        jumpToUnitLessonPlan(periodNum, unitInfo.unitIndex, unitInfo.dayIndexInUnit);
       });
-      block.appendChild(editUnitBtn);
+      lpWrap.appendChild(lpEditBtn);
+      block.appendChild(lpWrap);
+    } else if (unitInfo.unitIndex !== null) {
+      const addLpBtn = document.createElement("button");
+      addLpBtn.type = "button";
+      addLpBtn.className = "secondary modal-lessonplan-btn";
+      addLpBtn.textContent = "📝 + Add Lesson Plan for Today";
+      addLpBtn.addEventListener("click", () => {
+        jumpToUnitLessonPlan(periodNum, unitInfo.unitIndex, unitInfo.dayIndexInUnit);
+      });
+      block.appendChild(addLpBtn);
     }
+
+    const notesLabel = document.createElement("div");
+    notesLabel.className = "modal-period-notes-label";
+    notesLabel.textContent = "📓 Notes for today (not part of the lesson plan)";
+    block.appendChild(notesLabel);
 
 block.appendChild(
   buildNoteEditor(String(periodNum), existingNotes[periodNum] || "")
@@ -8026,7 +8137,7 @@ block.appendChild(
     const hwWrap = document.createElement("div");
     hwWrap.style.marginTop = "8px";
     const hwLabel = document.createElement("label");
-    hwLabel.innerHTML = `<strong>Homework (Period ${periodNum})</strong>`;
+    hwLabel.innerHTML = `<strong>📚 Homework</strong>`;
     hwLabel.style.display = "block";
     hwLabel.style.marginBottom = "4px";
 
@@ -8042,6 +8153,19 @@ block.appendChild(
     hwWrap.appendChild(hwLabel);
     hwWrap.appendChild(hwInput);
     block.appendChild(hwWrap);
+
+    if (unitInfo.unitIndex !== null) {
+      const editUnitBtn = document.createElement("button");
+      editUnitBtn.type = "button";
+      editUnitBtn.className = "secondary";
+      editUnitBtn.style.marginTop = "8px";
+      editUnitBtn.textContent = "✏️ Edit whole unit";
+      editUnitBtn.addEventListener("click", () => {
+        closeDayModal();
+        openUnitDaysEditor(periodNum, unitInfo.unitIndex);
+      });
+      block.appendChild(editUnitBtn);
+    }
 
     body.appendChild(block);
   });
@@ -8687,31 +8811,36 @@ function renderUnits() {
     const periodUnits = getUnitsForPeriod(p);
     const schedule = applyUnitSchedule(p, periodUnits, false);
     const courseName = teacherSchedule[p] || `Period ${p}`;
+    const periodColor = getColorForPeriod(p);
 
     const div = document.createElement("div");
     div.className = "unit-card";
     div.innerHTML = `
-      <div class="unit-heading" style="cursor: pointer; user-select: none; padding: 0.5rem;" onclick="togglePeriod(${p})">
-        ▶ Period ${p} - ${courseName} 
-        <span style="float:right; font-size:0.85em; color:#666; font-weight:normal;">(${periodUnits.length} units)</span>
+      <div class="unit-heading" onclick="togglePeriod(${p})">
+        <span>▶</span>
+        <span class="unit-heading-title">Period ${p} · ${courseName}</span>
+        <span class="unit-heading-badge">${periodUnits.length} unit${periodUnits.length === 1 ? "" : "s"}</span>
       </div>
       <div id="period-content-${p}" class="period-content" style="display: none; padding: 0.5rem 0;">
-        <div class="unit-grid">
-          <div>
-            <label>Unit Name</label>
-            <input type="text" id="newUnitName-${p}" placeholder="Exploring Data">
+        <div class="unit-quickadd">
+          <div class="unit-quickadd-title">➕ Start a new unit</div>
+          <div class="unit-grid">
+            <div>
+              <label>Unit Name</label>
+              <input type="text" id="newUnitName-${p}" placeholder="e.g. Exploring Data">
+            </div>
+            <div>
+              <label>Length (days)
+                <span id="maxDaysHint-${p}" class="small" style="color:var(--accent); font-weight:normal;"></span>
+              </label>
+              <input type="number" id="newUnitLength-${p}" min="1" value="10">
+            </div>
           </div>
-          <div>
-            <label>Length (days) 
-              <span id="maxDaysHint-${p}" class="small" style="color:#2563eb; font-weight:normal;"></span>
-            </label>
-            <input type="number" id="newUnitLength-${p}" min="1" value="10">
+          <div class="unit-actions">
+            <button onclick="addUnitFromInputs(${p})">➕ Add Unit</button>
           </div>
         </div>
-        <div class="unit-actions">
-          <button onclick="addUnitFromInputs(${p})">+ Add Unit</button>
-        </div>
-        
+
         <div id="units-list-${p}"></div>
       </div>
     `;
@@ -8727,35 +8856,32 @@ function renderUnits() {
         : "Date range unavailable";
 
       const row = document.createElement("div");
-      row.className = "unit-row unit-card";
+      row.className = "unit-row unit-card unit-summary-card";
+      row.style.borderLeftColor = periodColor;
       row.innerHTML = `
-        <div class="unit-grid">
-          <div>
-            <label>Unit Name</label>
-            <input id="unitName-${p}-${i}" type="text" value="${normalized.name}">
-          </div>
-          <div>
-            <label>Length (days)</label>
-            <input id="unitLength-${p}-${i}" type="number" min="1" value="${normalized.length}">
-          </div>
-          <div>
-            <label>Start Date</label>
-            <input id="unitStart-${p}-${i}" type="date" value="${normalized.startDate || ""}">
+        <div class="unit-summary-header" data-open-unit="${p}:${i}">
+          <div class="unit-summary-daybadge" style="background:${hexToRgba(periodColor, 0.18)};color:${periodColor};">${normalized.length}d</div>
+          <div class="unit-summary-text">
+            <div class="unit-summary-name">${normalized.name || `Unit ${i + 1}`}</div>
+            <div class="unit-summary-dates">🗓️ ${dateRangeText}</div>
+            ${normalized.shiftedUnit ? `<span class="shift-unit-tag">SHIFT UNIT</span>` : ""}
           </div>
         </div>
-        <div class="small">Scheduled dates: ${dateRangeText}</div>
-        ${normalized.shiftedUnit ? `<span class="shift-unit-tag">SHIFT UNIT</span>` : ""}
         <div class="unit-actions">
-          <button onclick="saveUnitInfo(${p}, ${i})">Save Info</button>
-          <button onclick="openUnitDaysEditor(${p}, ${i})">Edit Days</button>
-          <button onclick="shiftUnit(${p}, ${i}, 1)">+1 Day (Snow)</button>
-          <button onclick="shiftUnit(${p}, ${i}, -1)">-1 Day</button>
-          <button onclick="shiftUnit(${p}, ${i}, 1, false)" class="secondary">Shift This + Following</button>
-          <button onclick="removeUnit(${p},${i})" class="secondary">Remove Unit</button>
-          <button onclick="duplicateUnit(${p}, ${i})" class="secondary">Duplicate</button>
+          <button type="button" class="unit-edit-btn" data-open-unit="${p}:${i}">✏️ Edit Unit</button>
+          <button onclick="shiftUnit(${p}, ${i}, 1)" class="secondary" title="Push this unit back one day for a snow day">❄️ +1</button>
+          <button onclick="shiftUnit(${p}, ${i}, -1)" class="secondary" title="Pull unit back one day">−1</button>
+          <button onclick="duplicateUnit(${p}, ${i})" class="secondary" title="Duplicate to another period">⧉ Duplicate</button>
+          <button onclick="removeUnit(${p},${i})" class="secondary" title="Remove this unit">🗑️</button>
         </div>
       `;
       list.appendChild(row);
+      row.querySelectorAll("[data-open-unit]").forEach(el => {
+        el.addEventListener("click", () => {
+          const [pp, ii] = el.dataset.openUnit.split(":").map(Number);
+          openUnitDaysEditor(pp, ii);
+        });
+      });
     });
   }
   updateMaxDaysHints();
@@ -8920,42 +9046,6 @@ function renderSpecialDays() {
   }
 }
 
-window.clearAllCustomDays = function() {
-  if (!confirm("Remove all day overrides and return to the built-in calendar?")) return;
-  customDays = {};
-  saveCustomDays();
-  renderCalendar();
-  alert("Overrides cleared.");
-};
-
-window.removeKnownClass = function(index) {
-  let knownClasses = [];
-  try {
-    const saved = localStorage.getItem("knownClasses");
-    if (saved) knownClasses = JSON.parse(saved);
-  } catch (e) {}
-
-  const className = knownClasses[index];
-  if (!className) return;
-
-  if (!confirm(`Remove "${className}" from known classes?`)) return;
-
-  knownClasses.splice(index, 1);
-  localStorage.setItem("knownClasses", JSON.stringify(knownClasses));
-
-  // Clear any periods using this class
-  Object.keys(teacherSchedule).forEach(p => {
-    if (teacherSchedule[p] === className) {
-      delete teacherSchedule[p];
-    }
-  });
-
-  saveScheduleToStorage();
-  renderKnownClasses();
-  renderPeriodSlots();
-  renderCalendar();
-};
-
 window.deleteProject = function(periodNum, projectId) {
   if (!confirm("Delete this project?")) return;
   const key = String(periodNum);
@@ -9116,6 +9206,77 @@ window.choosePeriodForNewUnit = function() {
 let currentUnitEditor = null;
 let pendingSnowDaySelectionResolver = null;
 
+function computeUnitDayDates(period, index, candidateUnit) {
+  const periodUnits = getUnitsForPeriod(period).map((u, i) => (i === index && candidateUnit ? candidateUnit : u));
+  const schedule = applyUnitSchedule(period, periodUnits, false);
+  const win = schedule.windows.find(w => w.unitIndex === index);
+  if (!win) return [];
+  return schedule.occurrenceDates.slice(win.startIndex, win.endIndex + 1);
+}
+
+function formatShortWeekdayDate(dateStr) {
+  if (!dateStr) return "";
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const d = new Date(year, (month || 1) - 1, day || 1);
+  if (isNaN(d)) return "";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function renderUnitDayCards(containerEl, days, dayDates = []) {
+  containerEl.innerHTML = "";
+  days.forEach((dayPlan, dayIndex) => {
+    const isShiftRow = isShiftDayPlan(dayPlan);
+    const hasLessonPlan = !!(dayPlan.lessonPlan || "").trim();
+    const dateLabel = formatShortWeekdayDate(dayDates[dayIndex]);
+    const card = document.createElement("div");
+    card.className = "unit-day-card" + (isShiftRow ? " unit-day-shift" : "");
+    card.innerHTML = `
+      <div class="udc-top-row">
+        <div class="udc-num">Day ${dayIndex + 1}${dateLabel ? `<div class="udc-date">${dateLabel}</div>` : ""}</div>
+        <input type="text" data-day-index="${dayIndex}" class="unit-day-topic udc-topic"
+          value="${dayPlan.topic || ""}"
+          placeholder="${isShiftRow ? 'Shift day — no topic needed' : "What's the plan for this day?"}"
+          ${isShiftRow ? "disabled" : ""}>
+        <div class="udc-toggles">
+          <label class="udc-toggle udc-toggle-quiz">
+            <input type="checkbox" data-day-index="${dayIndex}" class="unit-day-quiz" ${dayPlan.quiz ? "checked" : ""} ${isShiftRow ? "disabled" : ""}>
+            <span>✏️ Quiz</span>
+          </label>
+          <label class="udc-toggle udc-toggle-test">
+            <input type="checkbox" data-day-index="${dayIndex}" class="unit-day-test" ${dayPlan.test ? "checked" : ""} ${isShiftRow ? "disabled" : ""}>
+            <span>📝 Test</span>
+          </label>
+        </div>
+      </div>
+      ${isShiftRow ? "" : `
+      <div class="udc-lessonplan-row">
+        <button type="button" class="udc-lessonplan-toggle">${hasLessonPlan ? "📝 Lesson plan ✓ (click to edit)" : "📝 + Add a lesson plan"}</button>
+        <textarea class="unit-day-lessonplan udc-lessonplan-text" data-day-index="${dayIndex}" rows="3"
+          placeholder="Warm-up, main activity, closure, differentiation notes…"
+          style="display:${hasLessonPlan ? "block" : "none"};">${escapeHtml(dayPlan.lessonPlan || "")}</textarea>
+      </div>`}
+    `;
+    containerEl.appendChild(card);
+  });
+}
+
+function collectUnitDayCardsFromDOM(containerEl) {
+  return Array.from(containerEl.querySelectorAll(".unit-day-card")).map(card => {
+    const isShift = card.classList.contains("unit-day-shift");
+    const topicInput = card.querySelector(".unit-day-topic");
+    const quizInput = card.querySelector(".unit-day-quiz");
+    const testInput = card.querySelector(".unit-day-test");
+    const lessonPlanInput = card.querySelector(".unit-day-lessonplan");
+    return {
+      topic: isShift ? "SHIFT UNIT" : (topicInput?.value || "").trim(),
+      quiz: isShift ? false : !!quizInput?.checked,
+      test: isShift ? false : !!testInput?.checked,
+      lessonPlan: isShift ? "" : (lessonPlanInput?.value || "").trim(),
+      shiftDay: isShift
+    };
+  });
+}
+
 window.openUnitDaysEditor = function(period, index) {
   const unit = getUnitsForPeriod(period)[index];
   if (!unit) return;
@@ -9125,21 +9286,81 @@ window.openUnitDaysEditor = function(period, index) {
 
   const backdrop = document.getElementById("unitDaysBackdrop");
   const title = document.getElementById("unitDaysTitle");
+  const infoWrap = document.getElementById("unitDaysInfoFields");
   const tbody = document.getElementById("unitDaysTableBody");
-  title.textContent = `Period ${period} - ${normalized.name}`;
-  tbody.innerHTML = "";
+  const modalEl = backdrop.querySelector(".modal");
+  const periodColor = getColorForPeriod(period);
+  title.textContent = `Period ${period} — ${normalized.name}`;
+  if (modalEl) modalEl.style.borderTop = `6px solid ${periodColor}`;
 
-  normalized.days.forEach((dayPlan, dayIndex) => {
-    const isShiftRow = isShiftDayPlan(dayPlan);
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${dayIndex + 1}</td>
-      <td><input type="text" data-day-index="${dayIndex}" class="unit-day-topic" value="${dayPlan.topic || ""}" placeholder="Optional lesson/topic" ${isShiftRow ? "disabled" : ""}></td>
-      <td style="text-align:center;"><input type="checkbox" data-day-index="${dayIndex}" class="unit-day-quiz" ${dayPlan.quiz ? "checked" : ""} ${isShiftRow ? "disabled" : ""}></td>
-      <td style="text-align:center;"><input type="checkbox" data-day-index="${dayIndex}" class="unit-day-test" ${dayPlan.test ? "checked" : ""} ${isShiftRow ? "disabled" : ""}></td>
-    `;
-    tbody.appendChild(row);
-  });
+  infoWrap.innerHTML = `
+    <label>Unit Name
+      <input type="text" id="unitEditorName" value="${normalized.name}">
+    </label>
+    <label>Length (days)
+      <input type="number" id="unitEditorLength" min="1" value="${normalized.length}">
+    </label>
+    <label>Start Date
+      <input type="date" id="unitEditorStart" value="${normalized.startDate || ""}">
+    </label>
+  `;
+
+  const detailsWrap = document.getElementById("unitDaysDetailsFields");
+  const hasDetails = !!(normalized.description || normalized.objectives || normalized.materials);
+  detailsWrap.innerHTML = `
+    <details class="unit-details-section" ${hasDetails ? "open" : ""}>
+      <summary>📋 Unit details (optional) — overview, objectives, materials</summary>
+      <div class="unit-details-grid">
+        <label>Unit Overview
+          <textarea id="unitEditorDescription" rows="2" placeholder="A quick summary of what this unit covers…">${escapeHtml(normalized.description)}</textarea>
+        </label>
+        <label>Learning Objectives / Standards
+          <textarea id="unitEditorObjectives" rows="3" placeholder="What standards or objectives does this unit address?">${escapeHtml(normalized.objectives)}</textarea>
+        </label>
+        <label>Materials &amp; Resources
+          <textarea id="unitEditorMaterials" rows="3" placeholder="Textbook chapters, handouts, links, supplies…">${escapeHtml(normalized.materials)}</textarea>
+        </label>
+      </div>
+    </details>
+  `;
+
+  let dayStripLabel = document.getElementById("unitDaysStripLabel");
+  if (!dayStripLabel) {
+    dayStripLabel = document.createElement("div");
+    dayStripLabel.id = "unitDaysStripLabel";
+    dayStripLabel.className = "unit-days-strip-label";
+    tbody.parentNode.insertBefore(dayStripLabel, tbody);
+  }
+  dayStripLabel.textContent = "📅 Day-by-day plan";
+
+  renderUnitDayCards(tbody, normalized.days, computeUnitDayDates(period, index, normalized));
+
+  tbody.onclick = (e) => {
+    const btn = e.target.closest(".udc-lessonplan-toggle");
+    if (!btn) return;
+    const card = btn.closest(".unit-day-card");
+    const textarea = card?.querySelector(".unit-day-lessonplan");
+    if (!textarea) return;
+    const showing = textarea.style.display !== "none";
+    textarea.style.display = showing ? "none" : "block";
+    if (!showing) textarea.focus();
+  };
+
+  document.getElementById("unitEditorLength").onchange = (e) => {
+    const newLen = Math.max(1, parseInt(e.target.value, 10) || 1);
+    e.target.value = newLen;
+    const currentDays = collectUnitDayCardsFromDOM(tbody);
+    const startVal = document.getElementById("unitEditorStart")?.value || normalized.startDate || "";
+    const resized = normalizeUnit({ ...normalized, length: newLen, startDate: startVal, days: currentDays }, index);
+    renderUnitDayCards(tbody, resized.days, computeUnitDayDates(period, index, resized));
+  };
+
+  document.getElementById("unitEditorStart").onchange = (e) => {
+    const currentDays = collectUnitDayCardsFromDOM(tbody);
+    const lenVal = Math.max(1, parseInt(document.getElementById("unitEditorLength")?.value, 10) || normalized.length);
+    const resized = normalizeUnit({ ...normalized, length: lenVal, startDate: e.target.value, days: currentDays }, index);
+    renderUnitDayCards(tbody, resized.days, computeUnitDayDates(period, index, resized));
+  };
 
   backdrop.style.display = "flex";
 };
@@ -9503,18 +9724,25 @@ function saveUnitDaysEditor() {
   const unit = getUnitsForPeriod(period)[index];
   if (!unit) return;
 
-  const normalized = normalizeUnit(unit, index);
-  const topics = Array.from(document.querySelectorAll("#unitDaysTableBody .unit-day-topic"));
-  const quizChecks = Array.from(document.querySelectorAll("#unitDaysTableBody .unit-day-quiz"));
-  const testChecks = Array.from(document.querySelectorAll("#unitDaysTableBody .unit-day-test"));
+  const tbody = document.getElementById("unitDaysTableBody");
+  const nameInput = document.getElementById("unitEditorName");
+  const lengthInput = document.getElementById("unitEditorLength");
+  const startInput = document.getElementById("unitEditorStart");
+  const descriptionInput = document.getElementById("unitEditorDescription");
+  const objectivesInput = document.getElementById("unitEditorObjectives");
+  const materialsInput = document.getElementById("unitEditorMaterials");
+  const days = collectUnitDayCardsFromDOM(tbody);
 
-  normalized.days = normalized.days.map((dayPlan, dayIndex) => ({
-    ...dayPlan,
-    topic: isShiftDayPlan(dayPlan) ? "SHIFT UNIT" : (topics[dayIndex]?.value || "").trim(),
-    quiz: isShiftDayPlan(dayPlan) ? false : !!quizChecks[dayIndex]?.checked,
-    test: isShiftDayPlan(dayPlan) ? false : !!testChecks[dayIndex]?.checked,
-    shiftDay: isShiftDayPlan(dayPlan)
-  }));
+  const normalized = normalizeUnit({
+    ...unit,
+    name: (nameInput?.value || unit.name || `Unit ${index + 1}`).trim(),
+    length: Math.max(1, parseInt(lengthInput?.value, 10) || unit.length || 1),
+    startDate: startInput?.value || "",
+    description: descriptionInput?.value || "",
+    objectives: objectivesInput?.value || "",
+    materials: materialsInput?.value || "",
+    days
+  }, index);
 
   const previousUnit = units[period][index];
   const periodUnits = [...getUnitsForPeriod(period)];
@@ -9918,43 +10146,6 @@ async function getSharedExportHtmlPermission(handle, allowPrompt) {
     return (await handle.requestPermission({ mode: "readwrite" })) === "granted";
   } catch {
     return false;
-  }
-}
-function updateSharedExportHtmlStatus() {
-  const status = document.getElementById("sharedExportHtmlStatus");
-  const btn = document.getElementById("linkSharedExportHtmlBtn");
-  if (!status) {
-    console.warn("missing #sharedExportHtmlStatus");
-    return;
-  }
-
-  if (sharedExportHtmlConfigured && sharedExportHtmlHandle) {
-    const name = sharedExportHtmlHandle.name || "HTML file";
-    let lastText = "";
-    try {
-      const last = localStorage.getItem("sharedExportHtmlLastUpdated");
-      if (last) {
-        const d = new Date(last);
-        if (!Number.isNaN(d.getTime())) {
-          lastText =
-            " · Updated " +
-            d.toLocaleString(undefined, {
-              month: "short",
-              day: "numeric",
-              hour: "numeric",
-              minute: "2-digit"
-            });
-        }
-      }
-    } catch (_) {}
-
-    status.textContent = `Linked: ${name}${lastText}`;
-    status.style.color = "#059669";
-    if (btn) btn.textContent = "Change linked HTML file";
-  } else {
-    status.textContent = "No linked HTML file";
-    status.style.color = "#6b7280";
-    if (btn) btn.textContent = "Link shared HTML file";
   }
 }
 
@@ -11025,35 +11216,6 @@ function showNewUserWorking(msg) {
     ].join(";");
     document.body.appendChild(el);
   }
-  el.textContent = msg || "Setting up your profile…";
-  el.style.display = "flex";
-}
-
-function hideNewUserWorking() {
-  const el = document.getElementById("newUserWorkingOverlay");
-  if (el) el.style.display = "none";
-}
-
-function showNewUserWorking(msg) {
-  let el = document.getElementById("newUserWorkingOverlay");
-  if (!el) {
-    el = document.createElement("div");
-    el.id = "newUserWorkingOverlay";
-    el.style.cssText = [
-      "position:fixed",
-      "inset:0",
-      "z-index:99999",
-      "display:flex",
-      "align-items:center",
-      "justify-content:center",
-      "background:rgba(15,23,42,0.45)",
-      "color:#fff",
-      "font:600 1.05rem system-ui,sans-serif",
-      "text-align:center",
-      "padding:24px"
-    ].join(";");
-    document.body.appendChild(el);
-  }
   el.textContent = msg || "Setting up…";
   el.style.display = "flex";
 }
@@ -11274,8 +11436,8 @@ function initCollapsibleSections() {
     schedule: true,
     "custom-calendar": true,
     rotation: true,
-    units: true,
-    special: true,
+    units: false,
+    special: false,
     summary: true
   };
 
@@ -11307,6 +11469,15 @@ function initCollapsibleSections() {
   });
 
   applyState();
+}
+
+function getMondayISO(dateStr) {
+  const d = new Date(dateStr + "T12:00:00");
+  const dow = d.getDay();
+  const diffToMonday = dow === 0 ? -6 : 1 - dow;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diffToMonday);
+  return toLocalISO(monday);
 }
 
 function applyPrintFilters() {
@@ -11605,6 +11776,26 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
 }
 .month-summary::-webkit-details-marker { display: none; }
 .month-body { padding: 12px 16px 4px; }
+.week-block {
+  margin-bottom: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+.week-summary {
+  cursor: pointer;
+  list-style: none;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #374151;
+  padding: 8px 14px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+.week-summary::-webkit-details-marker { display: none; }
+.week-body { padding: 10px 12px 2px; }
+
 .day {
   border: 1px solid #e5e7eb;
   border-radius: 10px;
@@ -11686,25 +11877,41 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
     html += `<summary class="month-summary">${getMonthLabelFromKey(monthKey)}</summary>`;
     html += `<div class="month-body">`;
 
-    const dateSet = new Set();
+const dateSet = new Set();
     selectedDivisions.forEach(divisionKey => {
       Object.keys(divisionEntries[divisionKey] || {}).forEach(date => {
         if (date.startsWith(monthKey)) dateSet.add(date);
       });
     });
 
-    Array.from(dateSet)
+    const sortedDates = Array.from(dateSet)
       .sort()
-      .forEach(date => {
-        const anyEntry = selectedDivisions.some(
-          divisionKey => !!divisionEntries[divisionKey]?.[date]
-        );
-        if (!anyEntry) return;
+      .filter(date =>
+        selectedDivisions.some(divisionKey => !!divisionEntries[divisionKey]?.[date])
+      );
 
+    const weekGroups = [];
+    let currentWeekKey = null;
+    sortedDates.forEach(date => {
+      const weekKey = getMondayISO(date);
+      if (weekKey !== currentWeekKey) {
+        weekGroups.push({ weekKey, dates: [] });
+        currentWeekKey = weekKey;
+      }
+      weekGroups[weekGroups.length - 1].dates.push(date);
+    });
+
+    weekGroups.forEach((group, weekIndex) => {
+      html += `<details class="week-block" id="month-${monthIndex}-week-${weekIndex}" open>`;
+      html += `<summary class="week-summary">Week of ${formatDateLabel(group.weekKey)}</summary>`;
+      html += `<div class="week-body">`;
+
+      group.dates.forEach(date => {
         const weekdayName = new Date(date + "T12:00:00").toLocaleDateString("en-US", {
           weekday: "long"
         });
         html += `<div class="day">`;
+
         html += `<div class="day-title">${date} - ${weekdayName}</div>`;
         html += `<div class="day-columns">`;
 
@@ -11760,11 +11967,15 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
           html += `</div>`;
         });
 
-        html += `</div></div>`;
+html += `</div></div>`;
         hasContent = true;
       });
 
+      html += `</div></details>`;
+    });
+
     html += `</div></details>`;
+
   });
 
   if (!hasContent) {
@@ -11973,7 +12184,6 @@ function ensureExpandDaysButton() {
 // --- Init ---
 async function init() {
 
-  applyHoverAgendaPreference()
   ensureDefaultProfile();
 
 try {
@@ -12515,12 +12725,7 @@ document.getElementById("nextMonthBtn")?.addEventListener("click", () => {
   renderCalendar();
 });
 
-  document.getElementById("jumpTodayBtn")
-    .addEventListener("click", openTodayAgendaModal);
-
-  if (localStorage.getItem(getStorageKey(LS_HIDE_WELCOME_KEY)) !== "true") {
-    openHelp("welcome");
-  }
+// Welcome modal no longer auto-opens on every load — use the "❓ Help" button (now in Calendar settings) anytime.
 
     // Paste Day (click any day after copying)
   document.addEventListener("click", (e) => {
@@ -12579,7 +12784,6 @@ document.getElementById("nextMonthBtn")?.addEventListener("click", () => {
     if (value === "mobile") document.getElementById("mobileViewBtn").click();
     if (value === "special") document.getElementById("toggleSpecialTagsBtn").click();
     if (value === "dark") document.getElementById("darkModeToggle").click();
-    if (value === "hover") toggleHoverAgenda();
     e.target.value = ""; // reset
   });
 
@@ -12631,7 +12835,11 @@ document.getElementById("nextMonthBtn")?.addEventListener("click", () => {
     });
   }
   updateAppTitle();
-  
+
+  document.querySelectorAll(".view-toggle-btn").forEach(btn => {
+    btn.addEventListener("click", () => switchView(btn.dataset.view));
+  });
+
 }
 
 
@@ -12817,7 +13025,7 @@ setInterval(() => {
 
   <!-- Modal for per-day, per-class notes -->
   <div class="modal-backdrop" id="modalBackdrop">
-    <div class="modal">
+    <div class="modal" style="width:600px; max-width:95vw;">
       <div class="modal-header">
         <div>
           <div id="modalDateLabel"></div>
@@ -12915,26 +13123,18 @@ setInterval(() => {
       <div class="modal-header">
         <div>
           <div id="unitDaysTitle">Unit Day Planner</div>
-          <div class="small">Plan each day topic and mark quiz/test days.</div>
+          <div class="small">Edit the unit name, length, start date, and every day's plan — all in one place.</div>
         </div>
         <button class="secondary" id="closeUnitDaysBtn">Close</button>
       </div>
       <div class="modal-body">
-        <table class="unit-days-table">
-          <thead>
-            <tr>
-              <th style="width:70px;">Day #</th>
-              <th>Topic / Lesson</th>
-              <th style="width:90px; text-align:center;">Quiz?</th>
-              <th style="width:90px; text-align:center;">Test?</th>
-            </tr>
-          </thead>
-          <tbody id="unitDaysTableBody"></tbody>
-        </table>
+        <div id="unitDaysInfoFields" class="unit-editor-fields"></div>
+        <div id="unitDaysDetailsFields"></div>
+        <div class="unit-days-strip" id="unitDaysTableBody"></div>
       </div>
       <div class="modal-footer">
         <button class="secondary" id="cancelUnitDaysBtn">Cancel</button>
-        <button id="saveUnitDaysBtn">Save Unit Days</button>
+        <button id="saveUnitDaysBtn">Save Unit</button>
       </div>
     </div>
   </div>
@@ -13206,5 +13406,3 @@ setInterval(() => {
 <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 </body>
 </html>
-
-
