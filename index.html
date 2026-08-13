@@ -593,6 +593,10 @@ body.dark .day-cell .day-expand-btn {
     #config {
       width: 320px;
       flex-shrink: 0;
+      transition: width 0.15s ease, opacity 0.15s ease;
+    }
+    body.sidebar-hidden #config {
+      display: none;
     }
     #calendar {
       flex: 1;
@@ -1484,6 +1488,23 @@ body.dark .agenda-note.empty {
 .header-settings .backup-file-row .small { color:#d1d5db; }
 .header-settings .selector-group { justify-content: flex-start; color: #e5e7eb; }
 
+/* Welcome Highlights modal */
+.wh-section { margin-bottom: 20px; }
+.wh-section:last-child { margin-bottom: 0; }
+.wh-section-title { font-weight: 800; font-size: 1.05rem; margin-bottom: 10px; }
+.wh-empty { color: #6b7280; font-style: italic; font-size: 0.92rem; }
+.wh-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.wh-list li { font-size: 0.92rem; padding: 6px 10px; background: rgba(148,163,184,0.08); border-radius: 8px; }
+.wh-badge { font-size: 0.7rem; font-weight: 800; padding: 2px 6px; border-radius: 999px; }
+.wh-badge-test { background: #fee2e2; color: #b91c1c; }
+.wh-badge-quiz { background: #dbeafe; color: #1d4ed8; }
+.wh-specials { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.wh-pill { background: #f3e8ff; color: #6b21a8; font-size: 0.78rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+.wh-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 10px; }
+.wh-stat { text-align: center; background: rgba(148,163,184,0.08); border-radius: 10px; padding: 12px 8px; }
+.wh-stat-num { display: block; font-size: 1.6rem; font-weight: 800; color: var(--accent); }
+.wh-stat-label { display: block; font-size: 0.75rem; color: #6b7280; font-weight: 700; text-transform: uppercase; margin-top: 2px; }
+
 /* FORCE Period labels to be visible in dark mode */
 body.dark .period-label,
 body.dark strong.period-label {
@@ -1581,29 +1602,29 @@ body.dark .dvp-lessonplan { background:#0f2b1a; }
 .week-view-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
 .week-view-title { font-size:1.1rem; font-weight:700; }
 .week-view-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
-.week-day-col { background:var(--card-bg); border:1px solid var(--card-border); border-radius:12px; padding:10px; cursor:pointer; transition:transform 0.1s ease; min-height:220px; }
+.week-day-col { background:var(--card-bg); border:1px solid var(--card-border); border-radius:12px; padding:12px; cursor:pointer; transition:transform 0.1s ease; min-height:240px; }
 .week-day-col:hover { transform:translateY(-2px); box-shadow:0 4px 10px rgba(0,0,0,0.1); }
 .wdc-today { border:2px solid #facc15; background:#fffbeb; }
 body.dark .wdc-today { background:#3a2e0f; }
 .wdc-header { text-align:center; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--card-border); }
-.wdc-weekday { font-size:0.75rem; text-transform:uppercase; color:#6b7280; font-weight:700; }
-.wdc-date { font-size:1.1rem; font-weight:800; }
-.wdc-letter { font-size:0.8rem; color:var(--accent); font-weight:700; }
-.wdc-general-note { background:#eff6ff; border-left:3px solid var(--accent); padding:4px 6px; border-radius:0 6px 6px 0; font-size:0.72rem; line-height:1.3; margin-bottom:8px; max-height:4.5em; overflow:hidden; }
+.wdc-weekday { font-size:0.85rem; text-transform:uppercase; color:#6b7280; font-weight:700; }
+.wdc-date { font-size:1.3rem; font-weight:800; }
+.wdc-letter { font-size:0.9rem; color:var(--accent); font-weight:700; }
+.wdc-general-note { background:#eff6ff; border-left:3px solid var(--accent); padding:6px 8px; border-radius:0 6px 6px 0; font-size:0.85rem; line-height:1.35; margin-bottom:8px; max-height:6em; overflow:hidden; }
 body.dark .wdc-general-note { background:#1e293b; }
-.wdc-off { text-align:center; color:#92400e; font-weight:700; padding:16px 4px; font-size:0.9rem; }
-.wdc-off-sub { font-weight:500; font-size:0.75rem; }
-.wdc-empty { text-align:center; color:#9ca3af; font-style:italic; font-size:0.85rem; padding:16px 4px; }
-.wdc-period { border-left:4px solid #999; background:rgba(148,163,184,0.08); border-radius:0 8px 8px 0; padding:6px 8px; margin-bottom:6px; }
+.wdc-off { text-align:center; color:#92400e; font-weight:700; padding:16px 4px; font-size:1rem; }
+.wdc-off-sub { font-weight:500; font-size:0.85rem; }
+.wdc-empty { text-align:center; color:#9ca3af; font-style:italic; font-size:0.95rem; padding:16px 4px; }
+.wdc-period { border-left:4px solid #999; background:rgba(148,163,184,0.08); border-radius:0 8px 8px 0; padding:8px 10px; margin-bottom:8px; }
 .wdc-period-top { display:flex; justify-content:space-between; align-items:center; }
-.wdc-period-num { font-size:0.7rem; font-weight:800; color:#6b7280; }
-.wdc-course { font-size:0.85rem; font-weight:700; line-height:1.2; }
-.wdc-topic { font-size:0.75rem; color:#6b7280; }
+.wdc-period-num { font-size:0.8rem; font-weight:800; color:#6b7280; }
+.wdc-course { font-size:1rem; font-weight:700; line-height:1.3; }
+.wdc-topic { font-size:0.88rem; color:#6b7280; }
 .wdc-specials { margin-top:8px; display:flex; flex-wrap:wrap; gap:4px; }
-.wdc-special-pill { background:#f3e8ff; color:#6b21a8; font-size:0.65rem; font-weight:700; padding:2px 6px; border-radius:999px; }
+.wdc-special-pill { background:#f3e8ff; color:#6b21a8; font-size:0.78rem; font-weight:700; padding:3px 8px; border-radius:999px; }
 
 @media (max-width: 900px) {
-  .week-view-grid { grid-template-columns:repeat(5, minmax(140px,1fr)); overflow-x:auto; }
+  .week-view-grid { grid-template-columns:repeat(5, minmax(160px,1fr)); overflow-x:auto; }
 }
 
 /* Clickable affordances on day/week views */
@@ -1800,6 +1821,7 @@ body.dark .modal-toggle-btn-hw { background:#2b1a0e !important; color:#fdba74 !i
               </span>
                 <div class="backup-file-row">
               <button type="button" id="helpBtn" class="secondary">❓ Help</button>
+              <button type="button" id="showHighlightsBtn" class="secondary">👋 Show Highlights</button>
             </div>
             </div>
 
@@ -1823,6 +1845,7 @@ body.dark .modal-toggle-btn-hw { background:#2b1a0e !important; color:#fdba74 !i
 
 </div>
           <button type="button" id="toggleExpandDaysBtn">Expand calendar view</button>
+          <button type="button" id="toggleSidebarBtn" class="secondary">☰ Hide Sidebar</button>
     </div>
       </div>
     </div>
@@ -11473,6 +11496,122 @@ function openGuidedCalendarSetupFromCustomSection() {
   }
 }
 
+function buildWelcomeHighlights() {
+  const todayISO = getLocalTodayISO();
+  const todayData = buildDaySummaryData(todayISO);
+
+  // This week
+  const weekDates = getWeekdaysForDate(todayISO);
+  let weekTests = 0;
+  let weekQuizzes = 0;
+  const weekSpecials = [];
+  weekDates.forEach(iso => {
+    const d = buildDaySummaryData(iso);
+    if (d.isOff || d.isNoSchool) return;
+    d.periods.forEach(p => {
+      if (p.isTest) weekTests++;
+      if (p.isQuiz) weekQuizzes++;
+    });
+    d.specialEntries.forEach(e => weekSpecials.push({ iso, label: e.label }));
+  });
+
+  // This month
+  const monthKey = todayISO.slice(0, 7);
+  const monthObj = (typeof getCurrentMonths === "function" ? getCurrentMonths() : []).find(
+    m => `${m.year}-${String(m.month).padStart(2, "0")}` === monthKey
+  );
+  let monthSchoolDays = 0;
+  let monthTests = 0;
+  let monthQuizzes = 0;
+  let monthSpecials = 0;
+  if (monthObj) {
+    monthObj.days.forEach(day => {
+      const d = buildDaySummaryData(day.date);
+      if (d.isOff || d.isNoSchool) return;
+      monthSchoolDays++;
+      d.periods.forEach(p => {
+        if (p.isTest) monthTests++;
+        if (p.isQuiz) monthQuizzes++;
+      });
+      monthSpecials += d.specialEntries.length;
+    });
+  }
+
+  return {
+    todayData, weekDates, weekTests, weekQuizzes, weekSpecials,
+    monthLabel: monthObj ? getMonthLabelFromKey(monthKey) : "",
+    monthSchoolDays, monthTests, monthQuizzes, monthSpecials
+  };
+}
+
+function renderWelcomeHighlights() {
+  const h = buildWelcomeHighlights();
+  const body = document.getElementById("welcomeHighlightsBody");
+  if (!body) return;
+
+  let html = `<div class="wh-section">
+    <div class="wh-section-title">☀️ Today — ${formatDateLabel(h.todayData.iso)}</div>`;
+
+  if (h.todayData.isOff || h.todayData.isNoSchool) {
+    html += `<div class="wh-empty">🎉 No school today${h.todayData.noSchoolLabel ? ` — ${h.todayData.noSchoolLabel}` : ""}.</div>`;
+  } else if (!h.todayData.periods.length) {
+    html += `<div class="wh-empty">No classes scheduled.</div>`;
+  } else {
+    html += `<ul class="wh-list">`;
+    h.todayData.periods.forEach(p => {
+      html += `<li><strong style="color:${p.color};">P${p.periodNum} ${p.courseName}</strong>
+        ${p.isTest ? ` <span class="wh-badge wh-badge-test">TEST</span>` : ""}
+        ${p.isQuiz ? ` <span class="wh-badge wh-badge-quiz">QUIZ</span>` : ""}
+        ${p.topicName ? ` — ${p.topicName}` : ""}</li>`;
+    });
+    html += `</ul>`;
+  }
+  if (h.todayData.specialEntries.length) {
+    html += `<div class="wh-specials">` +
+      h.todayData.specialEntries.map(e => `<span class="wh-pill">${e.label}</span>`).join("") +
+      `</div>`;
+  }
+  html += `</div>`;
+
+  html += `<div class="wh-section">
+    <div class="wh-section-title">📆 This Week</div>
+    <div class="wh-stats">
+      <div class="wh-stat"><span class="wh-stat-num">${h.weekTests}</span><span class="wh-stat-label">Test${h.weekTests === 1 ? "" : "s"}</span></div>
+      <div class="wh-stat"><span class="wh-stat-num">${h.weekQuizzes}</span><span class="wh-stat-label">Quiz${h.weekQuizzes === 1 ? "" : "zes"}</span></div>
+      <div class="wh-stat"><span class="wh-stat-num">${h.weekSpecials.length}</span><span class="wh-stat-label">Special Day${h.weekSpecials.length === 1 ? "" : "s"}</span></div>
+    </div>`;
+  if (h.weekSpecials.length) {
+    html += `<div class="wh-specials">` +
+      h.weekSpecials.map(s => `<span class="wh-pill">${formatDateLabel(s.iso).split(",")[0]}: ${s.label}</span>`).join("") +
+      `</div>`;
+  }
+  html += `</div>`;
+
+  html += `<div class="wh-section">
+    <div class="wh-section-title">🗓️ This Month${h.monthLabel ? ` — ${h.monthLabel}` : ""}</div>
+    <div class="wh-stats">
+      <div class="wh-stat"><span class="wh-stat-num">${h.monthSchoolDays}</span><span class="wh-stat-label">School Days</span></div>
+      <div class="wh-stat"><span class="wh-stat-num">${h.monthTests}</span><span class="wh-stat-label">Tests</span></div>
+      <div class="wh-stat"><span class="wh-stat-num">${h.monthQuizzes}</span><span class="wh-stat-label">Quizzes</span></div>
+      <div class="wh-stat"><span class="wh-stat-num">${h.monthSpecials}</span><span class="wh-stat-label">Special Days</span></div>
+    </div>
+  </div>`;
+
+  body.innerHTML = html;
+}
+
+function openWelcomeHighlights() {
+  renderWelcomeHighlights();
+  const backdrop = document.getElementById("welcomeHighlightsBackdrop");
+  if (backdrop) backdrop.style.display = "flex";
+}
+
+function closeWelcomeHighlights() {
+  const backdrop = document.getElementById("welcomeHighlightsBackdrop");
+  if (backdrop) backdrop.style.display = "none";
+  localStorage.setItem("hasSeenWelcomeHighlights", "true");
+}
+
 function openHelp(sectionName = "welcome") {
   switchHelpSection(sectionName);
   populateNewUserProfileChoices();
@@ -11788,14 +11927,15 @@ periodRows.push({
 body {
   font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
   margin: 24px auto;
-  max-width: 1100px;
+  max-width: 1300px;
   width: 100%;
-  padding: 0 16px;
-  line-height: 1.45;
+  padding: 0 20px;
+  font-size: 17px;
+  line-height: 1.5;
   color: #111827;
 }
-h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; }
-.meta { text-align: center; color: #6b7280; font-size: 0.9rem; margin-bottom: 12px; }
+h1 { text-align: center; color: #1e3a8a; font-size: 1.9rem; margin-bottom: 4px; }
+.meta { text-align: center; color: #6b7280; font-size: 1rem; margin-bottom: 12px; }
 .month-jump-sticky {
   position: sticky;
   top: 0;
@@ -11833,7 +11973,7 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
   cursor: pointer;
   list-style: none;
   font-weight: 700;
-  font-size: 1.15rem;
+  font-size: 1.3rem;
   color: #1e3a8a;
   padding: 12px 16px;
   background: #eff6ff;
@@ -11852,7 +11992,7 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
   cursor: pointer;
   list-style: none;
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   color: #374151;
   padding: 8px 14px;
   background: #f9fafb;
@@ -11869,7 +12009,7 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
   background: #fafafa;
   page-break-inside: avoid;
 }
-.day-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 8px; }
+.day-title { font-weight: 700; font-size: 1.2rem; margin-bottom: 8px; }
 .day-columns { display: grid; ${colCss} gap: 12px; }
 .day-col {
   border: 1px solid #e5e7eb;
@@ -11878,14 +12018,14 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
   background: #fff;
   width: 100%;
 }
-.day-col-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; }
-.day-col-empty { color: #6b7280; font-size: 0.88rem; font-style: italic; }
+.day-col-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 6px; }
+.day-col-empty { color: #6b7280; font-size: 0.95rem; font-style: italic; }
 .special {
   display: inline-block;
   background: #f3e8ff;
   color: #6b21a8;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.92rem;
   padding: 2px 8px;
   border-radius: 999px;
   margin: 0 6px 8px 0;
@@ -11896,33 +12036,38 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
   padding: 8px 10px;
   margin: 8px 0;
   border-radius: 0 6px 6px 0;
-  font-size: 0.92rem;
+  font-size: 1rem;
 }
 .period {
-  padding: 6px 0;
+  padding: 8px 0;
   border-top: 1px solid #e5e7eb;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
 }
 .period:first-of-type { border-top: none; }
 .note {
   display: block;
   margin-top: 4px;
-  font-size: 0.88rem;
+  font-size: 0.98rem;
   color: #4b5563;
   font-style: italic;
 }
 .lesson-plan {
   margin-top: 6px;
-  padding: 6px 10px;
+  padding: 8px 10px;
   background: #f0fdf4;
   border-left: 3px solid #16a34a;
   border-radius: 0 6px 6px 0;
-  font-size: 0.88rem;
+  font-size: 0.98rem;
   color: #14532d;
+}
+.homework {
+  margin-top: 4px;
+  font-size: 0.98rem;
+  color: #7c2d12;
 }
 .badge-test { color: #b91c1c; font-weight: 700; }
 .badge-quiz { color: #1d4ed8; font-weight: 700; }
-.no-test { margin-top: 8px; color: #166534; font-weight: 600; font-size: 0.9rem; }
+.no-test { margin-top: 8px; color: #166534; font-weight: 600; font-size: 1rem; }
 @media (max-width: 800px) {
   .day-columns { grid-template-columns: 1fr !important; }
 }
@@ -12263,6 +12408,24 @@ function ensureExpandDaysButton() {
   };
 }
 
+function applySidebarPreference() {
+  const btn = document.getElementById("toggleSidebarBtn");
+  const hidden = localStorage.getItem("sidebarHidden") === "true";
+  document.body.classList.toggle("sidebar-hidden", hidden);
+  if (btn) btn.textContent = hidden ? "☰ Show Sidebar" : "☰ Hide Sidebar";
+}
+
+function initSidebarToggle() {
+  const btn = document.getElementById("toggleSidebarBtn");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    const hidden = document.body.classList.toggle("sidebar-hidden");
+    localStorage.setItem("sidebarHidden", hidden ? "true" : "false");
+    btn.textContent = hidden ? "☰ Show Sidebar" : "☰ Hide Sidebar";
+  });
+  applySidebarPreference();
+}
+
 
 // --- Init ---
 async function init() {
@@ -12301,6 +12464,7 @@ if (projectsToggle) {
     renderKnownClasses();
 
 ensureExpandDaysButton();
+initSidebarToggle();
 applyCycleColors();
 renderCycleColorPickers();
 
@@ -12737,6 +12901,15 @@ document.getElementById("divisionSelector")
   document.getElementById("startPlanningBtn")
     .addEventListener("click", closeHelp);
 
+  document.getElementById("closeWelcomeHighlightsBtn")
+    ?.addEventListener("click", closeWelcomeHighlights);
+
+  document.getElementById("startPlanningFromHighlightsBtn")
+    ?.addEventListener("click", closeWelcomeHighlights);
+
+  document.getElementById("showHighlightsBtn")
+    ?.addEventListener("click", openWelcomeHighlights);
+
   document.querySelectorAll(".help-tab-btn").forEach(btn => {
     btn.addEventListener("click", () => switchHelpSection(btn.dataset.helpSection));
   });
@@ -12900,6 +13073,10 @@ document.getElementById("nextMonthBtn")?.addEventListener("click", () => {
   document.querySelectorAll(".view-toggle-btn").forEach(btn => {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
   });
+
+  if (localStorage.getItem("hasSeenWelcomeHighlights") !== "true") {
+    openWelcomeHighlights();
+  }
 
 }
 
@@ -13268,6 +13445,22 @@ setInterval(() => {
       </div>
     </div>
   </div>
+
+<div class="modal-backdrop" id="welcomeHighlightsBackdrop">
+  <div class="modal" style="width:560px; max-width:95vw;">
+    <div class="modal-header">
+      <div>
+        <div>👋 Welcome!</div>
+        <div class="small">Here's what's coming up</div>
+      </div>
+      <button class="secondary" id="closeWelcomeHighlightsBtn">Close</button>
+    </div>
+    <div class="modal-body" id="welcomeHighlightsBody"></div>
+    <div class="modal-footer">
+      <button id="startPlanningFromHighlightsBtn">Let's go</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-backdrop" id="helpBackdrop">
   <div class="modal" style="width:680px; max-width:96vw;">
