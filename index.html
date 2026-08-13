@@ -8089,13 +8089,17 @@ body.appendChild(generalBlock);
 
     const togglesWrap = document.createElement("div");
     togglesWrap.className = "modal-period-toggles";
+    const manualQuiz = existingNotes[`quiz-${periodNum}`];
+    const manualTest = existingNotes[`test-${periodNum}`];
+    const quizIsChecked = manualQuiz !== undefined ? !!manualQuiz : unitInfo.hasQuizToday;
+    const testIsChecked = manualTest !== undefined ? !!manualTest : unitInfo.hasTestToday;
     togglesWrap.innerHTML = `
       <label class="udc-toggle udc-toggle-quiz">
-        <input type="checkbox" id="quiz-period-${periodNum}" ${existingNotes[`quiz-${periodNum}`] || unitInfo.hasQuizToday ? 'checked' : ''}>
+        <input type="checkbox" id="quiz-period-${periodNum}" ${quizIsChecked ? 'checked' : ''}>
         <span>✏️ Quiz Today</span>
       </label>
       <label class="udc-toggle udc-toggle-test">
-        <input type="checkbox" id="test-period-${periodNum}" ${existingNotes[`test-${periodNum}`] || unitInfo.hasTestToday ? 'checked' : ''}>
+        <input type="checkbox" id="test-period-${periodNum}" ${testIsChecked ? 'checked' : ''}>
         <span>📝 Test Today</span>
       </label>
     `;
@@ -8462,12 +8466,13 @@ function handleSaveNotes() {
 
     saveCustomDays();
   }
-  periods.forEach(periodNum => {
-    const testCheckbox = document.getElementById(`test-period-${periodNum}`);
-    if (testCheckbox) notesObj[`test-${periodNum}`] = testCheckbox.checked;
-
-    const quizCheckbox = document.getElementById(`quiz-period-${periodNum}`);
-    if (quizCheckbox) notesObj[`quiz-${periodNum}`] = quizCheckbox.checked;
+  body.querySelectorAll('input[type="checkbox"][id^="test-period-"]').forEach(cb => {
+    const p = cb.id.slice("test-period-".length);
+    notesObj[`test-${p}`] = cb.checked;
+  });
+  body.querySelectorAll('input[type="checkbox"][id^="quiz-period-"]').forEach(cb => {
+    const p = cb.id.slice("quiz-period-".length);
+    notesObj[`quiz-${p}`] = cb.checked;
   });
 
   const noTestToggle = document.getElementById("modalNoTestToggle");
