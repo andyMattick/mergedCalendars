@@ -1489,6 +1489,11 @@ body.dark .agenda-note.empty {
 .header-settings .selector-group { justify-content: flex-start; color: #e5e7eb; }
 
 /* Welcome Highlights modal */
+.wh-name-row { background:rgba(37,99,235,0.06); border:1px solid var(--card-border); border-radius:10px; padding:10px 12px; margin-bottom:18px; }
+.wh-name-row label { display:block; font-size:0.8rem; font-weight:700; margin-bottom:6px; }
+.wh-name-row input { margin-bottom:0; }
+.wh-edit-name-btn { background:none; border:none; cursor:pointer; font-size:0.85rem; padding:0 0 0 4px; opacity:0.7; vertical-align:middle; }
+.wh-edit-name-btn:hover { opacity:1; }
 .wh-section { margin-bottom: 20px; }
 .wh-section:last-child { margin-bottom: 0; }
 .wh-section-title { font-weight: 800; font-size: 1.05rem; margin-bottom: 10px; }
@@ -11544,12 +11549,28 @@ function buildWelcomeHighlights() {
   };
 }
 
-function renderWelcomeHighlights() {
+function renderWelcomeHighlights(forceShowNameInput = false) {
   const h = buildWelcomeHighlights();
   const body = document.getElementById("welcomeHighlightsBody");
+  const greetingEl = document.getElementById("welcomeHighlightsGreeting");
   if (!body) return;
 
-  let html = `<div class="wh-section">
+  const savedName = (localStorage.getItem("teacherName") || "").trim();
+  if (greetingEl) {
+    greetingEl.innerHTML = savedName
+      ? `👋 Hi, ${escapeHtml(savedName)}! <button type="button" id="whEditNameBtn" class="wh-edit-name-btn" title="Change name">✏️</button>`
+      : "👋 Welcome!";
+  }
+
+  let html = "";
+  if (!savedName || forceShowNameInput) {
+    html += `<div class="wh-name-row">
+      <label for="whTeacherNameInput">👤 What should we call you?</label>
+      <input type="text" id="whTeacherNameInput" placeholder="e.g. Ms. Rivera" value="${escapeHtml(savedName)}" autofocus>
+    </div>`;
+  }
+
+  html += `<div class="wh-section">
     <div class="wh-section-title">☀️ Today — ${formatDateLabel(h.todayData.iso)}</div>`;
 
   if (h.todayData.isOff || h.todayData.isNoSchool) {
@@ -11598,6 +11619,18 @@ function renderWelcomeHighlights() {
   </div>`;
 
   body.innerHTML = html;
+
+  const nameInput = document.getElementById("whTeacherNameInput");
+  nameInput?.addEventListener("change", () => {
+    const val = nameInput.value.trim();
+    localStorage.setItem("teacherName", val);
+    renderWelcomeHighlights(false);
+  });
+
+  document.getElementById("whEditNameBtn")?.addEventListener("click", () => {
+    renderWelcomeHighlights(true);
+    document.getElementById("whTeacherNameInput")?.focus();
+  });
 }
 
 function openWelcomeHighlights() {
@@ -11609,7 +11642,7 @@ function openWelcomeHighlights() {
 function closeWelcomeHighlights() {
   const backdrop = document.getElementById("welcomeHighlightsBackdrop");
   if (backdrop) backdrop.style.display = "none";
-  localStorage.setItem("hasSeenWelcomeHighlights", "true");
+  localStorage.setItem("lastHighlightsShownDate", getLocalTodayISO());
 }
 
 function openHelp(sectionName = "welcome") {
@@ -13074,7 +13107,7 @@ document.getElementById("nextMonthBtn")?.addEventListener("click", () => {
     btn.addEventListener("click", () => switchView(btn.dataset.view));
   });
 
-  if (localStorage.getItem("hasSeenWelcomeHighlights") !== "true") {
+  if (localStorage.getItem("lastHighlightsShownDate") !== getLocalTodayISO()) {
     openWelcomeHighlights();
   }
 
@@ -13450,7 +13483,7 @@ setInterval(() => {
   <div class="modal" style="width:560px; max-width:95vw;">
     <div class="modal-header">
       <div>
-        <div>👋 Welcome!</div>
+        <div id="welcomeHighlightsGreeting">👋 Welcome!</div>
         <div class="small">Here's what's coming up</div>
       </div>
       <button class="secondary" id="closeWelcomeHighlightsBtn">Close</button>
