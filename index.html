@@ -388,25 +388,6 @@ body.dark option {
   color: #e5e7eb;
 }
 
-  .mobile-view #config {
-  display: none;
-}
-
-.mobile-view #calendar {
-  flex: 1;
-  padding: 0.5rem;
-}
-
-.mobile-view .day-cell {
-  min-height: 120px;
-  font-size: 0.85rem;
-}
-
-.mobile-view .classes-list li {
-  font-size: 0.8rem;
-  line-height: 1.2;
-}
-
 #toggleExpandDaysBtn {
   position: fixed;
   right: 15px;
@@ -1452,7 +1433,7 @@ body.dark .agenda-note.empty {
 }
    
 /* Hide specific buttons for cleaner header */
-#backupBtn, #restoreBtn, #setExternalBackupFileBtn, #syncBackupNowBtn, #printCalendarBtn, #exportTestsByClassBtn, #darkModeToggle, #mobileViewBtn, #toggleSpecialTagsBtn {
+#backupBtn, #restoreBtn, #setExternalBackupFileBtn, #syncBackupNowBtn, #printCalendarBtn, #exportTestsByClassBtn, #darkModeToggle, #toggleSpecialTagsBtn {
   display: none;
 }
 
@@ -1659,6 +1640,9 @@ body.dark .wdc-today { background:#3a2e0f; }
 .udc-toggle input { display:none; }
 .udc-toggle-quiz:has(input:checked) { background:#dbeafe; border-color:#1d4ed8; color:#1d4ed8; opacity:1; }
 .udc-toggle-test:has(input:checked) { background:#fee2e2; border-color:#b91c1c; color:#b91c1c; opacity:1; }
+.udc-toggle:has(input:disabled) { cursor:not-allowed; }
+.udc-toggle-quiz:has(input:disabled:checked) { background:#dbeafe; border-style:dashed; }
+.udc-toggle-test:has(input:disabled:checked) { background:#fee2e2; border-style:dashed; }
 .udc-lessonplan-row { border-top:1px dashed var(--card-border); padding-top:8px; }
 .udc-lessonplan-toggle { background:none; border:none; color:var(--accent); font-size:0.8rem; font-weight:700; cursor:pointer; padding:2px 0; }
 .udc-lessonplan-text { width:100%; margin-top:6px; padding:8px 10px; border-radius:8px; border:1px solid var(--card-border); font-size:0.85rem; font-family:inherit; resize:vertical; background:var(--card-bg); color:var(--fg); }
@@ -1747,7 +1731,6 @@ body.dark .modal-period-lessonplan { background:#0f2b1a; }
 
          <select id="leftActions2" class="header-select">
         <option value="">Change Calendar Views</option>
-        <option value="mobile">Toggle Desktop / Mobile View</option>
         <option value="special">Toggle Special Tags On / Off</option>
         <option value="dark">Toggle Light / Dark Mode</option>
       </select>
@@ -1827,7 +1810,6 @@ body.dark .modal-period-lessonplan { background:#0f2b1a; }
         <button id="printCalendarBtn" class="secondary">Print / Sync HTML</button>
         <button id="exportTestsByClassBtn" class="secondary">Export Tests/Quizzes by Class</button>
       <button id="darkModeToggle" class="secondary">Dark Mode</button>
-      <button id="mobileViewBtn" class="secondary">Mobile View</button>
       <button id="toggleSpecialTagsBtn" class="secondary">Remove Special Tags</button>
       
 
@@ -8089,18 +8071,26 @@ body.appendChild(generalBlock);
 
     const togglesWrap = document.createElement("div");
     togglesWrap.className = "modal-period-toggles";
-    const manualQuiz = existingNotes[`quiz-${periodNum}`];
-    const manualTest = existingNotes[`test-${periodNum}`];
-    const quizIsChecked = manualQuiz !== undefined ? !!manualQuiz : unitInfo.hasQuizToday;
-    const testIsChecked = manualTest !== undefined ? !!manualTest : unitInfo.hasTestToday;
+    const manualQuiz = !!existingNotes[`quiz-${periodNum}`];
+    const manualTest = !!existingNotes[`test-${periodNum}`];
+    const quizFromUnit = !!unitInfo.hasQuizToday;
+    const testFromUnit = !!unitInfo.hasTestToday;
+    const quizIsChecked = quizFromUnit || manualQuiz;
+    const testIsChecked = testFromUnit || manualTest;
+    const quizLockTitle = quizFromUnit
+      ? 'title="Set by this unit\'s day plan — edit via \'Edit whole unit\' below to change"'
+      : "";
+    const testLockTitle = testFromUnit
+      ? 'title="Set by this unit\'s day plan — edit via \'Edit whole unit\' below to change"'
+      : "";
     togglesWrap.innerHTML = `
-      <label class="udc-toggle udc-toggle-quiz">
-        <input type="checkbox" id="quiz-period-${periodNum}" ${quizIsChecked ? 'checked' : ''}>
-        <span>✏️ Quiz Today</span>
+      <label class="udc-toggle udc-toggle-quiz" ${quizLockTitle}>
+        <input type="checkbox" id="quiz-period-${periodNum}" ${quizIsChecked ? 'checked' : ''} ${quizFromUnit ? 'disabled' : ''}>
+        <span>✏️ Quiz Today${quizFromUnit ? ' 🔒' : ''}</span>
       </label>
-      <label class="udc-toggle udc-toggle-test">
-        <input type="checkbox" id="test-period-${periodNum}" ${testIsChecked ? 'checked' : ''}>
-        <span>📝 Test Today</span>
+      <label class="udc-toggle udc-toggle-test" ${testLockTitle}>
+        <input type="checkbox" id="test-period-${periodNum}" ${testIsChecked ? 'checked' : ''} ${testFromUnit ? 'disabled' : ''}>
+        <span>📝 Test Today${testFromUnit ? ' 🔒' : ''}</span>
       </label>
     `;
     block.appendChild(togglesWrap);
@@ -10298,6 +10288,19 @@ function updateExternalBackupStatus() {
   const btn = document.getElementById("linkExternalBackupBtn");
   if (!status) return;
 
+  if (typeof supportsExternalBackupApi === "function" && !supportsExternalBackupApi()) {
+    status.textContent = "Not supported in this browser — use Chrome or Edge on a computer";
+    status.style.color = "#b45309";
+    if (btn) {
+      btn.textContent = "Set auto backup file";
+      btn.disabled = true;
+      btn.title = "Requires Chrome or Edge on a computer";
+    }
+    return;
+  }
+
+  if (btn) btn.disabled = false;
+
   if (externalBackupConfigured && externalBackupHandle) {
     const name = externalBackupHandle.name || "backup file";
     status.textContent = `Linked: ${name}`;
@@ -10359,6 +10362,19 @@ function updateSharedExportHtmlStatus() {
   const status = document.getElementById("sharedExportHtmlStatus");
   const btn = document.getElementById("linkSharedExportHtmlBtn");
   if (!status) return;
+
+  if (typeof supportsSharedExportHtmlApi === "function" && !supportsSharedExportHtmlApi()) {
+    status.textContent = "Not supported in this browser — use Chrome or Edge on a computer";
+    status.style.color = "#b45309";
+    if (btn) {
+      btn.textContent = "Link shared HTML file";
+      btn.disabled = true;
+      btn.title = "Requires Chrome or Edge on a computer";
+    }
+    return;
+  }
+
+  if (btn) btn.disabled = false;
 
   if (sharedExportHtmlConfigured && sharedExportHtmlHandle) {
     const name = sharedExportHtmlHandle.name || "HTML file";
@@ -12031,8 +12047,12 @@ document.querySelectorAll(".month-jump-link").forEach(function (a) {
       .then(wrote => {
         if (!wrote) {
           downloadFallback();
+          const unsupported =
+            typeof supportsSharedExportHtmlApi === "function" && !supportsSharedExportHtmlApi();
           showProfileToast?.(
-            "Linked HTML not updated (permission?). Downloaded instead."
+            unsupported
+              ? "This browser can't sync to a linked file (use Chrome/Edge). Downloaded instead."
+              : "Linked HTML not updated (permission?). Downloaded instead."
           );
         } else {
           showProfileToast?.("Linked HTML file updated");
@@ -12769,9 +12789,6 @@ document.getElementById("nextMonthBtn")?.addEventListener("click", () => {
     renderSpecialDays();
   });
 
-    let isMobileView = false;
-
-
     // Dropdown listeners
   document.getElementById("leftActions1").addEventListener("change", (e) => {
     const value = e.target.value;
@@ -12786,28 +12803,9 @@ document.getElementById("nextMonthBtn")?.addEventListener("click", () => {
 
   document.getElementById("leftActions2").addEventListener("change", (e) => {
     const value = e.target.value;
-    if (value === "mobile") document.getElementById("mobileViewBtn").click();
     if (value === "special") document.getElementById("toggleSpecialTagsBtn").click();
     if (value === "dark") document.getElementById("darkModeToggle").click();
     e.target.value = ""; // reset
-  });
-
-  document.getElementById("mobileViewBtn").addEventListener("click", () => {
-    isMobileView = !isMobileView;
-    document.body.classList.toggle("mobile-view", isMobileView);
-    
-    const btn = document.getElementById("mobileViewBtn");
-    btn.textContent = isMobileView ? "Desktop View" : "Mobile View";
-
-    // Show notification
-    if (isMobileView) {
-      const notice = document.createElement("div");
-      notice.style.cssText = "position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:#1f2933; color:#fff; padding:10px 20px; border-radius:6px; z-index:300; font-size:0.9rem;";
-      notice.textContent = "Mobile View Enabled";
-      document.body.appendChild(notice);
-      
-      setTimeout(() => notice.remove(), 2000);
-    }
   });
 
   // App Settings listener
