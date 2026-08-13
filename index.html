@@ -1589,6 +1589,8 @@ body.dark .wdc-today { background:#3a2e0f; }
 .wdc-weekday { font-size:0.75rem; text-transform:uppercase; color:#6b7280; font-weight:700; }
 .wdc-date { font-size:1.1rem; font-weight:800; }
 .wdc-letter { font-size:0.8rem; color:var(--accent); font-weight:700; }
+.wdc-general-note { background:#eff6ff; border-left:3px solid var(--accent); padding:4px 6px; border-radius:0 6px 6px 0; font-size:0.72rem; line-height:1.3; margin-bottom:8px; max-height:4.5em; overflow:hidden; }
+body.dark .wdc-general-note { background:#1e293b; }
 .wdc-off { text-align:center; color:#92400e; font-weight:700; padding:16px 4px; font-size:0.9rem; }
 .wdc-off-sub { font-weight:500; font-size:0.75rem; }
 .wdc-empty { text-align:center; color:#9ca3af; font-style:italic; font-size:0.85rem; padding:16px 4px; }
@@ -1645,7 +1647,7 @@ body.dark .wdc-today { background:#3a2e0f; }
 .udc-toggle-test:has(input:disabled:checked) { background:#fee2e2; border-style:dashed; }
 .udc-lessonplan-row { border-top:1px dashed var(--card-border); padding-top:8px; }
 .udc-lessonplan-toggle { background:none; border:none; color:var(--accent); font-size:0.8rem; font-weight:700; cursor:pointer; padding:2px 0; }
-.udc-lessonplan-text { width:100%; margin-top:6px; padding:8px 10px; border-radius:8px; border:1px solid var(--card-border); font-size:0.85rem; font-family:inherit; resize:vertical; background:var(--card-bg); color:var(--fg); }
+.unit-day-lessonplan .note-doc { min-height:70px; }
 @media (max-width: 600px) {
   .udc-top-row { grid-template-columns:44px 1fr; }
   .udc-toggles { grid-column:1 / -1; justify-content:flex-end; }
@@ -1692,13 +1694,19 @@ body.dark .unit-quickadd { background:rgba(59,130,246,0.08); }
 /* Day-edit modal: teacher-friendly period cards + jump nav */
 .modal-period-jumpnav { position:sticky; top:-1px; z-index:5; display:flex; flex-wrap:wrap; gap:6px; margin:0 -1rem 14px; padding:10px 1rem 12px; background:var(--card-bg); border-bottom:1px solid var(--card-border); }
 .modal-period-jump-btn { background:var(--card-bg); border:2px solid; border-radius:999px; padding:4px 12px; font-weight:800; font-size:0.8rem; cursor:pointer; }
-.modal-period-block { border:1px solid var(--card-border); border-left-width:6px; border-left-style:solid; border-radius:10px; padding:14px 16px; background:var(--card-bg); box-shadow:0 1px 3px rgba(0,0,0,0.05); scroll-margin-top:12px; }
+.modal-period-block { border:1px solid var(--card-border); border-left-width:6px; border-left-style:solid; border-radius:10px; padding:14px 16px; background:var(--card-bg); box-shadow:0 1px 3px rgba(0,0,0,0.05); scroll-margin-top:64px; }
 .modal-period-course { font-size:1.05rem; font-weight:800; margin-bottom:6px; }
 .modal-period-toggles { display:flex; gap:8px; margin:8px 0; }
 .modal-period-lessonplan { background:#f0fdf4; border-left:3px solid #16a34a; padding:8px 10px; border-radius:0 6px 6px 0; font-size:0.88rem; margin-bottom:10px; line-height:1.4; }
 body.dark .modal-period-lessonplan { background:#0f2b1a; }
 .modal-period-lessonplan-text { margin:4px 0; }
-.modal-lessonplan-btn { margin-bottom:10px; }
+.modal-toggle-btn { display:block; width:100%; text-align:left; margin-bottom:10px; font-weight:700; }
+.modal-toggle-btn-lessonplan { background:#f0fdf4 !important; border-color:#16a34a !important; color:#166534 !important; }
+body.dark .modal-toggle-btn-lessonplan { background:#0f2b1a !important; color:#bbf7d0 !important; }
+.modal-toggle-btn-notes { background:#eff6ff !important; border-color:#2563eb !important; color:#1e40af !important; }
+body.dark .modal-toggle-btn-notes { background:#1e293b !important; color:#bfdbfe !important; }
+.modal-toggle-btn-hw { background:#fff7ed !important; border-color:#ea580c !important; color:#9a3412 !important; }
+body.dark .modal-toggle-btn-hw { background:#2b1a0e !important; color:#fdba74 !important; }
 .modal-period-notes-label { font-size:0.78rem; font-weight:700; color:#6b7280; margin-bottom:4px; }
 .modal-period-flash { animation: modalPeriodFlash 1.4s ease; }
 @keyframes modalPeriodFlash {
@@ -7469,14 +7477,14 @@ function jumpToUnitLessonPlan(periodNum, unitIndex, dayIndexInUnit) {
     const card = tbody?.querySelectorAll(".unit-day-card")[dayIndexInUnit];
     if (!card) return;
     const toggleBtn = card.querySelector(".udc-lessonplan-toggle");
-    const textarea = card.querySelector(".unit-day-lessonplan");
-    if (textarea && textarea.style.display === "none" && toggleBtn) {
+    const slot = card.querySelector(".udc-lessonplan-editor-slot");
+    if (slot && slot.style.display === "none" && toggleBtn) {
       toggleBtn.click();
     }
     card.scrollIntoView({ behavior: "smooth", block: "center" });
     card.classList.add("modal-period-flash");
     setTimeout(() => card.classList.remove("modal-period-flash"), 1400);
-    textarea?.focus();
+    slot?.querySelector(".note-doc")?.focus();
   }, 80);
 }
 
@@ -7612,6 +7620,9 @@ function renderWeekView(anchorIso) {
         <div class="wdc-date">${formatDateLabel(iso).split(",")[0]}</div>
         ${!data.isOff && !data.isNoSchool && data.letter ? `<div class="wdc-letter">${data.letter}</div>` : ''}
       </div>`;
+    if (data.generalNote) {
+      html += `<div class="wdc-general-note">📌 ${noteToHtml(data.generalNote)}</div>`;
+    }
     if (data.isOff || data.isNoSchool) {
       html += `<div class="wdc-off">Off${data.noSchoolLabel ? `<br><span class="wdc-off-sub">${data.noSchoolLabel}</span>` : ''}</div>`;
     } else if (!data.periods.length) {
@@ -7679,6 +7690,9 @@ function switchView(view, iso) {
   const weekContainer = document.getElementById("weekViewContainer");
   if (dayContainer) dayContainer.style.display = view === "day" ? "" : "none";
   if (weekContainer) weekContainer.style.display = view === "week" ? "" : "none";
+
+  const expandBtn = document.getElementById("toggleExpandDaysBtn");
+  if (expandBtn) expandBtn.style.display = view === "month" ? "" : "none";
 
   document.querySelectorAll(".view-toggle-btn").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.view === view);
@@ -8101,7 +8115,7 @@ body.appendChild(generalBlock);
       lpWrap.innerHTML = `<strong>📝 Lesson Plan</strong><div class="modal-period-lessonplan-text">${noteToHtml(unitInfo.lessonPlan)}</div>`;
       const lpEditBtn = document.createElement("button");
       lpEditBtn.type = "button";
-      lpEditBtn.className = "secondary modal-lessonplan-btn";
+      lpEditBtn.className = "secondary modal-toggle-btn modal-toggle-btn-lessonplan";
       lpEditBtn.textContent = "✏️ Edit Lesson Plan";
       lpEditBtn.addEventListener("click", () => {
         jumpToUnitLessonPlan(periodNum, unitInfo.unitIndex, unitInfo.dayIndexInUnit);
@@ -8111,7 +8125,7 @@ body.appendChild(generalBlock);
     } else if (unitInfo.unitIndex !== null) {
       const addLpBtn = document.createElement("button");
       addLpBtn.type = "button";
-      addLpBtn.className = "secondary modal-lessonplan-btn";
+      addLpBtn.className = "secondary modal-toggle-btn modal-toggle-btn-lessonplan";
       addLpBtn.textContent = "📝 + Add Lesson Plan for Today";
       addLpBtn.addEventListener("click", () => {
         jumpToUnitLessonPlan(periodNum, unitInfo.unitIndex, unitInfo.dayIndexInUnit);
@@ -8119,21 +8133,39 @@ body.appendChild(generalBlock);
       block.appendChild(addLpBtn);
     }
 
-    const notesLabel = document.createElement("div");
-    notesLabel.className = "modal-period-notes-label";
-    notesLabel.textContent = "📓 Notes for today (not part of the lesson plan)";
-    block.appendChild(notesLabel);
+    const hasExistingNote = !!noteToPlain(existingNotes[periodNum] || "");
 
-block.appendChild(
-  buildNoteEditor(String(periodNum), existingNotes[periodNum] || "")
-);
+    const notesToggleBtn = document.createElement("button");
+    notesToggleBtn.type = "button";
+    notesToggleBtn.className = "secondary modal-toggle-btn modal-toggle-btn-notes";
+    notesToggleBtn.textContent = hasExistingNote
+      ? "📓 Notes ✓ (click to view/edit)"
+      : "📓 + Add Notes for today";
+    block.appendChild(notesToggleBtn);
+
+    const noteEditor = buildNoteEditor(String(periodNum), existingNotes[periodNum] || "");
+    noteEditor.style.display = hasExistingNote ? "block" : "none";
+    block.appendChild(noteEditor);
+
+    notesToggleBtn.addEventListener("click", () => {
+      const showing = noteEditor.style.display !== "none";
+      noteEditor.style.display = showing ? "none" : "block";
+      if (!showing) noteEditor.querySelector(".note-doc")?.focus();
+    });
+
+    const hasExistingHw = !!String(existingNotes[`hw-${periodNum}`] || "").trim();
+
+    const hwToggleBtn = document.createElement("button");
+    hwToggleBtn.type = "button";
+    hwToggleBtn.className = "secondary modal-toggle-btn modal-toggle-btn-hw";
+    hwToggleBtn.textContent = hasExistingHw
+      ? "📚 Homework ✓ (click to view/edit)"
+      : "📚 + Add Homework for today";
+    block.appendChild(hwToggleBtn);
 
     const hwWrap = document.createElement("div");
     hwWrap.style.marginTop = "8px";
-    const hwLabel = document.createElement("label");
-    hwLabel.innerHTML = `<strong>📚 Homework</strong>`;
-    hwLabel.style.display = "block";
-    hwLabel.style.marginBottom = "4px";
+    hwWrap.style.display = hasExistingHw ? "block" : "none";
 
     const hwInput = document.createElement("textarea");
     hwInput.className = "modal-hw";
@@ -8144,9 +8176,14 @@ block.appendChild(
       "width:100%; padding:8px; border-radius:8px; border:1px solid #d1d5db;";
     hwInput.value = existingNotes[`hw-${periodNum}`] || "";
 
-    hwWrap.appendChild(hwLabel);
     hwWrap.appendChild(hwInput);
     block.appendChild(hwWrap);
+
+    hwToggleBtn.addEventListener("click", () => {
+      const showing = hwWrap.style.display !== "none";
+      hwWrap.style.display = showing ? "none" : "block";
+      if (!showing) hwInput.focus();
+    });
 
     if (unitInfo.unitIndex !== null) {
       const editUnitBtn = document.createElement("button");
@@ -9221,7 +9258,7 @@ function renderUnitDayCards(containerEl, days, dayDates = []) {
   containerEl.innerHTML = "";
   days.forEach((dayPlan, dayIndex) => {
     const isShiftRow = isShiftDayPlan(dayPlan);
-    const hasLessonPlan = !!(dayPlan.lessonPlan || "").trim();
+    const hasLessonPlan = !!noteToPlain(dayPlan.lessonPlan || "");
     const dateLabel = formatShortWeekdayDate(dayDates[dayIndex]);
     const card = document.createElement("div");
     card.className = "unit-day-card" + (isShiftRow ? " unit-day-shift" : "");
@@ -9246,11 +9283,17 @@ function renderUnitDayCards(containerEl, days, dayDates = []) {
       ${isShiftRow ? "" : `
       <div class="udc-lessonplan-row">
         <button type="button" class="udc-lessonplan-toggle">${hasLessonPlan ? "📝 Lesson plan ✓ (click to edit)" : "📝 + Add a lesson plan"}</button>
-        <textarea class="unit-day-lessonplan udc-lessonplan-text" data-day-index="${dayIndex}" rows="3"
-          placeholder="Warm-up, main activity, closure, differentiation notes…"
-          style="display:${hasLessonPlan ? "block" : "none"};">${escapeHtml(dayPlan.lessonPlan || "")}</textarea>
+        <div class="udc-lessonplan-editor-slot" style="display:${hasLessonPlan ? "block" : "none"};"></div>
       </div>`}
     `;
+
+    if (!isShiftRow) {
+      const slot = card.querySelector(".udc-lessonplan-editor-slot");
+      const editor = buildNoteEditor(`lessonplan-${dayIndex}`, dayPlan.lessonPlan || "");
+      editor.classList.add("unit-day-lessonplan");
+      slot.appendChild(editor);
+    }
+
     containerEl.appendChild(card);
   });
 }
@@ -9261,12 +9304,12 @@ function collectUnitDayCardsFromDOM(containerEl) {
     const topicInput = card.querySelector(".unit-day-topic");
     const quizInput = card.querySelector(".unit-day-quiz");
     const testInput = card.querySelector(".unit-day-test");
-    const lessonPlanInput = card.querySelector(".unit-day-lessonplan");
+    const lessonPlanDoc = card.querySelector(".unit-day-lessonplan .note-doc");
     return {
       topic: isShift ? "SHIFT UNIT" : (topicInput?.value || "").trim(),
       quiz: isShift ? false : !!quizInput?.checked,
       test: isShift ? false : !!testInput?.checked,
-      lessonPlan: isShift ? "" : (lessonPlanInput?.value || "").trim(),
+      lessonPlan: isShift ? "" : (lessonPlanDoc?.innerHTML || "").trim(),
       shiftDay: isShift
     };
   });
@@ -9334,11 +9377,11 @@ window.openUnitDaysEditor = function(period, index) {
     const btn = e.target.closest(".udc-lessonplan-toggle");
     if (!btn) return;
     const card = btn.closest(".unit-day-card");
-    const textarea = card?.querySelector(".unit-day-lessonplan");
-    if (!textarea) return;
-    const showing = textarea.style.display !== "none";
-    textarea.style.display = showing ? "none" : "block";
-    if (!showing) textarea.focus();
+    const slot = card?.querySelector(".udc-lessonplan-editor-slot");
+    if (!slot) return;
+    const showing = slot.style.display !== "none";
+    slot.style.display = showing ? "none" : "block";
+    if (!showing) slot.querySelector(".note-doc")?.focus();
   };
 
   document.getElementById("unitEditorLength").onchange = (e) => {
@@ -11611,6 +11654,7 @@ function applyPrintFilters() {
 periodRows.push({
               line,
               topicName: unitInfo.topicName || "",
+              lessonPlan: unitInfo.lessonPlan || "",
               note: includePeriodNotes
                 ? (dayNotes[periodNum] || dayNotes[String(periodNum)] || "")
                 : "",
@@ -11867,6 +11911,15 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.6rem; margin-bottom: 4px; 
   color: #4b5563;
   font-style: italic;
 }
+.lesson-plan {
+  margin-top: 6px;
+  padding: 6px 10px;
+  background: #f0fdf4;
+  border-left: 3px solid #16a34a;
+  border-radius: 0 6px 6px 0;
+  font-size: 0.88rem;
+  color: #14532d;
+}
 .badge-test { color: #b91c1c; font-weight: 700; }
 .badge-quiz { color: #1d4ed8; font-weight: 700; }
 .no-test { margin-top: 8px; color: #166534; font-weight: 600; font-size: 0.9rem; }
@@ -11963,6 +12016,11 @@ const dateSet = new Set();
               html += `<span class="note">Topic: ${
                 typeof noteToHtml === "function" ? noteToHtml(row.topicName) : row.topicName
               }</span>`;
+            }
+            if (row.lessonPlan) {
+              html += `<div class="lesson-plan"><strong>Lesson Plan:</strong> ${
+                typeof noteToHtml === "function" ? noteToHtml(row.lessonPlan) : row.lessonPlan
+              }</div>`;
             }
             if (row.note) {
               html += `<span class="note">Note: ${
