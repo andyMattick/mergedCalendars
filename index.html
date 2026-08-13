@@ -7516,6 +7516,176 @@ function jumpToUnitLessonPlan(periodNum, unitIndex, dayIndexInUnit) {
   }, 80);
 }
 
+function buildQuickPrintDayHtml(iso) {
+  const d = buildDaySummaryData(iso);
+  const teacherName = (localStorage.getItem("teacherName") || "").trim();
+
+  let periodsHtml = "";
+  if (d.isOff || d.isNoSchool) {
+    periodsHtml = `<div class="qp-off">🎉 No School${d.noSchoolLabel ? ` — ${d.noSchoolLabel}` : ""}</div>`;
+  } else if (!d.periods.length) {
+    periodsHtml = `<div class="qp-empty">No classes scheduled.</div>`;
+  } else {
+    periodsHtml = d.periods.map(p => `
+      <div class="qp-period" style="border-left-color:${p.color};">
+        <div class="qp-period-head">
+          <span class="qp-period-title" style="color:${p.color};">Period ${p.periodNum} — ${p.courseName}</span>
+          ${p.bellTime ? `<span class="qp-time">${p.bellTime}</span>` : ""}
+          ${p.isTest ? `<span class="qp-badge qp-badge-test">TEST</span>` : ""}
+          ${p.isQuiz ? `<span class="qp-badge qp-badge-quiz">QUIZ</span>` : ""}
+        </div>
+        ${p.unitName ? `<div class="qp-unit">${p.unitName}${p.topicName ? `: ${p.topicName}` : ""}${p.dayInUnit ? ` (Day ${p.dayInUnit}/${p.unitLength})` : ""}</div>` : ""}
+        ${p.lessonPlan ? `<div class="qp-lessonplan"><strong>📝 Lesson Plan:</strong> ${noteToHtml(p.lessonPlan)}</div>` : ""}
+        ${p.note ? `<div class="qp-note"><strong>📓 Notes:</strong> ${noteToHtml(p.note)}</div>` : ""}
+        ${p.homework ? `<div class="qp-hw"><strong>📚 HW:</strong> ${noteToHtml(p.homework)}</div>` : ""}
+      </div>`).join("");
+  }
+
+  const specialsHtml = d.specialEntries.length
+    ? `<div class="qp-specials">${d.specialEntries.map(e => `<span class="qp-pill">${e.label}</span>`).join("")}</div>`
+    : "";
+  const generalHtml = d.generalNote ? `<div class="qp-general">📌 ${noteToHtml(d.generalNote)}</div>` : "";
+  const noTestHtml = d.noTest ? `<div class="qp-notest">✅ No Test Today</div>` : "";
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>${d.weekdayName}, ${formatDateLabel(iso)}</title>
+<style>
+  @page { size: letter portrait; margin: 0.45in; }
+  * { box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color:#111827; margin:0; }
+  h1 { font-size:28px; margin:0 0 2px; text-align:center; color:#1e3a8a; }
+  .qp-sub { text-align:center; font-size:16px; color:#6b7280; margin-bottom:12px; font-weight:600; }
+  .qp-specials { text-align:center; margin-bottom:8px; }
+  .qp-pill { display:inline-block; background:#f3e8ff; color:#6b21a8; font-weight:700; font-size:13px; padding:3px 10px; border-radius:999px; margin:0 4px; }
+  .qp-general { background:#eff6ff; border-left:4px solid #2563eb; padding:8px 12px; border-radius:0 8px 8px 0; font-size:15px; margin-bottom:10px; }
+  .qp-notest { text-align:center; background:#dcfce7; color:#166534; font-weight:700; padding:6px; border-radius:8px; font-size:15px; margin-bottom:10px; }
+  .qp-off { text-align:center; font-size:22px; font-weight:700; background:#fef3c7; color:#92400e; padding:20px; border-radius:12px; }
+  .qp-empty { text-align:center; color:#6b7280; font-style:italic; font-size:17px; padding:24px; }
+  .qp-period { border:1px solid #e5e7eb; border-left-width:6px; border-left-style:solid; border-radius:10px; padding:10px 14px; margin-bottom:9px; }
+  .qp-period-head { display:flex; align-items:center; gap:10px; margin-bottom:4px; }
+  .qp-period-title { font-size:18px; font-weight:800; flex:1; }
+  .qp-time { font-size:13px; color:#6b7280; font-weight:700; }
+  .qp-badge { font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px; }
+  .qp-badge-test { background:#fee2e2; color:#b91c1c; }
+  .qp-badge-quiz { background:#dbeafe; color:#1d4ed8; }
+  .qp-unit { font-size:14px; color:#4b5563; margin-bottom:4px; }
+  .qp-lessonplan, .qp-note, .qp-hw { font-size:14px; margin-top:4px; padding:6px 10px; border-radius:0 6px 6px 0; line-height:1.4; }
+  .qp-lessonplan { background:#f0fdf4; border-left:3px solid #16a34a; }
+  .qp-note { background:#eff6ff; border-left:3px solid #2563eb; }
+  .qp-hw { background:#fff7ed; border-left:3px solid #ea580c; }
+</style></head>
+<body>
+  <h1>${d.weekdayName}, ${formatDateLabel(iso)}</h1>
+  <div class="qp-sub">${teacherName ? teacherName + (!d.isOff && !d.isNoSchool && d.letter ? " · " : "") : ""}${!d.isOff && !d.isNoSchool && d.letter ? `Letter Day ${d.letter}` : ""}</div>
+  ${specialsHtml}
+  ${generalHtml}
+  ${noTestHtml}
+  ${periodsHtml}
+</body></html>`;
+}
+
+function quickPrintDay(iso) {
+  const html = buildQuickPrintDayHtml(iso);
+  const win = window.open("", "_blank");
+  if (!win) { alert("Please allow pop-ups to print."); return; }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 300);
+}
+
+function buildQuickPrintWeekHtml(anchorIso) {
+  const weekDates = getWeekdaysForDate(anchorIso);
+  const teacherName = (localStorage.getItem("teacherName") || "").trim();
+  const rangeLabel = `${formatDateLabel(weekDates[0])} \u2013 ${formatDateLabel(weekDates[weekDates.length - 1])}`;
+
+  const colsHtml = weekDates.map(iso => {
+    const d = buildDaySummaryData(iso);
+    let inner = "";
+    if (d.isOff || d.isNoSchool) {
+      inner = `<div class="qpw-off">🎉 No School${d.noSchoolLabel ? `<br>${d.noSchoolLabel}` : ""}</div>`;
+    } else if (!d.periods.length) {
+      inner = `<div class="qpw-empty">No classes</div>`;
+    } else {
+      inner = d.periods.map(p => `
+        <div class="qpw-period" style="border-left-color:${p.color};">
+          <div class="qpw-period-head">
+            <span class="qpw-period-title" style="color:${p.color};">P${p.periodNum} ${p.courseName}</span>
+            ${p.isTest ? `<span class="qpw-badge qpw-badge-test">T</span>` : ""}
+            ${p.isQuiz ? `<span class="qpw-badge qpw-badge-quiz">Q</span>` : ""}
+          </div>
+          ${p.topicName ? `<div class="qpw-topic">${p.topicName}</div>` : ""}
+          ${p.lessonPlan ? `<div class="qpw-lp"><strong>📝</strong> ${noteToHtml(p.lessonPlan)}</div>` : ""}
+          ${p.note ? `<div class="qpw-note"><strong>📓</strong> ${noteToHtml(p.note)}</div>` : ""}
+          ${p.homework ? `<div class="qpw-hw"><strong>📚</strong> ${noteToHtml(p.homework)}</div>` : ""}
+        </div>`).join("");
+    }
+    const specials = d.specialEntries.length
+      ? `<div class="qpw-specials">${d.specialEntries.map(e => `<span class="qpw-pill">${e.label}</span>`).join("")}</div>`
+      : "";
+    const general = d.generalNote ? `<div class="qpw-general">📌 ${noteToHtml(d.generalNote)}</div>` : "";
+    return `<div class="qpw-col">
+      <div class="qpw-col-head">
+        <div class="qpw-weekday">${d.weekdayName}</div>
+        <div class="qpw-date">${formatDateLabel(iso).split(",")[0]}</div>
+        ${!d.isOff && !d.isNoSchool && d.letter ? `<div class="qpw-letter">Letter ${d.letter}</div>` : ""}
+      </div>
+      ${specials}
+      ${general}
+      ${inner}
+    </div>`;
+  }).join("");
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Week of ${rangeLabel}</title>
+<style>
+  @page { size: letter landscape; margin: 0.35in; }
+  * { box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif; color:#111827; margin:0; }
+  h1 { font-size:22px; margin:0 0 2px; text-align:center; color:#1e3a8a; }
+  .qpw-sub { text-align:center; font-size:13px; color:#6b7280; margin-bottom:10px; font-weight:600; }
+  .qpw-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+  .qpw-col { border:1px solid #e5e7eb; border-radius:10px; padding:8px; }
+  .qpw-col-head { text-align:center; border-bottom:1px solid #e5e7eb; padding-bottom:4px; margin-bottom:6px; }
+  .qpw-weekday { font-size:11px; text-transform:uppercase; color:#6b7280; font-weight:700; }
+  .qpw-date { font-size:16px; font-weight:800; }
+  .qpw-letter { font-size:11px; color:#2563eb; font-weight:700; }
+  .qpw-off { text-align:center; font-size:12px; font-weight:700; color:#92400e; padding:10px 2px; }
+  .qpw-empty { text-align:center; font-size:11px; color:#9ca3af; font-style:italic; padding:10px 2px; }
+  .qpw-specials { text-align:center; margin-bottom:4px; }
+  .qpw-pill { display:inline-block; background:#f3e8ff; color:#6b21a8; font-weight:700; font-size:9px; padding:2px 6px; border-radius:999px; margin:1px; }
+  .qpw-general { background:#eff6ff; border-left:3px solid #2563eb; padding:3px 6px; border-radius:0 4px 4px 0; font-size:9.5px; margin-bottom:6px; line-height:1.3; }
+  .qpw-period { border:1px solid #e5e7eb; border-left-width:4px; border-left-style:solid; border-radius:6px; padding:5px 7px; margin-bottom:5px; }
+  .qpw-period-head { display:flex; justify-content:space-between; align-items:center; }
+  .qpw-period-title { font-size:11px; font-weight:800; }
+  .qpw-badge { font-size:8.5px; font-weight:800; padding:1px 5px; border-radius:999px; margin-left:2px; }
+  .qpw-badge-test { background:#fee2e2; color:#b91c1c; }
+  .qpw-badge-quiz { background:#dbeafe; color:#1d4ed8; }
+  .qpw-topic { font-size:9.5px; color:#4b5563; }
+  .qpw-lp, .qpw-note, .qpw-hw { font-size:9px; margin-top:3px; padding:3px 5px; border-radius:0 4px 4px 0; line-height:1.3; }
+  .qpw-lp { background:#f0fdf4; border-left:2px solid #16a34a; }
+  .qpw-note { background:#eff6ff; border-left:2px solid #2563eb; }
+  .qpw-hw { background:#fff7ed; border-left:2px solid #ea580c; }
+</style></head>
+<body>
+  <h1>Week of ${rangeLabel}</h1>
+  <div class="qpw-sub">${teacherName || ""}</div>
+  <div class="qpw-grid">${colsHtml}</div>
+</body></html>`;
+}
+
+function quickPrintWeek(anchorIso) {
+  const html = buildQuickPrintWeekHtml(anchorIso);
+  const win = window.open("", "_blank");
+  if (!win) { alert("Please allow pop-ups to print."); return; }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  win.focus();
+  setTimeout(() => { win.print(); }, 300);
+}
+
 function openEditForDate(iso, periodNum) {
   const schoolDay = getRotationDayByDate(iso);
   openDayModal({
@@ -7585,12 +7755,13 @@ function renderDayView(iso) {
       </div>`;
   });
   html += `</div>`;
-  html += `<div class="day-view-footer"><button type="button" id="dayViewEditBtn">✏️ Edit this day</button></div>`;
+  html += `<div class="day-view-footer"><button type="button" id="dayViewEditBtn">✏️ Edit this day</button> <button type="button" id="dayViewPrintBtn" class="secondary">🖨️ Print Day</button></div>`;
 
   container.innerHTML = html;
   document.getElementById("dayViewPrevBtn")?.addEventListener("click", () => goToDayView(-1));
   document.getElementById("dayViewNextBtn")?.addEventListener("click", () => goToDayView(1));
   document.getElementById("dayViewEditBtn")?.addEventListener("click", () => openEditForDate(iso));
+  document.getElementById("dayViewPrintBtn")?.addEventListener("click", () => quickPrintDay(iso));
   container.querySelectorAll(".day-view-period-card").forEach(card => {
     card.addEventListener("click", () => openEditForDate(iso, Number(card.dataset.period)));
   });
@@ -7636,6 +7807,9 @@ function renderWeekView(anchorIso) {
       <div class="week-view-title">${rangeLabel}</div>
       <button type="button" class="secondary" id="weekViewNextBtn">Next Week ▶</button>
     </div>
+    <div style="text-align:center; margin-bottom:12px;">
+      <button type="button" class="secondary" id="weekViewPrintBtn">🖨️ Print Week</button>
+    </div>
     <div class="week-view-grid">`;
 
   weekDates.forEach(iso => {
@@ -7679,6 +7853,7 @@ function renderWeekView(anchorIso) {
 
   document.getElementById("weekViewPrevBtn")?.addEventListener("click", () => goToWeekView(-7));
   document.getElementById("weekViewNextBtn")?.addEventListener("click", () => goToWeekView(7));
+  document.getElementById("weekViewPrintBtn")?.addEventListener("click", () => quickPrintWeek(anchorIso));
   container.querySelectorAll(".week-day-col").forEach(col => {
     col.addEventListener("click", () => switchView("day", col.dataset.date));
   });
