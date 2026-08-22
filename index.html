@@ -1572,7 +1572,88 @@ body.dark .day-cell.off-day .status-badge:not(.off-badge) {
 }
 
 /* ====== Day / Week view ====== */
-.view-toggle-bar { display:flex; gap:8px; justify-content:center; margin-bottom:14px; }
+.view-toggle-bar { display:flex; gap:8px; justify-content:center; margin-bottom:14px; flex-wrap:wrap; }
+
+/* ====== Announcements ====== */
+.ann-toggle { position:relative; }
+.ann-toggle-badge { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px; margin-left:6px; background:#dc2626; color:#fff; border-radius:999px; font-size:0.7rem; font-weight:800; }
+
+.ann-panel { position:relative; background:var(--card-bg); border:2px solid var(--accent); border-radius:14px; padding:14px 16px; margin-bottom:16px; box-shadow:0 8px 24px rgba(0,0,0,0.12); }
+.ann-panel-header { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; padding-bottom:10px; border-bottom:1px solid var(--card-border); flex-wrap:wrap; }
+.ann-panel-heading { font-weight:800; font-size:1.05rem; }
+.ann-panel-header-actions { display:flex; gap:8px; }
+.ann-panel-list { display:flex; flex-direction:column; gap:10px; max-height:340px; overflow-y:auto; }
+.ann-panel-empty { color:#6b7280; font-style:italic; text-align:center; padding:20px; }
+.ann-panel-section-title { font-weight:800; font-size:0.85rem; color:#6b7280; margin-top:8px; padding-top:10px; border-top:1px solid var(--card-border); }
+.ann-panel-item { border:1px solid var(--card-border); border-left-width:5px; border-left-style:solid; border-radius:10px; padding:10px 12px; }
+.ann-panel-item-archived { opacity:0.65; }
+.ann-panel-item-head { display:flex; align-items:center; gap:8px; }
+.ann-panel-item-title { font-weight:800; font-size:0.95rem; flex:1; }
+.ann-live-dot { color:#16a34a; font-size:0.8rem; }
+.ann-panel-item-meta { font-size:0.78rem; color:#6b7280; margin-top:2px; }
+.ann-panel-item-actions { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+.ann-mini-btn { font-size:0.75rem !important; padding:4px 10px !important; }
+
+/* Announcement cards in Day view */
+.day-view-announcements { display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
+.ann-card { border:1px solid var(--card-border); border-left-width:6px; border-left-style:solid; border-radius:0 10px 10px 0; padding:12px 16px; cursor:pointer; transition:transform .12s ease, box-shadow .12s ease; }
+.ann-card:hover { transform:translateY(-2px); box-shadow:0 6px 14px rgba(0,0,0,0.12); }
+body.dark .ann-card { background:rgba(255,255,255,0.05) !important; }
+.ann-card-head { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:4px; }
+.ann-card-badge { color:#fff; font-size:0.7rem; font-weight:800; padding:2px 9px; border-radius:999px; }
+.ann-card-title { font-weight:800; font-size:1.05rem; }
+.ann-card-body { font-size:0.95rem; line-height:1.45; }
+
+/* Announcement chip in Week view */
+.wdc-ann { border-left:4px solid; border-radius:0 6px 6px 0; padding:5px 8px; margin-bottom:6px; cursor:pointer; }
+.wdc-ann:hover { filter:brightness(0.97); }
+body.dark .wdc-ann { background:rgba(255,255,255,0.06) !important; }
+.wdc-ann-title { font-size:0.82rem; font-weight:700; line-height:1.25; }
+
+/* Month view indicator */
+.month-ann-badge { background:#fef3c7; color:#92400e; font-size:0.68rem; font-weight:800; padding:2px 7px; border-radius:999px; cursor:pointer; }
+body.dark .month-ann-badge { background:#3a2e0f; color:#fde68a; }
+
+/* Announcement form */
+.ann-form-label { display:block; font-size:0.82rem; font-weight:700; margin-bottom:10px; }
+.ann-form-label input, .ann-form-label textarea { margin-top:4px; margin-bottom:0; width:100%; font-family:inherit; }
+.ann-form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width:520px) { .ann-form-row { grid-template-columns:1fr; } }
+.ann-style-picker { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+.ann-style-opt { background:var(--card-bg); border:2px solid; border-radius:999px; padding:6px 14px; font-size:0.82rem; font-weight:700; cursor:pointer; opacity:0.55; }
+.ann-style-opt.selected { opacity:1; box-shadow:0 0 0 3px rgba(37,99,235,0.15); }
+.ann-form-preview { background:rgba(148,163,184,0.1); border-radius:8px; padding:10px 12px; font-size:0.88rem; }
+
+/* Full-screen announcement modal */
+.ann-view-backdrop { z-index:3000; }
+.ann-view-modal { position:relative; background:var(--card-bg); color:var(--fg); border-radius:16px; width:min(900px, 94vw); max-height:92vh; overflow-y:auto; box-shadow:0 24px 60px rgba(0,0,0,0.35); }
+.ann-view-close { position:absolute; top:16px; right:16px; z-index:2; }
+.ann-full { padding:44px 48px 48px; }
+@media (max-width:600px) { .ann-full { padding:44px 22px 28px; } }
+.ann-full-badge { display:inline-block; color:#fff; font-size:0.85rem; font-weight:800; padding:5px 16px; border-radius:999px; margin-bottom:16px; }
+.ann-full-title { font-size:2.4rem; font-weight:800; margin:0 0 10px; line-height:1.15; }
+@media (max-width:600px) { .ann-full-title { font-size:1.7rem; } }
+.ann-full-dates { font-size:0.95rem; color:#6b7280; font-weight:600; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid var(--card-border); }
+.ann-full-body { font-size:1.25rem; line-height:1.7; }
+@media (max-width:600px) { .ann-full-body { font-size:1.05rem; } }
+
+/* ====== Planner search ====== */
+.planner-search-bar { display:flex; gap:8px; align-items:center; margin-bottom:14px; }
+.planner-search-bar input { flex:1; margin-bottom:0; padding:10px 14px; border-radius:999px; border:2px solid var(--card-border); font-size:0.95rem; background:var(--card-bg); color:var(--fg); }
+.planner-search-bar input:focus { outline:none; border-color:var(--accent); }
+.search-results-header { font-weight:800; font-size:1.05rem; margin-bottom:12px; }
+.search-empty { text-align:center; color:#6b7280; font-style:italic; padding:32px; }
+.search-results-list { display:flex; flex-direction:column; gap:10px; }
+.search-result { background:var(--card-bg); border:1px solid var(--card-border); border-left:5px solid var(--accent); border-radius:10px; padding:12px 14px; cursor:pointer; transition:transform .1s ease, box-shadow .1s ease; }
+.search-result:hover { transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.1); }
+.search-result-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:5px; }
+.search-result-icon { font-size:1rem; }
+.search-result-title { font-weight:800; font-size:0.98rem; flex:1; }
+.search-result-context { font-size:0.72rem; font-weight:700; text-transform:uppercase; color:#6b7280; background:rgba(148,163,184,0.15); padding:2px 8px; border-radius:999px; }
+.search-result-snippet { font-size:0.9rem; line-height:1.45; color:#4b5563; }
+body.dark .search-result-snippet { color:#d1d5db; }
+.search-result-snippet mark { background:#fde68a; color:#78350f; padding:0 2px; border-radius:3px; font-weight:700; }
+.search-result-date { font-size:0.78rem; color:#6b7280; margin-top:6px; font-weight:600; }
 .view-toggle-btn { padding:8px 18px; border-radius:999px; border:2px solid var(--card-border); background:var(--card-bg); color:var(--fg); font-weight:700; font-size:0.95rem; cursor:pointer; }
 .view-toggle-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
 
@@ -1761,6 +1842,7 @@ body.dark .modal-toggle-btn-hw { background:#2b1a0e !important; color:#fdba74 !i
         <option value="syncBackupNow">Sync Backup Now</option>
         <option value="print">Print / Sync HTML</option>
         <option value="export">Export Tests/Quizzes</option>
+        <option value="publish">📤 Publish Snapshot (for GitHub)</option>
       </select>
 
          <select id="leftActions2" class="header-select">
@@ -2052,7 +2134,24 @@ body.dark .modal-toggle-btn-hw { background:#2b1a0e !important; color:#fdba74 !i
     <button type="button" class="view-toggle-btn active" data-view="month">📅 Month</button>
     <button type="button" class="view-toggle-btn" data-view="week">📆 Week</button>
     <button type="button" class="view-toggle-btn" data-view="day">☀️ Day</button>
+    <button type="button" class="view-toggle-btn ann-toggle" id="announcementPanelToggle">📢 Announcements<span id="announcementPanelBadge" class="ann-toggle-badge"></span></button>
   </div>
+
+  <div id="announcementPanel" class="ann-panel" style="display:none;">
+    <div class="ann-panel-header">
+      <span class="ann-panel-heading">📢 Announcement Board</span>
+      <div class="ann-panel-header-actions">
+        <button type="button" id="newAnnouncementBtn">+ New Announcement</button>
+        <button type="button" id="announcementPanelCloseBtn" class="secondary">✕</button>
+      </div>
+    </div>
+    <div id="announcementPanelList" class="ann-panel-list"></div>
+  </div>
+  <div class="planner-search-bar">
+    <input type="text" id="plannerSearchInput" placeholder="🔍 Search notes, homework, lesson plans, units, topics, special days…">
+    <button type="button" id="plannerSearchClearBtn" class="secondary" style="display:none;">✕ Clear</button>
+  </div>
+  <div id="searchViewContainer" style="display:none;"></div>
   <div id="monthNav" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; gap:0.5rem; flex-wrap:wrap;">
     <button id="prevMonthBtn" class="secondary">◀ Prev</button>
     <div id="monthChips" style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center; flex:1;"></div>
@@ -4166,6 +4265,7 @@ units: JSON.parse(JSON.stringify(units || {})),
     notes,
     activePackId: typeof activePackId !== "undefined" ? activePackId : "builtin",
     projects: JSON.parse(JSON.stringify(projects || {})),
+    announcements: JSON.parse(JSON.stringify(announcements || [])),
     periodCount: Number(localStorage.getItem("periodCount")) || 7
   };
 }
@@ -4178,6 +4278,10 @@ function applyProfileData(data) {
     : {};
 
 if (typeof saveProjects === "function") saveProjects();
+
+  announcements = Array.isArray(data.announcements)
+    ? JSON.parse(JSON.stringify(data.announcements))
+    : [];
 
   // ALWAYS replace (empty profile must clear previous)
   teacherSchedule =
@@ -7414,6 +7518,24 @@ function renderCalendar() {
       badgeRow.appendChild(b);
     });
 
+    // Announcement indicator (month view = indicator only)
+    const cellAnnouncements = typeof getAnnouncementsForDate === "function"
+      ? getAnnouncementsForDate(iso)
+      : [];
+    if (cellAnnouncements.length) {
+      const annBadge = document.createElement("span");
+      annBadge.className = "month-ann-badge";
+      annBadge.textContent = cellAnnouncements.length > 1
+        ? `📢 ${cellAnnouncements.length}`
+        : "📢";
+      annBadge.title = cellAnnouncements.map(a => a.title || "Untitled").join(" · ");
+      annBadge.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openAnnouncementModal(cellAnnouncements[0].id);
+      });
+      badgeRow.appendChild(annBadge);
+    }
+
     if (badgeRow.childElementCount > 0) {
       header.appendChild(badgeRow);
     }
@@ -7544,6 +7666,16 @@ function buildQuickPrintDayHtml(iso) {
   const specialsHtml = d.specialEntries.length
     ? `<div class="qp-specials">${d.specialEntries.map(e => `<span class="qp-pill">${e.label}</span>`).join("")}</div>`
     : "";
+  const annList = getAnnouncementsForDate(iso);
+  const annHtml = annList.length
+    ? annList.map(a => {
+        const st = getAnnouncementStyle(a.style);
+        return `<div class="qp-ann" style="border-left-color:${st.color}; background:${st.bg};">
+          <div class="qp-ann-title">📢 ${escapeHtml(a.title || "Untitled")}</div>
+          ${a.body ? `<div class="qp-ann-body">${noteToHtml(a.body)}</div>` : ""}
+        </div>`;
+      }).join("")
+    : "";
   const generalHtml = d.generalNote ? `<div class="qp-general">📌 ${noteToHtml(d.generalNote)}</div>` : "";
   const noTestHtml = d.noTest ? `<div class="qp-notest">✅ No Test Today</div>` : "";
 
@@ -7558,6 +7690,9 @@ function buildQuickPrintDayHtml(iso) {
   .qp-specials { text-align:center; margin-bottom:8px; }
   .qp-pill { display:inline-block; background:#f3e8ff; color:#6b21a8; font-weight:700; font-size:13px; padding:3px 10px; border-radius:999px; margin:0 4px; }
   .qp-general { background:#eff6ff; border-left:4px solid #2563eb; padding:8px 12px; border-radius:0 8px 8px 0; font-size:15px; margin-bottom:10px; }
+  .qp-ann { border-left:5px solid; border-radius:0 8px 8px 0; padding:8px 12px; margin-bottom:8px; }
+  .qp-ann-title { font-size:16px; font-weight:800; }
+  .qp-ann-body { font-size:14px; line-height:1.4; margin-top:3px; }
   .qp-notest { text-align:center; background:#dcfce7; color:#166534; font-weight:700; padding:6px; border-radius:8px; font-size:15px; margin-bottom:10px; }
   .qp-off { text-align:center; font-size:22px; font-weight:700; background:#fef3c7; color:#92400e; padding:20px; border-radius:12px; }
   .qp-empty { text-align:center; color:#6b7280; font-style:italic; font-size:17px; padding:24px; }
@@ -7578,6 +7713,7 @@ function buildQuickPrintDayHtml(iso) {
   <h1>${d.weekdayName}, ${formatDateLabel(iso)}</h1>
   <div class="qp-sub">${teacherName ? teacherName + (!d.isOff && !d.isNoSchool && d.letter ? " · " : "") : ""}${!d.isOff && !d.isNoSchool && d.letter ? `Letter Day ${d.letter}` : ""}</div>
   ${specialsHtml}
+  ${annHtml}
   ${generalHtml}
   ${noTestHtml}
   ${periodsHtml}
@@ -7625,6 +7761,14 @@ function buildQuickPrintWeekHtml(anchorIso) {
       ? `<div class="qpw-specials">${d.specialEntries.map(e => `<span class="qpw-pill">${e.label}</span>`).join("")}</div>`
       : "";
     const general = d.generalNote ? `<div class="qpw-general">📌 ${noteToHtml(d.generalNote)}</div>` : "";
+    const wkAnns = getAnnouncementsForDate(iso);
+    const annsHtml = wkAnns.map(a => {
+      const st = getAnnouncementStyle(a.style);
+      return `<div class="qpw-ann" style="border-left-color:${st.color};background:${st.bg};">
+        <div class="qpw-ann-title">📢 ${escapeHtml(a.title || "Untitled")}</div>
+        ${a.body ? `<div class="qpw-ann-body">${noteToHtml(a.body)}</div>` : ""}
+      </div>`;
+    }).join("");
     return `<div class="qpw-col">
       <div class="qpw-col-head">
         <div class="qpw-weekday">${d.weekdayName}</div>
@@ -7632,6 +7776,7 @@ function buildQuickPrintWeekHtml(anchorIso) {
         ${!d.isOff && !d.isNoSchool && d.letter ? `<div class="qpw-letter">Letter ${d.letter}</div>` : ""}
       </div>
       ${specials}
+      ${annsHtml}
       ${general}
       ${inner}
     </div>`;
@@ -7656,6 +7801,9 @@ function buildQuickPrintWeekHtml(anchorIso) {
   .qpw-specials { text-align:center; margin-bottom:4px; }
   .qpw-pill { display:inline-block; background:#f3e8ff; color:#6b21a8; font-weight:700; font-size:9px; padding:2px 6px; border-radius:999px; margin:1px; }
   .qpw-general { background:#eff6ff; border-left:3px solid #2563eb; padding:3px 6px; border-radius:0 4px 4px 0; font-size:9.5px; margin-bottom:6px; line-height:1.3; }
+  .qpw-ann { border-left:3px solid; border-radius:0 4px 4px 0; padding:3px 6px; margin-bottom:5px; }
+  .qpw-ann-title { font-size:10px; font-weight:800; line-height:1.25; }
+  .qpw-ann-body { font-size:9px; line-height:1.3; margin-top:2px; }
   .qpw-period { border:1px solid #e5e7eb; border-left-width:4px; border-left-style:solid; border-radius:6px; padding:5px 7px; margin-bottom:5px; }
   .qpw-period-head { display:flex; justify-content:space-between; align-items:center; }
   .qpw-period-title { font-size:11px; font-weight:800; }
@@ -7729,6 +7877,21 @@ function renderDayView(iso) {
       `<span class="special-day-badge" style="background:${hexToRgba(e.color||'#e9d5ff',0.45)};border-color:${e.color||'#e9d5ff'};">${e.badgeText}: ${e.label}</span>`
     ).join("") + `</div>`;
   }
+  const dayAnnouncements = getAnnouncementsForDate(iso);
+  if (dayAnnouncements.length) {
+    html += `<div class="day-view-announcements">`;
+    dayAnnouncements.forEach(a => {
+      const st = getAnnouncementStyle(a.style);
+      html += `<div class="ann-card" data-ann-open="${a.id}" style="border-left-color:${st.color}; background:${st.bg};">
+        <div class="ann-card-head">
+          <span class="ann-card-badge" style="background:${st.color};">${st.label}</span>
+          <span class="ann-card-title">${escapeHtml(a.title || "Untitled")}</span>
+        </div>
+        ${a.body ? `<div class="ann-card-body">${noteToHtml(a.body)}</div>` : ""}
+      </div>`;
+    });
+    html += `</div>`;
+  }
   if (data.generalNote) html += `<div class="day-view-general-note">📌 ${noteToHtml(data.generalNote)}</div>`;
   if (data.noTest) html += `<div class="day-view-notest">✅ No Test Today</div>`;
   if (!data.periods.length && !data.isOff && !data.isNoSchool) {
@@ -7762,6 +7925,12 @@ function renderDayView(iso) {
   document.getElementById("dayViewNextBtn")?.addEventListener("click", () => goToDayView(1));
   document.getElementById("dayViewEditBtn")?.addEventListener("click", () => openEditForDate(iso));
   document.getElementById("dayViewPrintBtn")?.addEventListener("click", () => quickPrintDay(iso));
+  container.querySelectorAll("[data-ann-open]").forEach(el => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openAnnouncementModal(el.dataset.annOpen);
+    });
+  });
   container.querySelectorAll(".day-view-period-card").forEach(card => {
     card.addEventListener("click", () => openEditForDate(iso, Number(card.dataset.period)));
   });
@@ -7822,6 +7991,13 @@ function renderWeekView(anchorIso) {
         <div class="wdc-date">${formatDateLabel(iso).split(",")[0]}</div>
         ${!data.isOff && !data.isNoSchool && data.letter ? `<div class="wdc-letter">${data.letter}</div>` : ''}
       </div>`;
+    const wkAnnouncements = getAnnouncementsForDate(iso);
+    wkAnnouncements.forEach(a => {
+      const st = getAnnouncementStyle(a.style);
+      html += `<div class="wdc-ann" data-ann-open="${a.id}" style="border-left-color:${st.color}; background:${st.bg};">
+        <span class="wdc-ann-title">📢 ${escapeHtml(a.title || "Untitled")}</span>
+      </div>`;
+    });
     if (data.generalNote) {
       html += `<div class="wdc-general-note">📌 ${noteToHtml(data.generalNote)}</div>`;
     }
@@ -7854,6 +8030,12 @@ function renderWeekView(anchorIso) {
   document.getElementById("weekViewPrevBtn")?.addEventListener("click", () => goToWeekView(-7));
   document.getElementById("weekViewNextBtn")?.addEventListener("click", () => goToWeekView(7));
   document.getElementById("weekViewPrintBtn")?.addEventListener("click", () => quickPrintWeek(anchorIso));
+  container.querySelectorAll("[data-ann-open]").forEach(el => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openAnnouncementModal(el.dataset.annOpen);
+    });
+  });
   container.querySelectorAll(".week-day-col").forEach(col => {
     col.addEventListener("click", () => switchView("day", col.dataset.date));
   });
@@ -7885,14 +8067,17 @@ function refreshCurrentView() {
 
 function switchView(view, iso) {
   currentAppView = view;
+  const inSearch = view === "search";
   ["monthNav", "monthTitle", "calendarGrid"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = view === "month" ? "" : "none";
   });
   const dayContainer = document.getElementById("dayViewContainer");
   const weekContainer = document.getElementById("weekViewContainer");
+  const searchContainer = document.getElementById("searchViewContainer");
   if (dayContainer) dayContainer.style.display = view === "day" ? "" : "none";
   if (weekContainer) weekContainer.style.display = view === "week" ? "" : "none";
+  if (searchContainer) searchContainer.style.display = inSearch ? "" : "none";
 
   const expandBtn = document.getElementById("toggleExpandDaysBtn");
   if (expandBtn) expandBtn.style.display = view === "month" ? "" : "none";
@@ -7903,6 +8088,809 @@ function switchView(view, iso) {
 
   if (view === "day") renderDayView(iso || currentDayViewISO || getLocalTodayISO());
   else if (view === "week") renderWeekView(iso || currentWeekAnchorISO || getLocalTodayISO());
+}
+
+// ====================== PUBLISH SNAPSHOT ======================
+function buildPublishedArchiveHtml() {
+  const teacherName = (localStorage.getItem("teacherName") || "").trim();
+  const months = typeof getCurrentMonths === "function" ? getCurrentMonths() : [];
+  const divName = getCurrentConfig()?.name || "";
+  const generated = new Date().toLocaleString(undefined, {
+    month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit"
+  });
+
+  // Month jump chips
+  const chips = months.map((m, i) => {
+    const key = `${m.year}-${String(m.month).padStart(2, "0")}`;
+    return `<a class="pa-chip" href="#pa-month-${i}">${getMonthLabelFromKey(key)}</a>`;
+  }).join("");
+
+  let monthsHtml = "";
+  months.forEach((m, mi) => {
+    const key = `${m.year}-${String(m.month).padStart(2, "0")}`;
+    const dayList = (m.days || []).map(d => d.date).sort();
+
+    // group into weeks
+    const weeks = [];
+    let curKey = null;
+    dayList.forEach(iso => {
+      const wk = getMondayISO(iso);
+      if (wk !== curKey) { weeks.push({ wk, dates: [] }); curKey = wk; }
+      weeks[weeks.length - 1].dates.push(iso);
+    });
+
+    let weeksHtml = "";
+    let monthHasContent = false;
+
+    weeks.forEach((w, wi) => {
+      let daysHtml = "";
+      w.dates.forEach(iso => {
+        const d = buildDaySummaryData(iso);
+        const anns = getAnnouncementsForDate(iso);
+        const hasAnything =
+          anns.length || d.generalNote || d.specialEntries.length ||
+          d.periods.some(p => p.topicName || p.lessonPlan || p.note || p.homework || p.isTest || p.isQuiz);
+        if (!hasAnything && !d.isOff && !d.isNoSchool) return;
+        monthHasContent = true;
+
+        let inner = "";
+        anns.forEach(a => {
+          const st = getAnnouncementStyle(a.style);
+          inner += `<div class="pa-ann" style="border-left-color:${st.color};background:${st.bg};">
+            <div class="pa-ann-title">📢 ${escapeHtml(a.title || "Untitled")}</div>
+            ${a.body ? `<div class="pa-ann-body">${noteToHtml(a.body)}</div>` : ""}
+          </div>`;
+        });
+        if (d.specialEntries.length) {
+          inner += `<div class="pa-specials">` +
+            d.specialEntries.map(e => `<span class="pa-pill">${escapeHtml(e.label)}</span>`).join("") +
+            `</div>`;
+        }
+        if (d.generalNote) inner += `<div class="pa-general">📌 ${noteToHtml(d.generalNote)}</div>`;
+        if (d.isOff || d.isNoSchool) {
+          inner += `<div class="pa-off">🎉 No School${d.noSchoolLabel ? ` — ${escapeHtml(d.noSchoolLabel)}` : ""}</div>`;
+        }
+        d.periods.forEach(p => {
+          const bits = [];
+          if (p.unitName) bits.push(`<div class="pa-unit">${escapeHtml(p.unitName)}${p.topicName ? `: ${escapeHtml(p.topicName)}` : ""}${p.dayInUnit ? ` (Day ${p.dayInUnit}/${p.unitLength})` : ""}</div>`);
+          if (p.lessonPlan) bits.push(`<div class="pa-lp"><strong>📝 Lesson Plan:</strong> ${noteToHtml(p.lessonPlan)}</div>`);
+          if (p.note) bits.push(`<div class="pa-note"><strong>📓 Notes:</strong> ${noteToHtml(p.note)}</div>`);
+          if (p.homework) bits.push(`<div class="pa-hw"><strong>📚 HW:</strong> ${noteToHtml(p.homework)}</div>`);
+          if (!bits.length && !p.isTest && !p.isQuiz) return;
+          inner += `<div class="pa-period" style="border-left-color:${p.color};">
+            <div class="pa-period-head">
+              <span class="pa-period-title" style="color:${p.color};">P${p.periodNum} — ${escapeHtml(p.courseName)}</span>
+              ${p.bellTime ? `<span class="pa-time">${escapeHtml(p.bellTime)}</span>` : ""}
+              ${p.isTest ? `<span class="pa-badge pa-badge-test">TEST</span>` : ""}
+              ${p.isQuiz ? `<span class="pa-badge pa-badge-quiz">QUIZ</span>` : ""}
+            </div>${bits.join("")}
+          </div>`;
+        });
+
+        daysHtml += `<div class="pa-day" data-search="${escapeHtml((d.weekdayName + " " + formatDateLabel(iso)).toLowerCase())}">
+          <div class="pa-day-title">${d.weekdayName}, ${formatDateLabel(iso)}${!d.isOff && !d.isNoSchool && d.letter ? ` · Letter ${escapeHtml(String(d.letter))}` : ""}</div>
+          ${inner}
+        </div>`;
+      });
+
+      if (daysHtml) {
+        weeksHtml += `<details class="pa-week" open>
+          <summary class="pa-week-sum">Week of ${formatDateLabel(w.wk)}</summary>
+          <div class="pa-week-body">${daysHtml}</div>
+        </details>`;
+      }
+    });
+
+    if (monthHasContent) {
+      monthsHtml += `<details class="pa-month" id="pa-month-${mi}" open>
+        <summary class="pa-month-sum">${getMonthLabelFromKey(key)}</summary>
+        <div class="pa-month-body">${weeksHtml}</div>
+      </details>`;
+    }
+  });
+
+  if (!monthsHtml) monthsHtml = `<div class="pa-empty">No planner content to publish yet.</div>`;
+
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(teacherName ? teacherName + " — " : "")}Planner Archive</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:#111827;background:#f9fafb;margin:0;padding:24px 16px;font-size:16px;line-height:1.5}
+  .pa-wrap{max-width:1100px;margin:0 auto}
+  h1{text-align:center;color:#1e3a8a;font-size:2rem;margin:0 0 4px}
+  .pa-meta{text-align:center;color:#6b7280;font-size:0.95rem;margin-bottom:6px}
+  .pa-readonly{text-align:center;background:#fef3c7;color:#92400e;font-weight:700;font-size:0.85rem;padding:6px 14px;border-radius:999px;display:inline-block}
+  .pa-center{text-align:center;margin-bottom:16px}
+  .pa-searchbar{max-width:520px;margin:0 auto 18px;display:block}
+  .pa-searchbar input{width:100%;padding:10px 16px;border-radius:999px;border:2px solid #d1d5db;font-size:1rem}
+  .pa-searchbar input:focus{outline:none;border-color:#2563eb}
+  .pa-nav{position:sticky;top:0;background:#f9fafb;padding:10px 0;text-align:center;z-index:5;border-bottom:1px solid #e5e7eb;margin-bottom:16px}
+  .pa-chip{display:inline-block;background:#fff;border:1px solid #d1d5db;color:#1e3a8a;text-decoration:none;font-weight:700;font-size:0.82rem;padding:4px 12px;border-radius:999px;margin:3px}
+  .pa-chip:hover{background:#eff6ff}
+  .pa-month{background:#fff;border:1px solid #e5e7eb;border-radius:12px;margin-bottom:16px;overflow:hidden}
+  .pa-month-sum{cursor:pointer;list-style:none;font-weight:800;font-size:1.3rem;color:#1e3a8a;padding:14px 18px;background:#eff6ff}
+  .pa-month-sum::-webkit-details-marker{display:none}
+  .pa-month-body{padding:14px 16px}
+  .pa-week{border:1px solid #e5e7eb;border-radius:10px;margin-bottom:12px;overflow:hidden}
+  .pa-week-sum{cursor:pointer;list-style:none;font-weight:700;font-size:1.05rem;color:#374151;padding:9px 14px;background:#f9fafb}
+  .pa-week-sum::-webkit-details-marker{display:none}
+  .pa-week-body{padding:10px 12px}
+  .pa-day{border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;margin-bottom:12px;background:#fafafa}
+  .pa-day-title{font-weight:800;font-size:1.15rem;margin-bottom:8px;color:#111827}
+  .pa-ann{border-left:5px solid;border-radius:0 8px 8px 0;padding:9px 12px;margin-bottom:8px}
+  .pa-ann-title{font-weight:800;font-size:1.02rem}
+  .pa-ann-body{font-size:0.95rem;margin-top:3px}
+  .pa-specials{margin-bottom:8px}
+  .pa-pill{display:inline-block;background:#f3e8ff;color:#6b21a8;font-weight:700;font-size:0.8rem;padding:3px 10px;border-radius:999px;margin:0 5px 4px 0}
+  .pa-general{background:#eff6ff;border-left:4px solid #2563eb;padding:8px 12px;border-radius:0 8px 8px 0;margin-bottom:8px}
+  .pa-off{background:#fef3c7;color:#92400e;font-weight:700;text-align:center;padding:12px;border-radius:8px}
+  .pa-period{border:1px solid #e5e7eb;border-left-width:5px;border-left-style:solid;border-radius:8px;padding:9px 13px;margin-bottom:8px;background:#fff}
+  .pa-period-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:3px}
+  .pa-period-title{font-weight:800;font-size:1.02rem}
+  .pa-time{font-size:0.82rem;color:#6b7280;font-weight:700}
+  .pa-badge{font-size:0.68rem;font-weight:800;padding:2px 8px;border-radius:999px}
+  .pa-badge-test{background:#fee2e2;color:#b91c1c}
+  .pa-badge-quiz{background:#dbeafe;color:#1d4ed8}
+  .pa-unit{font-size:0.9rem;color:#4b5563;margin-bottom:3px}
+  .pa-lp,.pa-note,.pa-hw{font-size:0.92rem;margin-top:4px;padding:6px 10px;border-radius:0 6px 6px 0;line-height:1.45}
+  .pa-lp{background:#f0fdf4;border-left:3px solid #16a34a}
+  .pa-note{background:#eff6ff;border-left:3px solid #2563eb}
+  .pa-hw{background:#fff7ed;border-left:3px solid #ea580c}
+  .pa-empty{text-align:center;color:#6b7280;font-style:italic;padding:40px}
+  .pa-hidden{display:none !important}
+  .pa-foot{text-align:center;color:#9ca3af;font-size:0.82rem;margin-top:28px}
+  @media print{.pa-nav,.pa-searchbar{display:none}body{background:#fff}}
+</style></head>
+<body><div class="pa-wrap">
+  <h1>${escapeHtml(teacherName ? teacherName + " — " : "")}Planner Archive</h1>
+  <div class="pa-meta">${escapeHtml(divName)} · Published ${escapeHtml(generated)}</div>
+  <div class="pa-center"><span class="pa-readonly">📖 Read-only archive</span></div>
+  <div class="pa-searchbar"><input type="text" id="paSearch" placeholder="🔍 Filter days…"></div>
+  <div class="pa-nav">${chips}</div>
+  <div id="paContent">${monthsHtml}</div>
+  <div class="pa-foot">Generated from the Faculty Planner. This is a static snapshot — it does not update automatically.</div>
+</div>
+<script>
+(function(){
+  var input = document.getElementById("paSearch");
+  if(!input) return;
+  input.addEventListener("input", function(){
+    var q = input.value.trim().toLowerCase();
+    document.querySelectorAll(".pa-day").forEach(function(day){
+      var hit = !q || day.textContent.toLowerCase().indexOf(q) !== -1;
+      day.classList.toggle("pa-hidden", !hit);
+    });
+    document.querySelectorAll(".pa-week").forEach(function(wk){
+      var any = wk.querySelectorAll(".pa-day:not(.pa-hidden)").length > 0;
+      wk.classList.toggle("pa-hidden", !any);
+    });
+    document.querySelectorAll(".pa-month").forEach(function(mo){
+      var any = mo.querySelectorAll(".pa-day:not(.pa-hidden)").length > 0;
+      mo.classList.toggle("pa-hidden", !any);
+    });
+  });
+})();
+<\/script>
+</body></html>`;
+}
+
+function downloadTextFile(filename, text, mime) {
+  const blob = new Blob([text], { type: mime || "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function publishSnapshot() {
+  try {
+    const html = buildPublishedArchiveHtml();
+    downloadTextFile("calendar.html", html, "text/html");
+
+    const snap = typeof buildBackupSnapshot === "function" ? buildBackupSnapshot() : null;
+    if (snap) {
+      setTimeout(() => {
+        downloadTextFile("planner-data.json", JSON.stringify(snap, null, 2), "application/json");
+      }, 600);
+    }
+
+    setTimeout(() => {
+      alert(
+        "📤 Two files downloaded:\n\n" +
+        "• calendar.html — the read-only archive people can view\n" +
+        "• planner-data.json — restorable backup data\n\n" +
+        "Drop BOTH into your GitHub repo, then share:\n" +
+        "  yourname.github.io/yourrepo/calendar.html\n\n" +
+        "Anyone can load planner-data.json with Restore Data to get a copy of this setup."
+      );
+    }, 1200);
+  } catch (e) {
+    console.warn("Publish snapshot failed", e);
+    alert("Could not build the snapshot. See console for details.");
+  }
+}
+
+// ====================== ANNOUNCEMENTS ======================
+let announcements = [];
+
+const ANNOUNCEMENT_STYLES = [
+  { id: "info",      label: "📘 Info",      color: "#2563eb", bg: "#eff6ff", darkBg: "#1e293b" },
+  { id: "important", label: "⭐ Important", color: "#d97706", bg: "#fffbeb", darkBg: "#3a2e0f" },
+  { id: "urgent",    label: "🚨 Urgent",    color: "#dc2626", bg: "#fef2f2", darkBg: "#3a1515" },
+  { id: "event",     label: "🎉 Event",     color: "#7c3aed", bg: "#faf5ff", darkBg: "#2a1e3a" },
+  { id: "reminder",  label: "🔔 Reminder",  color: "#059669", bg: "#f0fdf4", darkBg: "#0f2b1a" }
+];
+
+function getAnnouncementStyle(styleId) {
+  return ANNOUNCEMENT_STYLES.find(s => s.id === styleId) || ANNOUNCEMENT_STYLES[0];
+}
+
+function isSchoolDay(iso) {
+  const schoolDay = getRotationDayByDate(iso);
+  if (!schoolDay) return false;
+  const override = typeof getCustomDay === "function" ? getCustomDay(iso) : null;
+  if (override && String(override.letter).toUpperCase() === "OFF") return false;
+  const rawLetter = schoolDay.letter || "";
+  if (/no school|holiday|break/i.test(String(rawLetter))) return false;
+  return true;
+}
+
+// Returns the ISO dates an announcement covers, counting SCHOOL days only.
+function getAnnouncementDates(ann) {
+  const dates = [];
+  if (!ann || !ann.startDate) return dates;
+  const count = Math.max(1, parseInt(ann.schoolDays, 10) || 1);
+  let cursor = new Date(ann.startDate + "T12:00:00");
+  let guard = 0;
+  while (dates.length < count && guard < 400) {
+    guard++;
+    const iso = toLocalISO(cursor);
+    if (isSchoolDay(iso)) dates.push(iso);
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dates;
+}
+
+function getAnnouncementEndDate(ann) {
+  const dates = getAnnouncementDates(ann);
+  return dates.length ? dates[dates.length - 1] : (ann?.startDate || "");
+}
+
+function getAnnouncementsForDate(iso) {
+  return (announcements || []).filter(a => getAnnouncementDates(a).includes(iso));
+}
+
+function isAnnouncementExpired(ann) {
+  const end = getAnnouncementEndDate(ann);
+  if (!end) return false;
+  return end < getLocalTodayISO();
+}
+
+function getActiveAnnouncements() {
+  return (announcements || []).filter(a => !isAnnouncementExpired(a));
+}
+
+function getArchivedAnnouncements() {
+  return (announcements || []).filter(a => isAnnouncementExpired(a));
+}
+
+function saveAnnouncements() {
+  if (typeof saveCurrentProfile === "function") saveCurrentProfile(false);
+  if (typeof renderCalendar === "function") renderCalendar();
+  renderAnnouncementPanel();
+}
+
+function createAnnouncement(data) {
+  announcements.push({
+    id: "ann-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+    title: (data.title || "").trim(),
+    body: (data.body || "").trim(),
+    style: data.style || "info",
+    startDate: data.startDate || getLocalTodayISO(),
+    schoolDays: Math.max(1, parseInt(data.schoolDays, 10) || 1),
+    createdAt: new Date().toISOString()
+  });
+  saveAnnouncements();
+}
+
+function updateAnnouncement(id, data) {
+  const ann = announcements.find(a => a.id === id);
+  if (!ann) return;
+  if (data.title !== undefined) ann.title = String(data.title).trim();
+  if (data.body !== undefined) ann.body = String(data.body).trim();
+  if (data.style !== undefined) ann.style = data.style;
+  if (data.startDate !== undefined) ann.startDate = data.startDate;
+  if (data.schoolDays !== undefined) ann.schoolDays = Math.max(1, parseInt(data.schoolDays, 10) || 1);
+  saveAnnouncements();
+}
+
+function deleteAnnouncement(id) {
+  const ann = announcements.find(a => a.id === id);
+  if (!ann) return;
+  if (!confirm(`Delete announcement "${ann.title || "Untitled"}"?`)) return;
+  announcements = announcements.filter(a => a.id !== id);
+  saveAnnouncements();
+}
+
+function renewAnnouncement(id) {
+  const ann = announcements.find(a => a.id === id);
+  if (!ann) return;
+  const days = prompt(
+    `Renew "${ann.title || "Untitled"}" starting today.\n\nHow many school days should it run?`,
+    String(ann.schoolDays || 1)
+  );
+  if (days === null) return;
+  ann.startDate = getLocalTodayISO();
+  ann.schoolDays = Math.max(1, parseInt(days, 10) || 1);
+  saveAnnouncements();
+  showProfileToast?.("Announcement renewed");
+}
+
+// ---------- Announcement full-screen modal ----------
+function openAnnouncementModal(id) {
+  const ann = (announcements || []).find(a => a.id === id);
+  if (!ann) return;
+  const style = getAnnouncementStyle(ann.style);
+  const dates = getAnnouncementDates(ann);
+  const backdrop = document.getElementById("announcementViewBackdrop");
+  const content = document.getElementById("announcementViewContent");
+  if (!backdrop || !content) return;
+
+  content.innerHTML = `
+    <div class="ann-full" style="border-top:8px solid ${style.color};">
+      <div class="ann-full-badge" style="background:${style.color};">${style.label}</div>
+      <h1 class="ann-full-title">${escapeHtml(ann.title || "Untitled")}</h1>
+      <div class="ann-full-dates">
+        📅 ${dates.length ? formatDateLabel(dates[0]) : ""}${dates.length > 1 ? ` – ${formatDateLabel(dates[dates.length - 1])}` : ""}
+        · ${dates.length} school day${dates.length === 1 ? "" : "s"}
+      </div>
+      <div class="ann-full-body">${noteToHtml(ann.body || "")}</div>
+    </div>`;
+  backdrop.style.display = "flex";
+}
+
+function closeAnnouncementModal() {
+  const backdrop = document.getElementById("announcementViewBackdrop");
+  if (backdrop) backdrop.style.display = "none";
+}
+
+// ---------- Create / edit form modal ----------
+let editingAnnouncementId = null;
+
+function openAnnouncementForm(id) {
+  editingAnnouncementId = id || null;
+  const ann = id ? (announcements || []).find(a => a.id === id) : null;
+  const backdrop = document.getElementById("announcementFormBackdrop");
+  const body = document.getElementById("announcementFormBody");
+  const title = document.getElementById("announcementFormTitle");
+  if (!backdrop || !body) return;
+
+  if (title) title.textContent = ann ? "✏️ Edit Announcement" : "📢 New Announcement";
+
+  body.innerHTML = `
+    <label class="ann-form-label">Title
+      <input type="text" id="annFormTitle" placeholder="e.g. Picture Day Friday" value="${escapeHtml(ann?.title || "")}">
+    </label>
+    <label class="ann-form-label">Message
+      <textarea id="annFormBody" rows="5" placeholder="What do people need to know?">${escapeHtml(ann?.body || "")}</textarea>
+    </label>
+    <label class="ann-form-label">Style</label>
+    <div class="ann-style-picker" id="annStylePicker">
+      ${ANNOUNCEMENT_STYLES.map(s => `
+        <button type="button" class="ann-style-opt ${(ann?.style || "info") === s.id ? "selected" : ""}"
+          data-style="${s.id}" style="border-color:${s.color}; color:${s.color};">${s.label}</button>`).join("")}
+    </div>
+    <div class="ann-form-row">
+      <label class="ann-form-label">Start date
+        <input type="date" id="annFormStart" value="${ann?.startDate || getLocalTodayISO()}">
+      </label>
+      <label class="ann-form-label">Run for (school days)
+        <input type="number" id="annFormDays" min="1" value="${ann?.schoolDays || 1}">
+      </label>
+    </div>
+    <div class="ann-form-preview" id="annFormPreview"></div>
+  `;
+
+  let selectedStyle = ann?.style || "info";
+  const picker = document.getElementById("annStylePicker");
+  picker?.querySelectorAll(".ann-style-opt").forEach(btn => {
+    btn.addEventListener("click", () => {
+      selectedStyle = btn.dataset.style;
+      picker.querySelectorAll(".ann-style-opt").forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+    });
+  });
+
+  function updatePreview() {
+    const start = document.getElementById("annFormStart")?.value;
+    const days = document.getElementById("annFormDays")?.value;
+    const preview = document.getElementById("annFormPreview");
+    if (!preview || !start) return;
+    const dates = getAnnouncementDates({ startDate: start, schoolDays: days });
+    preview.innerHTML = dates.length
+      ? `📅 Runs <strong>${formatDateLabel(dates[0])}</strong>${dates.length > 1 ? ` → <strong>${formatDateLabel(dates[dates.length - 1])}</strong>` : ""} <span class="small">(school days only — weekends & days off skipped)</span>`
+      : `<span class="small">No school days found in that range.</span>`;
+  }
+  document.getElementById("annFormStart")?.addEventListener("change", updatePreview);
+  document.getElementById("annFormDays")?.addEventListener("input", updatePreview);
+  updatePreview();
+
+  const saveBtn = document.getElementById("announcementFormSaveBtn");
+  if (saveBtn) {
+    saveBtn.onclick = () => {
+      const payload = {
+        title: document.getElementById("annFormTitle")?.value || "",
+        body: document.getElementById("annFormBody")?.value || "",
+        style: selectedStyle,
+        startDate: document.getElementById("annFormStart")?.value || getLocalTodayISO(),
+        schoolDays: document.getElementById("annFormDays")?.value || 1
+      };
+      if (!payload.title.trim() && !payload.body.trim()) {
+        alert("Please add a title or message.");
+        return;
+      }
+      if (editingAnnouncementId) updateAnnouncement(editingAnnouncementId, payload);
+      else createAnnouncement(payload);
+      closeAnnouncementForm();
+    };
+  }
+
+  backdrop.style.display = "flex";
+}
+
+function closeAnnouncementForm() {
+  const backdrop = document.getElementById("announcementFormBackdrop");
+  if (backdrop) backdrop.style.display = "none";
+  editingAnnouncementId = null;
+}
+
+// ---------- Floating panel ----------
+function renderAnnouncementPanel() {
+  const list = document.getElementById("announcementPanelList");
+  if (!list) return;
+  const active = getActiveAnnouncements()
+    .sort((a, b) => (a.startDate || "").localeCompare(b.startDate || ""));
+  const archived = getArchivedAnnouncements()
+    .sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
+
+  let html = "";
+
+  if (!active.length) {
+    html += `<div class="ann-panel-empty">No active announcements.</div>`;
+  } else {
+    active.forEach(a => {
+      const style = getAnnouncementStyle(a.style);
+      const dates = getAnnouncementDates(a);
+      const isToday = dates.includes(getLocalTodayISO());
+      html += `<div class="ann-panel-item" style="border-left-color:${style.color};" data-ann-id="${a.id}">
+        <div class="ann-panel-item-head">
+          <span class="ann-panel-item-title">${escapeHtml(a.title || "Untitled")}</span>
+          ${isToday ? `<span class="ann-live-dot" title="Showing today">●</span>` : ""}
+        </div>
+        <div class="ann-panel-item-meta">${style.label} · ${dates.length ? formatDateLabel(dates[0]) : ""}${dates.length > 1 ? ` – ${formatDateLabel(dates[dates.length - 1])}` : ""}</div>
+        <div class="ann-panel-item-actions">
+          <button type="button" class="secondary ann-mini-btn" data-ann-view="${a.id}">View</button>
+          <button type="button" class="secondary ann-mini-btn" data-ann-edit="${a.id}">Edit</button>
+          <button type="button" class="secondary ann-mini-btn" data-ann-delete="${a.id}">Delete</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  if (archived.length) {
+    html += `<div class="ann-panel-section-title">🗄️ Archived (${archived.length})</div>`;
+    archived.forEach(a => {
+      const style = getAnnouncementStyle(a.style);
+      html += `<div class="ann-panel-item ann-panel-item-archived" style="border-left-color:${style.color};">
+        <div class="ann-panel-item-head">
+          <span class="ann-panel-item-title">${escapeHtml(a.title || "Untitled")}</span>
+        </div>
+        <div class="ann-panel-item-meta">Ended ${formatDateLabel(getAnnouncementEndDate(a))}</div>
+        <div class="ann-panel-item-actions">
+          <button type="button" class="secondary ann-mini-btn" data-ann-view="${a.id}">View</button>
+          <button type="button" class="secondary ann-mini-btn" data-ann-renew="${a.id}">🔄 Renew</button>
+          <button type="button" class="secondary ann-mini-btn" data-ann-delete="${a.id}">Delete</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  list.innerHTML = html;
+
+  list.querySelectorAll("[data-ann-view]").forEach(b =>
+    b.addEventListener("click", () => openAnnouncementModal(b.dataset.annView)));
+  list.querySelectorAll("[data-ann-edit]").forEach(b =>
+    b.addEventListener("click", () => openAnnouncementForm(b.dataset.annEdit)));
+  list.querySelectorAll("[data-ann-delete]").forEach(b =>
+    b.addEventListener("click", () => deleteAnnouncement(b.dataset.annDelete)));
+  list.querySelectorAll("[data-ann-renew]").forEach(b =>
+    b.addEventListener("click", () => renewAnnouncement(b.dataset.annRenew)));
+
+  const badge = document.getElementById("announcementPanelBadge");
+  if (badge) {
+    const todayCount = getAnnouncementsForDate(getLocalTodayISO()).length;
+    badge.textContent = todayCount ? String(todayCount) : "";
+    badge.style.display = todayCount ? "" : "none";
+  }
+}
+
+function toggleAnnouncementPanel(forceOpen) {
+  const panel = document.getElementById("announcementPanel");
+  if (!panel) return;
+  const open = forceOpen !== undefined ? forceOpen : panel.style.display === "none";
+  panel.style.display = open ? "" : "none";
+  localStorage.setItem("announcementPanelOpen", open ? "true" : "false");
+  if (open) renderAnnouncementPanel();
+}
+
+function initAnnouncements() {
+  document.getElementById("announcementPanelToggle")
+    ?.addEventListener("click", () => toggleAnnouncementPanel());
+  document.getElementById("announcementPanelCloseBtn")
+    ?.addEventListener("click", () => toggleAnnouncementPanel(false));
+  document.getElementById("newAnnouncementBtn")
+    ?.addEventListener("click", () => openAnnouncementForm());
+  document.getElementById("announcementFormCancelBtn")
+    ?.addEventListener("click", closeAnnouncementForm);
+  document.getElementById("announcementViewCloseBtn")
+    ?.addEventListener("click", closeAnnouncementModal);
+
+  const wasOpen = localStorage.getItem("announcementPanelOpen") === "true";
+  toggleAnnouncementPanel(wasOpen);
+  renderAnnouncementPanel();
+}
+
+// ====================== SEARCH ======================
+let lastSearchQuery = "";
+let viewBeforeSearch = "month";
+
+function searchPlannerContent(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const results = [];
+
+  // 1) Units + their day plans (topics, lesson plans)
+  for (let p = 1; p <= getCurrentPeriodCount(); p++) {
+    const periodUnits = getUnitsForPeriod(p);
+    const schedule = applyUnitSchedule(p, periodUnits, false);
+    periodUnits.forEach((unit, ui) => {
+      const n = normalizeUnit(unit, ui);
+      const win = schedule.windows.find(w => w.unitIndex === ui);
+      const unitDates = win
+        ? schedule.occurrenceDates.slice(win.startIndex, win.endIndex + 1)
+        : [];
+
+      const unitFields = [
+        ["Unit name", n.name],
+        ["Overview", n.description],
+        ["Objectives", n.objectives],
+        ["Materials", n.materials]
+      ];
+      unitFields.forEach(([label, val]) => {
+        if (val && noteToPlain(val).toLowerCase().includes(q)) {
+          results.push({
+            type: "unit", icon: "📚", periodNum: p,
+            title: `P${p} · ${n.name}`,
+            context: label,
+            snippet: noteToPlain(val),
+            date: unitDates[0] || "",
+            unitIndex: ui
+          });
+        }
+      });
+
+      n.days.forEach((d, di) => {
+        if (isShiftDayPlan(d)) return;
+        const dayDate = unitDates[di] || "";
+        if (d.topic && d.topic.toLowerCase().includes(q)) {
+          results.push({
+            type: "unit", icon: "📖", periodNum: p,
+            title: `P${p} · ${n.name} — Day ${di + 1}`,
+            context: "Topic", snippet: d.topic,
+            date: dayDate, unitIndex: ui
+          });
+        }
+        if (d.lessonPlan && noteToPlain(d.lessonPlan).toLowerCase().includes(q)) {
+          results.push({
+            type: "unit", icon: "📝", periodNum: p,
+            title: `P${p} · ${n.name} — Day ${di + 1}`,
+            context: "Lesson plan", snippet: noteToPlain(d.lessonPlan),
+            date: dayDate, unitIndex: ui
+          });
+        }
+      });
+    });
+  }
+
+  // 2) Day notes, homework, general notes
+  const months = typeof getCurrentMonths === "function" ? getCurrentMonths() : [];
+  months.forEach(m => {
+    (m.days || []).forEach(day => {
+      const iso = day.date;
+      const notes = loadNotesForDate(iso);
+      if (!notes) return;
+
+      if (notes.general && noteToPlain(notes.general).toLowerCase().includes(q)) {
+        results.push({
+          type: "day", icon: "📌", title: formatDateLabel(iso),
+          context: "Day note", snippet: noteToPlain(notes.general), date: iso
+        });
+      }
+
+      Object.keys(notes).forEach(key => {
+        const val = notes[key];
+        if (typeof val !== "string" || !val) return;
+        if (/^\d+$/.test(key) && noteToPlain(val).toLowerCase().includes(q)) {
+          results.push({
+            type: "day", icon: "📓", periodNum: Number(key),
+            title: `${formatDateLabel(iso)} · Period ${key}`,
+            context: "Note", snippet: noteToPlain(val), date: iso
+          });
+        }
+        if (key.startsWith("hw-") && noteToPlain(val).toLowerCase().includes(q)) {
+          const pn = key.slice(3);
+          results.push({
+            type: "day", icon: "📚", periodNum: Number(pn),
+            title: `${formatDateLabel(iso)} · Period ${pn}`,
+            context: "Homework", snippet: noteToPlain(val), date: iso
+          });
+        }
+      });
+    });
+  });
+
+  // 3) Special days
+  months.forEach(m => {
+    (m.days || []).forEach(day => {
+      const iso = day.date;
+      const entries = getUnifiedSpecialDaysForDate(iso) || [];
+      entries.forEach(e => {
+        if ((e.label || "").toLowerCase().includes(q)) {
+          results.push({
+            type: "special", icon: "🎉", title: formatDateLabel(iso),
+            context: "Special day", snippet: e.label, date: iso
+          });
+        }
+      });
+    });
+  });
+
+  // 4) Projects
+  for (let p = 1; p <= getCurrentPeriodCount(); p++) {
+    const projs = typeof getProjectsForPeriod === "function" ? getProjectsForPeriod(p) : [];
+    projs.forEach(pr => {
+      if ((pr.name || "").toLowerCase().includes(q)) {
+        results.push({
+          type: "project", icon: "🎯", periodNum: p,
+          title: `P${p} · ${pr.name}`,
+          context: pr.dueDate ? `Project due ${formatDateLabel(pr.dueDate)}` : "Project",
+          snippet: pr.name, date: pr.dueDate || ""
+        });
+      }
+    });
+  }
+
+  // 5) Announcements
+  (announcements || []).forEach(a => {
+    const hay = `${a.title || ""} ${noteToPlain(a.body || "")}`.toLowerCase();
+    if (hay.includes(q)) {
+      const dates = getAnnouncementDates(a);
+      results.push({
+        type: "announcement", icon: "📢",
+        title: a.title || "Untitled",
+        context: isAnnouncementExpired(a) ? "Announcement (archived)" : "Announcement",
+        snippet: noteToPlain(a.body || "") || (a.title || ""),
+        date: dates[0] || a.startDate || "",
+        announcementId: a.id
+      });
+    }
+  });
+
+  results.sort((a, b) => (a.date || "9999").localeCompare(b.date || "9999"));
+  return results;
+}
+
+function highlightMatch(text, query) {
+  const safe = escapeHtml(text);
+  if (!query) return safe;
+  const idx = safe.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return safe;
+  const start = Math.max(0, idx - 60);
+  const end = Math.min(safe.length, idx + query.length + 90);
+  const prefix = start > 0 ? "…" : "";
+  const suffix = end < safe.length ? "…" : "";
+  const slice = safe.slice(start, end);
+  const rel = slice.toLowerCase().indexOf(query.toLowerCase());
+  if (rel === -1) return prefix + slice + suffix;
+  return prefix +
+    slice.slice(0, rel) +
+    `<mark>${slice.slice(rel, rel + query.length)}</mark>` +
+    slice.slice(rel + query.length) +
+    suffix;
+}
+
+function renderSearchResults(query) {
+  const container = document.getElementById("searchViewContainer");
+  if (!container) return;
+  const results = searchPlannerContent(query);
+
+  if (!query.trim()) {
+    container.innerHTML = "";
+    return;
+  }
+
+  let html = `<div class="search-results-header">${results.length} result${results.length === 1 ? "" : "s"} for “${escapeHtml(query)}”</div>`;
+
+  if (!results.length) {
+    html += `<div class="search-empty">Nothing found. Try a different word.</div>`;
+  } else {
+    html += `<div class="search-results-list">`;
+    results.forEach((r, i) => {
+      html += `<div class="search-result" data-result-index="${i}">
+        <div class="search-result-head">
+          <span class="search-result-icon">${r.icon}</span>
+          <span class="search-result-title">${escapeHtml(r.title)}</span>
+          <span class="search-result-context">${escapeHtml(r.context)}</span>
+        </div>
+        <div class="search-result-snippet">${highlightMatch(r.snippet, query)}</div>
+        ${r.date ? `<div class="search-result-date">📅 ${formatDateLabel(r.date)}</div>` : ""}
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  container.innerHTML = html;
+
+  container.querySelectorAll(".search-result").forEach(el => {
+    el.addEventListener("click", () => {
+      const r = results[Number(el.dataset.resultIndex)];
+      if (!r) return;
+      if (r.type === "announcement" && r.announcementId) {
+        openAnnouncementModal(r.announcementId);
+      } else if (r.type === "unit" && r.unitIndex !== undefined) {
+        openUnitDaysEditor(r.periodNum, r.unitIndex);
+      } else if (r.date) {
+        switchView("day", r.date);
+      }
+    });
+  });
+}
+
+function initPlannerSearch() {
+  const input = document.getElementById("plannerSearchInput");
+  const clearBtn = document.getElementById("plannerSearchClearBtn");
+  if (!input) return;
+
+  let debounceTimer = null;
+  input.addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      const q = input.value;
+      lastSearchQuery = q;
+      if (q.trim()) {
+        if (currentAppView !== "search") viewBeforeSearch = currentAppView;
+        if (clearBtn) clearBtn.style.display = "";
+        switchView("search");
+        renderSearchResults(q);
+      } else {
+        if (clearBtn) clearBtn.style.display = "none";
+        switchView(viewBeforeSearch || "month");
+      }
+    }, 200);
+  });
+
+  clearBtn?.addEventListener("click", () => {
+    input.value = "";
+    lastSearchQuery = "";
+    clearBtn.style.display = "none";
+    switchView(viewBeforeSearch || "month");
+  });
 }
 
 function openDayModal(day) {
@@ -12042,6 +13030,14 @@ periodRows.push({
               return L || "No classes";
             })(),
             specialLabels: specialEntries.map(entry => entry.label),
+            announcements: (typeof getAnnouncementsForDate === "function"
+              ? getAnnouncementsForDate(day.date)
+              : []).map(a => ({
+                title: a.title || "Untitled",
+                body: a.body || "",
+                color: getAnnouncementStyle(a.style).color,
+                bg: getAnnouncementStyle(a.style).bg
+              })),
             general: hasGeneral
               ? typeof noteToHtml === "function"
                 ? noteToHtml(dayNotes.general)
@@ -12089,6 +13085,14 @@ periodRows.push({
             }),
             letterLabel: "No classes",
             specialLabels: specialEntriesExtra.map(entry => entry.label),
+            announcements: (typeof getAnnouncementsForDate === "function"
+              ? getAnnouncementsForDate(date)
+              : []).map(a => ({
+                title: a.title || "Untitled",
+                body: a.body || "",
+                color: getAnnouncementStyle(a.style).color,
+                bg: getAnnouncementStyle(a.style).bg
+              })),
             general: hasGeneralNote
               ? typeof noteToHtml === "function"
                 ? noteToHtml(dayNotes.general)
@@ -12246,6 +13250,14 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.9rem; margin-bottom: 4px; 
   border-radius: 0 6px 6px 0;
   font-size: 1rem;
 }
+.announcement {
+  border-left: 5px solid;
+  padding: 9px 12px;
+  margin: 8px 0;
+  border-radius: 0 8px 8px 0;
+}
+.announcement-title { font-weight: 800; font-size: 1.05rem; }
+.announcement-body { font-size: 0.98rem; line-height: 1.45; margin-top: 3px; }
 .period {
   padding: 8px 0;
   border-top: 1px solid #e5e7eb;
@@ -12357,6 +13369,13 @@ const dateSet = new Set();
 
           (entry.specialLabels || []).forEach(label => {
             html += `<span class="special">${label}</span>`;
+          });
+
+          (entry.announcements || []).forEach(a => {
+            html += `<div class="announcement" style="border-left-color:${a.color}; background:${a.bg};">
+              <div class="announcement-title">📢 ${a.title}</div>
+              ${a.body ? `<div class="announcement-body">${typeof noteToHtml === "function" ? noteToHtml(a.body) : a.body}</div>` : ""}
+            </div>`;
           });
 
           if (entry.general) {
@@ -12673,6 +13692,8 @@ if (projectsToggle) {
 
 ensureExpandDaysButton();
 initSidebarToggle();
+initPlannerSearch();
+initAnnouncements();
 applyCycleColors();
 renderCycleColorPickers();
 
@@ -13237,6 +14258,7 @@ document.getElementById("nextMonthBtn")?.addEventListener("click", () => {
     if (value === "syncBackupNow") document.getElementById("syncBackupNowBtn")?.click();
     if (value === "print") document.getElementById("printCalendarBtn").click();
     if (value === "export") document.getElementById("exportTestsByClassBtn").click();
+    if (value === "publish") publishSnapshot();
     e.target.value = ""; // reset
   });
 
@@ -13653,6 +14675,26 @@ setInterval(() => {
       </div>
     </div>
   </div>
+
+<div class="modal-backdrop" id="announcementFormBackdrop">
+  <div class="modal" style="width:600px; max-width:95vw;">
+    <div class="modal-header">
+      <div id="announcementFormTitle">📢 New Announcement</div>
+      <button class="secondary" id="announcementFormCancelBtn">Cancel</button>
+    </div>
+    <div class="modal-body" id="announcementFormBody"></div>
+    <div class="modal-footer">
+      <button id="announcementFormSaveBtn">Save Announcement</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop ann-view-backdrop" id="announcementViewBackdrop">
+  <div class="ann-view-modal">
+    <button class="secondary ann-view-close" id="announcementViewCloseBtn">✕ Close</button>
+    <div id="announcementViewContent"></div>
+  </div>
+</div>
 
 <div class="modal-backdrop" id="welcomeHighlightsBackdrop">
   <div class="modal" style="width:560px; max-width:95vw;">
