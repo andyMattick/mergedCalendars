@@ -1851,6 +1851,14 @@ body.dark .modal-toggle-btn-hw { background:#2b1a0e !important; color:#fdba74 !i
         <option value="dark">Toggle Light / Dark Mode</option>
       </select>
 
+      <select id="teacherTools" class="header-select" aria-label="Teacher tools">
+        <option value="">🧰 Teacher Tools…</option>
+        <option value="unit-builder">✨ Unit Builder — generate lessons</option>
+        <option value="grow-a-project">🌱 Grow a Project — design a PBL unit</option>
+        <option value="content-studio">🎨 Content Studio — slides, worksheets, tests</option>
+        <option value="tracker">📊 Tracker — student progress</option>
+      </select>
+
               <select id="profileActions" class="header-select" aria-label="Profile actions">
         <option value="">Profile actions…</option>
         <option value="new">New Profile</option>
@@ -8127,9 +8135,10 @@ function buildPublishedArchiveHtml() {
       w.dates.forEach(iso => {
         const d = buildDaySummaryData(iso);
         const anns = getAnnouncementsForDate(iso);
+        // A day counts as content if anything is scheduled on it. The class
+        // schedule itself is the point of the archive — not just typed notes.
         const hasAnything =
-          anns.length || d.generalNote || d.specialEntries.length ||
-          d.periods.some(p => p.topicName || p.lessonPlan || p.note || p.homework || p.isTest || p.isQuiz);
+          d.periods.length || anns.length || d.generalNote || d.specialEntries.length;
         if (!hasAnything && !d.isOff && !d.isNoSchool) return;
         monthHasContent = true;
 
@@ -8156,7 +8165,7 @@ function buildPublishedArchiveHtml() {
           if (p.lessonPlan) bits.push(`<div class="pa-lp"><strong>📝 Lesson Plan:</strong> ${noteToHtml(p.lessonPlan)}</div>`);
           if (p.note) bits.push(`<div class="pa-note"><strong>📓 Notes:</strong> ${noteToHtml(p.note)}</div>`);
           if (p.homework) bits.push(`<div class="pa-hw"><strong>📚 HW:</strong> ${noteToHtml(p.homework)}</div>`);
-          if (!bits.length && !p.isTest && !p.isQuiz) return;
+          if (!bits.length && !p.isTest && !p.isQuiz && !p.courseName) return;
           inner += `<div class="pa-period" style="border-left-color:${p.color};">
             <div class="pa-period-head">
               <span class="pa-period-title" style="color:${p.color};">P${p.periodNum} — ${escapeHtml(p.courseName)}</span>
@@ -8277,43 +8286,84 @@ function buildPublishedArchiveHtml() {
 }
 
 function downloadTextFile(filename, text, mime) {
-  const blob = new Blob([text], { type: mime || "text/plain" });
+  const content = (text == null) ? "" : String(text);
+
+  // Fail loudly instead of silently writing an empty file.
+  if (!content.length) {
+    console.error("downloadTextFile: refusing to write an empty file", filename);
+    alert(`"${filename}" came back empty, so it wasn't downloaded.\n\nOpen the browser console (F12) for details.`);
+    return false;
+  }
+
+  const blob = new Blob([content], { type: mime || "text/plain" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  a.style.display = "none";
   document.body.appendChild(a);
   a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+  // Do NOT revoke quickly. The browser reads the blob asynchronously after the
+  // click, and revoking while it's still reading produces a 0 KB file. Large
+  // archives are the common victim. Keep the anchor and URL alive well past
+  // the point the download has been handed off.
+  setTimeout(() => {
+    if (a.parentNode) a.parentNode.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 60000);
+
+  return true;
 }
 
 function publishSnapshot() {
-  try {
-    const html = buildPublishedArchiveHtml();
-    downloadTextFile("calendar.html", html, "text/html");
+  let html, snap;
 
-    const snap = typeof buildBackupSnapshot === "function" ? buildBackupSnapshot() : null;
+  try {
+    html = buildPublishedArchiveHtml();
+  } catch (e) {
+    console.error("Building the published archive failed", e);
+    alert("Could not build calendar.html.\n\n" + (e && e.message ? e.message : "See console for details."));
+    return;
+  }
+
+  try {
+    snap = typeof buildBackupSnapshot === "function" ? buildBackupSnapshot() : null;
+  } catch (e) {
+    console.error("Building the backup snapshot failed", e);
+    snap = null;
+  }
+
+  const wroteHtml = downloadTextFile("calendar.html", html, "text/html");
+
+  // Space the second download out — some browsers drop rapid back-to-back
+  // downloads from a single user action.
+  setTimeout(() => {
+    let wroteJson = false;
     if (snap) {
-      setTimeout(() => {
-        downloadTextFile("planner-data.json", JSON.stringify(snap, null, 2), "application/json");
-      }, 600);
+      wroteJson = downloadTextFile(
+        "planner-data.json",
+        JSON.stringify(snap, null, 2),
+        "application/json"
+      );
     }
 
     setTimeout(() => {
-      alert(
-        "📤 Two files downloaded:\n\n" +
-        "• calendar.html — the read-only archive people can view\n" +
-        "• planner-data.json — restorable backup data\n\n" +
-        "Drop BOTH into your GitHub repo, then share:\n" +
-        "  yourname.github.io/yourrepo/calendar.html\n\n" +
-        "Anyone can load planner-data.json with Restore Data to get a copy of this setup."
-      );
-    }, 1200);
-  } catch (e) {
-    console.warn("Publish snapshot failed", e);
-    alert("Could not build the snapshot. See console for details.");
-  }
+      if (wroteHtml && wroteJson) {
+        alert(
+          "📤 Two files downloaded:\n\n" +
+          "• calendar.html — the read-only archive people can view\n" +
+          "• planner-data.json — restorable backup data\n\n" +
+          "Drop BOTH into your GitHub repo, then share:\n" +
+          "  yourname.github.io/yourrepo/calendar.html\n\n" +
+          "Anyone can load planner-data.json with Restore Data to get a copy of this setup.\n\n" +
+          "If your browser asked to allow multiple downloads, choose Allow."
+        );
+      } else if (wroteHtml || wroteJson) {
+        alert("Only one of the two files downloaded. If your browser blocked multiple downloads, allow them and try again.");
+      }
+    }, 400);
+  }, 1200);
 }
 
 // ====================== ANNOUNCEMENTS ======================
@@ -10061,6 +10111,7 @@ function renderUnits() {
           </div>
           <div class="unit-actions">
             <button onclick="addUnitFromInputs(${p})">➕ Add Unit</button>
+            <button type="button" class="secondary" onclick="importUnitJsonForPeriod(${p})" title="Import a unit from another suite tool">📥 Import Unit</button>
           </div>
         </div>
 
@@ -10092,6 +10143,8 @@ function renderUnits() {
         </div>
         <div class="unit-actions">
           <button type="button" class="unit-edit-btn" data-open-unit="${p}:${i}">✏️ Edit Unit</button>
+          <button type="button" class="secondary" onclick="downloadUnitJson(${p}, ${i})" title="Export for Unit Builder / Content Studio">📤 Export</button>
+          <button type="button" class="secondary" onclick="sendUnitToBuilder(${p}, ${i})" title="Export this unit and open the Unit Builder">✨ Build Lessons</button>
           <button onclick="shiftUnit(${p}, ${i}, 1)" class="secondary" title="Push this unit back one day for a snow day">❄️ +1</button>
           <button onclick="shiftUnit(${p}, ${i}, -1)" class="secondary" title="Pull unit back one day">−1</button>
           <button onclick="duplicateUnit(${p}, ${i})" class="secondary" title="Duplicate to another period">⧉ Duplicate</button>
@@ -10428,6 +10481,187 @@ window.choosePeriodForNewUnit = function() {
 
 let currentUnitEditor = null;
 let pendingSnowDaySelectionResolver = null;
+
+// ===== Shared Unit Schema v1 — export / import =====
+const UNIT_SCHEMA_VERSION = 1;
+
+function exportUnitToSchema(period, index) {
+  const unit = getUnitsForPeriod(period)[index];
+  if (!unit) return null;
+  const n = normalizeUnit(unit, index);
+  const dates = computeUnitDayDates(period, index, n);
+
+  // Days that need generated lesson content = instructional days only.
+  // Quiz days, test days, and snow-shift days don't need a lesson written,
+  // so they're excluded from what we hand the generator. Each exported day
+  // keeps `sourceDayNum` so generated lessons land back on the right days.
+  const allDays = n.days.map((d, i) => ({
+    dayNum: i + 1,
+    date: dates[i] || null,
+    topic: d.topic || "",
+    lessonPlan: d.lessonPlan || "",
+    isQuiz: !!d.quiz,
+    isTest: !!d.test,
+    isShift: !!d.shiftDay,
+    checkpoint: d.checkpoint || null,
+    lesson: d.lesson || null
+  }));
+
+  const teachingDays = allDays
+    .filter(d => !d.isQuiz && !d.isTest && !d.isShift)
+    .map(d => ({ ...d, sourceDayNum: d.dayNum }));
+
+  return {
+    schemaVersion: UNIT_SCHEMA_VERSION,
+    unitId: unit.unitId || `u_${Date.now().toString(36)}`,
+    unitTitle: n.name,
+    subject: teacherSchedule[period] || `Period ${period}`,
+    gradeLevel: getCurrentConfig()?.name || "",
+    periodNum: period,
+    source: "planner",
+    exportedAt: new Date().toISOString(),
+    description: n.description || "",
+    objectives: n.objectives || "",
+    materials: n.materials || "",
+    totalUnitDays: n.days.length,
+    days: teachingDays,
+    rubric: unit.rubric || null
+  };
+}
+
+function downloadUnitJson(period, index) {
+  const payload = exportUnitToSchema(period, index);
+  if (!payload) { alert("Could not export that unit."); return; }
+  const safe = (payload.unitTitle || "unit").replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+  downloadTextFile(`${safe}.unit.json`, JSON.stringify(payload, null, 2), "application/json");
+}
+
+function sendUnitToBuilder(period, index) {
+  const payload = exportUnitToSchema(period, index);
+  if (!payload) { alert("Could not export that unit."); return; }
+  downloadUnitJson(period, index);
+  setTimeout(() => {
+    alert(
+      `"${payload.unitTitle}" was downloaded.\n\n` +
+      `The Unit Builder will open next — click "📥 Import unit from Planner" there and choose that file.\n\n` +
+      `When the lessons are generated, use "📤 Export for Planner" and import the file back here.`
+    );
+    window.open("unit-builder/", "_blank");
+  }, 500);
+}
+
+// Convert a shared-schema unit back into this planner's internal unit shape.
+function unitFromSchema(payload) {
+  if (!payload || typeof payload !== "object") throw new Error("Not a unit file.");
+  if (payload.schemaVersion !== UNIT_SCHEMA_VERSION) {
+    if (!confirm(
+      `This file uses schema version ${payload.schemaVersion ?? "unknown"}, ` +
+      `but this planner expects version ${UNIT_SCHEMA_VERSION}.\n\nTry importing anyway?`
+    )) throw new Error("cancelled");
+  }
+  const days = Array.isArray(payload.days) ? payload.days : [];
+  return {
+    unitId: payload.unitId,
+    name: payload.unitTitle || "Imported Unit",
+    length: Math.max(1, payload.totalUnitDays || days.length || 1),
+    startDate: "",
+    description: payload.description || "",
+    objectives: payload.objectives || "",
+    materials: payload.materials || "",
+    rubric: payload.rubric || null,
+    _rawDays: days,
+    days: days.map(d => ({
+      topic: d.topic || "",
+      lessonPlan: d.lessonPlan || "",
+      quiz: !!d.isQuiz,
+      test: !!d.isTest,
+      checkpoint: d.checkpoint || null,
+      lesson: d.lesson || null,
+      shiftDay: false
+    }))
+  };
+}
+
+function importUnitJsonForPeriod(period) {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json,application/json";
+  input.onchange = () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let incoming;
+      try {
+        incoming = unitFromSchema(JSON.parse(reader.result));
+      } catch (err) {
+        if (String(err.message) !== "cancelled") {
+          alert("That file couldn't be read as a unit.\n\n" + err.message);
+        }
+        return;
+      }
+      const list = getUnitsForPeriod(period);
+      const existingIdx = incoming.unitId
+        ? list.findIndex(u => u.unitId && u.unitId === incoming.unitId)
+        : -1;
+
+      // If this unit already exists AND the incoming file only carries the
+      // teaching days (quiz/test days were filtered out on export), merge the
+      // generated content back onto the matching days instead of replacing the
+      // day list — otherwise quiz/test days would be wiped out.
+      const carriesSourceDays = Array.isArray(incoming._rawDays) &&
+        incoming._rawDays.some(d => d.sourceDayNum);
+
+      if (existingIdx >= 0 && carriesSourceDays) {
+        const target = normalizeUnit(list[existingIdx], existingIdx);
+        let merged = 0;
+        incoming._rawDays.forEach(src => {
+          const di = (src.sourceDayNum || 0) - 1;
+          if (di < 0 || di >= target.days.length) return;
+          if (src.lessonPlan) { target.days[di].lessonPlan = src.lessonPlan; merged++; }
+          if (src.lesson) target.days[di].lesson = src.lesson;
+          if (src.topic) target.days[di].topic = src.topic;
+        });
+        target.unitId = incoming.unitId;
+        target.startDate = list[existingIdx].startDate || "";
+        if (incoming.description) target.description = incoming.description;
+        if (incoming.objectives) target.objectives = incoming.objectives;
+        if (incoming.materials) target.materials = incoming.materials;
+        list[existingIdx] = target;
+        units[period] = list;
+        saveUnits();
+        renderUnits();
+        renderCalendar();
+        showProfileToast?.(`Merged ${merged} lesson${merged === 1 ? "" : "s"} into "${target.name}"`);
+        return;
+      }
+
+      if (existingIdx >= 0) {
+        const replace = confirm(
+          `"${incoming.name}" already exists in Period ${period}.\n\n` +
+          `OK = update it in place (keeps its start date)\n` +
+          `Cancel = add as a new unit`
+        );
+        if (replace) {
+          incoming.startDate = list[existingIdx].startDate || "";
+          list[existingIdx] = incoming;
+        } else {
+          list.push(incoming);
+        }
+      } else {
+        list.push(incoming);
+      }
+
+      units[period] = list;
+      saveUnits();
+      renderUnits();
+      renderCalendar();
+      showProfileToast?.(`Imported "${incoming.name}" into Period ${period}`);
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
 
 function computeUnitDayDates(period, index, candidateUnit) {
   const periodUnits = getUnitsForPeriod(period).map((u, i) => (i === index && candidateUnit ? candidateUnit : u));
@@ -14267,6 +14501,23 @@ document.getElementById("nextMonthBtn")?.addEventListener("click", () => {
     if (value === "special") document.getElementById("toggleSpecialTagsBtn").click();
     if (value === "dark") document.getElementById("darkModeToggle").click();
     e.target.value = ""; // reset
+  });
+
+  document.getElementById("teacherTools")?.addEventListener("change", (e) => {
+    const value = e.target.value;
+    e.target.value = ""; // reset so the label shows again
+    if (!value) return;
+
+    // Use a real anchor click rather than window.open() — a `change` event is
+    // not always treated as a trusted user gesture, so popup blockers can
+    // silently swallow window.open() and nothing happens.
+    const a = document.createElement("a");
+    a.href = value + "/";
+    a.target = "_blank";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   });
 
   // App Settings listener

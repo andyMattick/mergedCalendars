@@ -1,0 +1,1905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Karel Progress Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --blueprint: #0F2A47;
+    --blueprint-2: #16385C;
+    --grid-line: #234A70;
+    --panel: #FFFFFF;
+    --panel-alt: #F3F6F9;
+    --ink: #12233A;
+    --ink-soft: #5B7089;
+    --border: #DCE3EA;
+    --beeper: #F2B134;
+    --beeper-dark: #B9820A;
+    --complete: #2E9E6B;
+    --complete-dark: #217953;
+    --behind: #E4572E;
+    --focus: #4FA6D9;
+    --section-tint: #E4ECF4;
+    --radius: 10px;
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    background: var(--panel-alt);
+    color: var(--ink);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button, input, select{ font-family: inherit; }
+
+  button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible{
+    outline: 3px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  /* ---------- Header ---------- */
+  .topbar{
+    background-image:
+      linear-gradient(180deg, var(--blueprint) 0%, var(--blueprint-2) 100%),
+      repeating-linear-gradient(0deg, var(--grid-line) 0 1px, transparent 1px 28px),
+      repeating-linear-gradient(90deg, var(--grid-line) 0 1px, transparent 1px 28px);
+    background-blend-mode: normal, overlay, overlay;
+    padding: 22px 28px;
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    border-bottom: 3px solid var(--beeper);
+  }
+
+  .brand{ display:flex; align-items:center; gap:14px; }
+
+  .brand-mark{
+    width: 46px; height:46px;
+    border-radius: 9px;
+    background: var(--beeper);
+    color: var(--blueprint);
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size: 22px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 0 0 3px rgba(242,177,52,0.25);
+    flex-shrink:0;
+  }
+
+  .brand h1{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:700;
+    font-size: 21px;
+    color:#fff;
+    margin: 0 0 4px 0;
+    letter-spacing: 0.2px;
+  }
+
+  .class-name-input{
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed rgba(255,255,255,0.35);
+    color: #CFE0EF;
+    font-size: 13px;
+    padding: 2px 0;
+    width: 260px;
+    max-width: 55vw;
+  }
+  .class-name-input::placeholder{ color: rgba(207,224,239,0.6); }
+
+  .topbar-actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+  .word-control{
+    display:flex;
+    flex-direction:column;
+    gap: 2px;
+    margin-right: 4px;
+  }
+  .word-control label{
+    font-size: 10.5px;
+    color: rgba(207,224,239,0.75);
+    white-space: nowrap;
+  }
+  .word-input{
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 6px;
+    color: #fff;
+    padding: 6px 8px;
+    font-size: 13px;
+    width: 110px;
+  }
+  .word-input::placeholder{ color: rgba(255,255,255,0.5); }
+
+  .btn{
+    border: 1px solid rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.08);
+    color:#fff;
+    padding: 9px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor:pointer;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .btn:hover{ background: rgba(255,255,255,0.18); }
+  .btn:active{ transform: translateY(1px); }
+  .suite-back-link{ text-decoration:none; display:inline-block; }
+  .privacy-note{
+    max-width: 900px;
+    margin: 28px auto 12px;
+    padding: 12px 16px;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.72);
+    font-size: 12.5px;
+    line-height: 1.5;
+    text-align: center;
+  }
+
+  .btn.active{
+    background: var(--beeper);
+    color: var(--blueprint);
+    border-color: var(--beeper);
+  }
+
+  .btn.subtle{
+    background: var(--panel-alt);
+    color: var(--ink);
+    border: 1px solid var(--border);
+  }
+  .btn.subtle:hover{ background: #EAEFF4; }
+  .btn.danger{
+    background: #fff;
+    color: var(--behind);
+    border: 1px solid #F3C3B3;
+  }
+  .btn.danger:hover{ background: #FBE4DC; }
+
+  /* ---------- Settings panel ---------- */
+  .settings-panel{
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 28px;
+  }
+  .settings-panel h2{
+    font-family:'Space Grotesk', sans-serif;
+    font-size: 15px;
+    margin: 0 0 4px 0;
+  }
+  .settings-panel p.hint{
+    margin: 0 0 14px 0;
+    color: var(--ink-soft);
+    font-size: 13px;
+  }
+
+  .sections-list{
+    max-height: 60vh;
+    overflow-y: auto;
+    margin-bottom: 14px;
+    padding-right: 6px;
+  }
+
+  .section-block{
+    border:1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px 14px 14px;
+    margin-bottom: 14px;
+    background: #fff;
+  }
+  .section-block-header{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom: 10px;
+  }
+  .settings-section-toggle{
+    border:none; background: var(--panel-alt); color: var(--ink-soft); cursor:pointer;
+    font-size: 12px; padding: 7px 9px; border-radius: 6px; flex-shrink:0;
+    font-family:'JetBrains Mono', monospace;
+  }
+  .settings-section-toggle:hover{ background:#E4ECF4; }
+  .section-karel-count{
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    font-family:'JetBrains Mono', monospace;
+    white-space: nowrap;
+    flex-shrink:0;
+  }
+  .section-name-input{
+    flex: 1 1 auto;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 8px 10px;
+    color: var(--ink);
+  }
+  .remove-section{
+    border:none; background:none; color: var(--behind); cursor:pointer;
+    font-size: 15px; padding: 6px 9px; border-radius:6px; flex-shrink:0;
+  }
+  .remove-section:hover{ background: #FBE4DC; }
+
+  .assignment-rows{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin-bottom: 10px;
+  }
+  .assignment-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background: var(--panel-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  .assignment-row .seq{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+    width: 30px;
+    flex-shrink:0;
+  }
+  .assignment-row input[type="text"]{
+    flex: 1 1 auto;
+    min-width: 120px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 9px;
+    font-size: 13px;
+  }
+  .assignment-row .parts-control{
+    display:flex; align-items:center; gap:6px;
+    font-size: 12px;
+    color: var(--ink-soft);
+    flex-shrink:0;
+  }
+  .assignment-row .parts-control input[type="number"]{
+    width: 48px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 6px;
+    font-family:'JetBrains Mono', monospace;
+    font-size: 13px;
+    text-align:center;
+  }
+  .assignment-row .remove-assignment{
+    border:none;
+    background:none;
+    color: var(--behind);
+    cursor:pointer;
+    font-size: 16px;
+    line-height:1;
+    padding: 4px 6px;
+    border-radius: 6px;
+    flex-shrink:0;
+  }
+  .assignment-row .remove-assignment:hover{ background: #FBE4DC; }
+
+  .no-karels-note{
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    margin: 0 0 10px 0;
+  }
+
+  .settings-panel-actions{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+
+  /* ---------- Toolbar ---------- */
+  .toolbar{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 28px;
+    flex-wrap: wrap;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .add-student{ display:flex; gap:8px; }
+  .add-student input{
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 8px 10px;
+    font-size: 13px;
+    width: 200px;
+  }
+
+  .controls{ display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .controls label{
+    display:flex; align-items:center; gap:6px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    cursor:pointer;
+  }
+  .controls select{
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 7px 9px;
+    font-size: 13px;
+    color: var(--ink);
+    background:#fff;
+  }
+
+  .summary{
+    display:flex;
+    gap: 18px;
+    font-size: 13px;
+    color: var(--ink-soft);
+    font-family:'JetBrains Mono', monospace;
+  }
+  .summary strong{ color: var(--ink); font-weight:600; }
+
+  /* ---------- Grid ---------- */
+  .grid-wrap{
+    padding: 20px 28px 40px 28px;
+    overflow-x: auto;
+  }
+
+  table{
+    border-collapse: separate;
+    border-spacing: 0;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    min-width: 100%;
+  }
+
+  thead th{
+    background: var(--panel-alt);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 6px;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 12.5px;
+    color: var(--ink);
+    position: sticky;
+    white-space: nowrap;
+  }
+
+  thead tr.section-header-row th{ top:0; z-index:4; }
+  thead tr.assignment-header th{ top:41px; z-index:3; }
+  thead tr.part-header th{ top:83px; z-index:2; }
+
+  thead tr.section-header-row th.section-head{
+    background: var(--section-tint);
+    text-align:left;
+    border-left: 1px solid var(--border);
+    padding: 8px 10px;
+  }
+  th.section-head .section-toggle{
+    border:none; background:none; cursor:pointer; color: var(--ink-soft);
+    font-size: 11px; margin-right:5px; padding:2px 4px; border-radius:4px;
+    font-family:'JetBrains Mono', monospace;
+  }
+  th.section-head .section-toggle:hover{ background:#D3E1EE; }
+  th.section-head .section-toggle:disabled{ opacity:0.35; cursor:default; }
+  th.section-head .section-name-label{ font-weight:700; }
+  th.section-head .section-mini{
+    display:block;
+    font-family:'JetBrains Mono', monospace;
+    font-weight:500;
+    font-size: 10px;
+    color: var(--ink-soft);
+    margin-top: 2px;
+  }
+
+  thead tr.assignment-header th{
+    border-left: 1px solid var(--border);
+    text-align:center;
+    padding: 9px 8px;
+  }
+  thead tr.assignment-header th .a-name{
+    display:block;
+    cursor:pointer;
+    border-radius:5px;
+    padding: 1px 4px;
+  }
+  thead tr.assignment-header th .a-name:hover{ background:#E9EFF5; }
+  thead tr.assignment-header th .k-tag{
+    font-family:'JetBrains Mono', monospace;
+    font-weight:500;
+    color: var(--ink-soft);
+    font-size: 10.5px;
+    display:block;
+  }
+
+  thead tr.part-header th{
+    text-align:center;
+    font-family:'JetBrains Mono', monospace;
+    font-weight:500;
+    color: var(--ink-soft);
+    font-size: 11px;
+    border-left: 1px solid var(--border);
+    padding: 5px 4px;
+  }
+
+  th.corner{
+    left:0;
+    z-index: 5;
+    text-align:left;
+    min-width: 170px;
+  }
+
+  th.progress-head{
+    text-align:left;
+    min-width: 150px;
+    z-index: 5;
+  }
+
+  tbody td{
+    border-bottom: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+    padding: 0;
+    text-align:center;
+    vertical-align: middle;
+  }
+
+  tbody tr:nth-child(even){ background: #FAFBFD; }
+  tbody tr:hover{ background: #EFF6FC; }
+
+  td.name-cell{
+    position: sticky;
+    left:0;
+    z-index: 1;
+    background: inherit;
+    text-align:left;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    min-width: 170px;
+  }
+  tbody tr:nth-child(odd) td.name-cell{ background: #fff; }
+  tbody tr:nth-child(even) td.name-cell{ background: #FAFBFD; }
+  tbody tr:hover td.name-cell{ background: #EFF6FC; }
+
+  .name-row{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .student-badge{
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 5px;
+    padding: 1px 4px;
+  }
+  .student-badge:hover{ background:#E9EFF5; }
+  .remove-student{
+    border:none;
+    background:none;
+    color: #A9B7C4;
+    cursor:pointer;
+    font-size: 15px;
+    line-height: 1;
+    border-radius: 5px;
+    padding: 4px 7px;
+    flex-shrink: 0;
+  }
+  .remove-student:hover{ background:#FBE4DC; color: var(--behind); }
+  .remove-student:active{ background:#F3C3B3; }
+
+  .part-cell{ width: 40px; }
+  .check-box{
+    width: 22px; height: 22px;
+    margin: 8px auto;
+    border: 1.5px solid #C7D2DC;
+    border-radius: 5px;
+    background: repeating-linear-gradient(0deg, transparent 0 4px, #EDF1F5 4px 4.5px),
+                repeating-linear-gradient(90deg, transparent 0 4px, #EDF1F5 4px 4.5px);
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+  }
+  .check-box:hover{ border-color: var(--complete); }
+  .check-box.checked{
+    background: var(--complete);
+    border-color: var(--complete-dark);
+    transform: scale(1.04);
+  }
+  .check-box.checked::after{
+    content: "";
+    width: 9px; height: 5px;
+    border-left: 2px solid #fff;
+    border-bottom: 2px solid #fff;
+    transform: rotate(-45deg) translateY(-1px);
+  }
+  .check-box:active{ transform: scale(0.92); }
+
+  td.quiz-cell{ width: 56px; background: #F6F5FC; }
+  .quiz-input{
+    width: 44px;
+    margin: 8px auto;
+    display:block;
+    border: 1.5px solid #D7D2EE;
+    border-radius: 5px;
+    background: #FBFAFF;
+    text-align:center;
+    font-family:'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    padding: 3px 2px;
+    color: var(--ink);
+  }
+  .quiz-input:focus{ border-color: #8B7FD6; }
+  .quiz-input::placeholder{ color: #C7C2E0; }
+  thead tr.part-header th.quiz-th{ color: #6B5FBE; font-weight: 600; }
+
+  td.section-summary-cell{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--ink-soft);
+    cursor: pointer;
+  }
+  td.section-summary-cell:hover{ background:#E4ECF4; text-decoration: underline; }
+  td.section-summary-cell.behind{ color: var(--behind); }
+  td.section-summary-cell.mid{ color: var(--beeper-dark); }
+  td.section-summary-cell.done{ color: var(--complete-dark); }
+
+  td.progress-cell{
+    text-align:left;
+    padding: 8px 12px;
+    min-width: 150px;
+  }
+  .progress-line{
+    display:flex;
+    align-items:center;
+    gap: 8px;
+  }
+  .progress-track{
+    flex:1 1 auto;
+    height: 8px;
+    border-radius: 5px;
+    background: #E4E9EE;
+    overflow:hidden;
+  }
+  .progress-fill{
+    height: 100%;
+    border-radius: 5px;
+    background: var(--behind);
+    transition: width 0.2s ease, background 0.2s ease;
+  }
+  .progress-fill.mid{ background: var(--beeper); }
+  .progress-fill.done{ background: var(--complete); }
+  .progress-fraction{
+    font-family:'JetBrains Mono', monospace;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    min-width: 42px;
+    text-align:right;
+  }
+  .beeper-badge{
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    margin-top: 3px;
+    font-size: 10.5px;
+    font-family:'JetBrains Mono', monospace;
+    color: var(--beeper-dark);
+  }
+  .beeper-badge .dot{
+    width:7px; height:7px;
+    border-radius:50%;
+    background: var(--beeper);
+    display:inline-block;
+  }
+
+  /* ---------- Empty state ---------- */
+  .empty-state{
+    margin: 40px 28px;
+    padding: 40px 30px;
+    text-align:center;
+    background: var(--panel);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+  }
+  .empty-state h3{
+    font-family:'Space Grotesk', sans-serif;
+    margin: 0 0 6px 0;
+  }
+  .empty-state p{
+    color: var(--ink-soft);
+    font-size: 14px;
+    margin: 0 0 16px 0;
+  }
+
+  /* ---------- Projector mode ---------- */
+  body.projector .grid-wrap{ padding: 20px 20px 50px 20px; }
+  body.projector thead th{ font-size: 15px; padding: 12px 8px; }
+  body.projector thead tr.section-header-row th{ top:0; }
+  body.projector thead tr.assignment-header th{ top:50px; }
+  body.projector thead tr.part-header th{ font-size: 13px; top: 100px; }
+  body.projector td.name-cell{ font-size: 17px; padding: 12px 14px; }
+  body.projector .check-box{ width: 30px; height: 30px; }
+  body.projector .progress-fraction{ font-size: 14px; }
+  body.projector .toolbar, body.projector .settings-panel{ display:none; }
+  body.projector .brand h1{ font-size: 26px; }
+
+  .save-indicator{
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    font-family:'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-soft);
+    background: #fff;
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    border-radius: 7px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 10;
+  }
+  .save-indicator.show{ opacity: 1; }
+
+  .modal-overlay{
+    position: fixed;
+    inset: 0;
+    background: rgba(15,42,71,0.55);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index: 50;
+    padding: 20px;
+  }
+  .modal-overlay[hidden]{ display: none; }
+  .modal-box{
+    background:#fff;
+    border-radius: 12px;
+    padding: 22px 22px 18px 22px;
+    max-width: 380px;
+    width: 100%;
+    box-shadow: 0 20px 50px rgba(15,42,71,0.35);
+  }
+  .modal-message{
+    margin: 0 0 14px 0;
+    font-size: 14px;
+    color: var(--ink);
+    line-height: 1.45;
+  }
+  .modal-input{
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 9px 10px;
+    font-size: 14px;
+    margin-bottom: 14px;
+  }
+  .modal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap: 10px;
+  }
+  .modal-actions .btn{ padding: 8px 16px; }
+
+  @media (max-width: 720px){
+    .topbar{ padding: 16px; }
+    .toolbar{ padding: 12px 16px; }
+    .grid-wrap{ padding: 14px; }
+    .settings-panel{ padding: 14px 16px; }
+  }
+
+  /* ---------- Print / PDF-by-unit view ---------- */
+  #printArea{ display:none; }
+
+  @media print{
+    body *{ visibility: hidden; }
+    #printArea, #printArea *{ visibility: visible; }
+    #printArea{ display:block; position: absolute; left:0; top:0; width:100%; }
+  }
+
+  .print-page{
+    padding: 24px 28px;
+    page-break-after: always;
+    font-family: 'Inter', system-ui, sans-serif;
+    color: #12233A;
+  }
+  .print-page:last-child{ page-break-after: auto; }
+  .print-title{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    margin: 0 0 2px 0;
+  }
+  .print-sub{
+    font-size: 12px;
+    color: #5B7089;
+    margin: 0 0 14px 0;
+  }
+  .print-note{
+    font-size: 13px;
+    color: #5B7089;
+  }
+  table.print-table{
+    width:100%;
+    border-collapse: collapse;
+    font-size: 10.5px;
+  }
+  table.print-table th, table.print-table td{
+    border: 1px solid #B7C2CC;
+    padding: 4px 6px;
+    text-align:center;
+  }
+  table.print-table thead th{
+    background: #E4ECF4;
+    font-family:'Space Grotesk', sans-serif;
+    font-weight: 600;
+  }
+  table.print-table td.pname{
+    text-align:left;
+    font-weight:600;
+    white-space:nowrap;
+  }
+  table.print-table td.checked-mark{ font-weight:700; }
+</style>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" id="brandMark">K</div>
+      <div>
+        <h1 id="appTitle">Karel Progress Tracker</h1>
+        <input id="classNameInput" class="class-name-input" placeholder="Name this class period…" />
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <a href="../" class="btn suite-back-link" title="Back to the planner">📅 Planner</a>
+      <div class="word-control">
+        <label for="itemWordInput">Call each assignment a…</label>
+        <input id="itemWordInput" class="word-input" placeholder="Karel" />
+      </div>
+      <button class="btn" id="manageBtn">Manage Karels</button>
+      <button class="btn" id="exportDataBtn" title="Download a backup of everything">💾 Export</button>
+      <button class="btn" id="importDataBtn" title="Restore from a backup file">📂 Import</button>
+      <button class="btn" id="projectorBtn">Projector mode</button>
+    </div>
+  </header>
+
+  <section class="settings-panel" id="settingsPanel" hidden>
+    <h2 id="settingsHeading">Karel sections</h2>
+    <p class="hint" id="settingsHint">Group your Karels into sections — one per unit or test. Rename a Karel, set its parts (most CodeHS Karels have 1–4) and quizzes (0 hides that column). Collapse a section from the grid below once it's done, and add a new section when you start the next set. Use "Download backup" any time to save a copy of everything to your computer.</p>
+    <div class="sections-list" id="sectionsList"></div>
+    <div class="settings-panel-actions">
+      <button class="btn subtle" id="addSectionBtn">+ Add new section</button>
+      <button class="btn subtle" id="exportBtn">Download backup</button>
+      <button class="btn subtle" id="exportPdfBtn">Export PDF by unit</button>
+      <button class="btn subtle" id="importBtn">Restore from backup</button>
+      <input type="file" id="importFile" accept=".json,application/json" hidden />
+      <button class="btn danger" id="resetBtn">Clear all data</button>
+    </div>
+  </section>
+
+  <section class="toolbar">
+    <div class="add-student">
+      <input id="newStudentName" placeholder="Add a student…" />
+      <button class="btn subtle" id="addStudentBtn">Add</button>
+    </div>
+    <div class="controls">
+      <label><input type="checkbox" id="filterIncomplete" /> Only show unfinished</label>
+      <select id="sortSelect">
+        <option value="name-asc">Sort: Name (A–Z)</option>
+        <option value="name-desc">Sort: Name (Z–A)</option>
+        <option value="progress-asc">Sort: Most behind first</option>
+        <option value="progress-desc">Sort: Most complete first</option>
+      </select>
+    </div>
+    <div class="summary" id="summaryStats"></div>
+  </section>
+
+  <section class="grid-wrap" id="gridWrap"></section>
+
+  <div id="printArea"></div>
+
+  <div class="empty-state" id="emptyState" hidden>
+    <h3>No students yet</h3>
+    <p id="emptyStateText">Add your roster above to start tracking who's finished which Karels.</p>
+  </div>
+
+  <div class="privacy-note">
+    🔒 Student names and grades are stored <strong>only in this browser on this device</strong>.
+    They are never sent anywhere, and are not included in the Planner's backups or published calendars.
+    Clearing your browser data will erase them — use <strong>💾 Export</strong> to keep your own copy.
+  </div>
+
+  <div class="save-indicator" id="saveIndicator">Saved</div>
+
+  <div class="modal-overlay" id="modalOverlay" hidden>
+    <div class="modal-box" id="modalBox">
+      <p class="modal-message" id="modalMessage"></p>
+      <input type="text" id="modalInput" class="modal-input" hidden />
+      <div class="modal-actions">
+        <button class="btn subtle" id="modalCancel">Cancel</button>
+        <button class="btn danger" id="modalConfirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'karel-tracker-data';
+
+  function defaultData(){
+    const assignments = [];
+    for(let i=1;i<=10;i++){
+      assignments.push({ id:'a'+i, name:'Karel '+i, parts:2, quizzes:1 });
+    }
+    return {
+      className: '',
+      itemWord: 'Karel',
+      sections: [
+        { id:'sec1', name:'Unit 1', collapsed:false, assignments }
+      ],
+      students: [],
+      progress: {},
+      grades: {}
+    };
+  }
+
+  function itemWord(){
+    return (data.itemWord && data.itemWord.trim()) || 'Karel';
+  }
+  function itemWordPlural(){
+    return itemWord() + 's';
+  }
+  function itemLetter(){
+    return itemWord().trim().charAt(0).toUpperCase() || 'K';
+  }
+
+  function gradeKey(sid, aid, qIdx){ return sid+'|'+aid+'|'+qIdx; }
+  function progKey(sid, aid, partIdx){ return sid+'|'+aid+'|'+partIdx; }
+
+  let data = defaultData();
+  let saveTimer = null;
+  let settingsCollapsedSections = new Set();
+
+  function allAssignments(){
+    const list = [];
+    data.sections.forEach(sec=>{
+      sec.assignments.forEach(a=> list.push(a));
+    });
+    return list;
+  }
+
+  function buildGlobalIndex(){
+    const map = {};
+    let i = 1;
+    data.sections.forEach(sec=>{
+      sec.assignments.forEach(a=>{ map[a.id] = i; i++; });
+    });
+    return map;
+  }
+
+  function totalParts(){
+    return allAssignments().reduce((sum,a)=>sum + a.parts, 0);
+  }
+
+  function completedParts(sid){
+    let count = 0;
+    allAssignments().forEach(a=>{
+      for(let p=0;p<a.parts;p++){
+        if(data.progress[progKey(sid,a.id,p)]) count++;
+      }
+    });
+    return count;
+  }
+
+  function completedAssignments(sid){
+    let count = 0;
+    allAssignments().forEach(a=>{
+      let allDone = true;
+      for(let p=0;p<a.parts;p++){
+        if(!data.progress[progKey(sid,a.id,p)]){ allDone = false; break; }
+      }
+      if(allDone) count++;
+    });
+    return count;
+  }
+
+  function sectionTotalParts(section){
+    return section.assignments.reduce((sum,a)=>sum + a.parts, 0);
+  }
+
+  function sectionCompletedParts(section, sid){
+    let count = 0;
+    section.assignments.forEach(a=>{
+      for(let p=0;p<a.parts;p++){
+        if(data.progress[progKey(sid,a.id,p)]) count++;
+      }
+    });
+    return count;
+  }
+
+  function normalizeIntoData(parsed){
+    if(parsed && Array.isArray(parsed.sections) && Array.isArray(parsed.students)){
+      data = parsed;
+      if(!data.grades) data.grades = {};
+      if(!data.progress) data.progress = {};
+      if(!data.itemWord) data.itemWord = 'Karel';
+      data.sections.forEach(sec=>{
+        if(typeof sec.collapsed !== 'boolean') sec.collapsed = false;
+        if(!Array.isArray(sec.assignments)) sec.assignments = [];
+        sec.assignments.forEach(a=>{ if(!a.quizzes) a.quizzes = 1; });
+      });
+      return true;
+    } else if(parsed && Array.isArray(parsed.assignments) && Array.isArray(parsed.students)){
+      // legacy save from before sections existed — wrap everything into one section
+      parsed.assignments.forEach(a=>{ if(!a.quizzes) a.quizzes = 1; });
+      data = {
+        className: parsed.className || '',
+        itemWord: parsed.itemWord || 'Karel',
+        sections: [{ id: 'sec1', name: 'Unit 1', collapsed:false, assignments: parsed.assignments }],
+        students: parsed.students,
+        progress: parsed.progress || {},
+        grades: parsed.grades || {}
+      };
+      // old grade keys were "studentId|assignmentId" (single quiz) — shift them to quiz index 0
+      const migrated = {};
+      Object.keys(data.grades).forEach(k=>{
+        const bits = k.split('|');
+        if(bits.length === 2){ migrated[bits[0]+'|'+bits[1]+'|0'] = data.grades[k]; }
+        else{ migrated[k] = data.grades[k]; }
+      });
+      data.grades = migrated;
+      return true;
+    }
+    return false;
+  }
+
+  // ── STUDENT DATA BOUNDARY ─────────────────────────────────────────────
+  // This tool stores student names and grades. That is education record data
+  // (FERPA in the US), and it is deliberately kept LOCAL AND SEPARATE:
+  //
+  //   • Written only to the localStorage key in STORAGE_KEY, owned by this page.
+  //   • NOT part of the Planner's profile system, Backup Data export,
+  //     Publish Snapshot, or Print/Sync HTML output.
+  //   • The Planner links here by URL only — no data is passed between them.
+  //
+  // Same-origin pages *can* read each other's localStorage, so this separation
+  // holds by convention, not by browser enforcement. If a backend is ever added
+  // to the suite, this tool should stay out of it. Teachers export their own
+  // data manually if they need it elsewhere.
+  //
+  // Before changing this, consider whether the change would cause student names
+  // or grades to leave the teacher's device.
+  // ──────────────────────────────────────────────────────────────────────
+
+  // Storage adapter: writes to BOTH Claude artifact storage (when present) and
+  // localStorage, then reads whichever actually has data. This matters because
+  // the same file runs in three places — as a Claude artifact, as a GitHub Pages
+  // site, and opened directly from disk — and each has different storage rules.
+  // Mirroring means switching environments never silently loses a roster.
+  const store = {
+    async get(key){
+      let artifactVal = null;
+      if (typeof window !== "undefined" && window.storage && window.storage.get) {
+        try {
+          const r = await window.storage.get(key, false);
+          if (r && r.value) artifactVal = r.value;
+        } catch (e) { /* not there */ }
+      }
+      let localVal = null;
+      try { localVal = localStorage.getItem(key); } catch (e) { /* blocked */ }
+
+      const value = artifactVal || localVal;
+      if (!value) throw new Error("not found");
+      return { key, value };
+    },
+    async set(key, value){
+      let wroteSomewhere = false;
+      if (typeof window !== "undefined" && window.storage && window.storage.set) {
+        try {
+          await window.storage.set(key, value, false);
+          wroteSomewhere = true;
+        } catch (e) { /* fall through to localStorage */ }
+      }
+      try {
+        localStorage.setItem(key, value);
+        wroteSomewhere = true;
+      } catch (e) { /* quota or blocked */ }
+      if (!wroteSomewhere) throw new Error("no writable storage");
+      return { key, value };
+    }
+  };
+
+  async function loadData(){
+    try{
+      const result = await store.get(STORAGE_KEY);
+      if(result && result.value){
+        const parsed = JSON.parse(result.value);
+        normalizeIntoData(parsed);
+      }
+    }catch(e){
+      // no saved data yet — use defaults
+    }
+    render();
+  }
+
+  function scheduleSave(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveData, 350);
+  }
+
+  async function saveData(){
+    try{
+      const result = await store.set(STORAGE_KEY, JSON.stringify(data));
+      const ind = document.getElementById('saveIndicator');
+      if(result){
+        ind.textContent = 'Saved';
+        ind.classList.add('show');
+        setTimeout(()=> ind.classList.remove('show'), 1200);
+      }
+    }catch(e){
+      const ind = document.getElementById('saveIndicator');
+      ind.textContent = 'Could not save';
+      ind.classList.add('show');
+    }
+  }
+
+  function uid(prefix){
+    return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+  }
+
+  /* ---------------- Custom modal (replaces confirm()/prompt(), which get blocked in sandboxed previews) ---------------- */
+
+  let modalResolve = null;
+
+  function closeModal(result){
+    document.getElementById('modalOverlay').hidden = true;
+    const cb = modalResolve;
+    modalResolve = null;
+    if(cb) cb(result);
+  }
+
+  function openConfirm(message, confirmLabel){
+    return new Promise(resolve=>{
+      document.getElementById('modalMessage').textContent = message;
+      const input = document.getElementById('modalInput');
+      input.hidden = true;
+      const confirmBtn = document.getElementById('modalConfirm');
+      confirmBtn.textContent = confirmLabel || 'Confirm';
+      confirmBtn.className = 'btn danger';
+      document.getElementById('modalOverlay').hidden = false;
+      modalResolve = (ok)=> resolve(!!ok);
+    });
+  }
+
+  function openPrompt(message, defaultValue){
+    return new Promise(resolve=>{
+      document.getElementById('modalMessage').textContent = message;
+      const input = document.getElementById('modalInput');
+      input.hidden = false;
+      input.value = defaultValue || '';
+      const confirmBtn = document.getElementById('modalConfirm');
+      confirmBtn.textContent = 'Save';
+      confirmBtn.className = 'btn subtle';
+      document.getElementById('modalOverlay').hidden = false;
+      modalResolve = (ok)=> resolve(ok ? input.value : null);
+      setTimeout(()=> input.focus(), 30);
+    });
+  }
+
+  document.getElementById('modalCancel').addEventListener('click', ()=> closeModal(false));
+  document.getElementById('modalConfirm').addEventListener('click', ()=> closeModal(true));
+  document.getElementById('modalOverlay').addEventListener('click', (e)=>{
+    if(e.target.id === 'modalOverlay') closeModal(false);
+  });
+  document.getElementById('modalInput').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); closeModal(true); }
+    if(e.key === 'Escape'){ e.preventDefault(); closeModal(false); }
+  });
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape' && !document.getElementById('modalOverlay').hidden){ closeModal(false); }
+  });
+
+  /* ---------------- Rendering ---------------- */
+
+  function render(){
+    document.getElementById('classNameInput').value = data.className || '';
+    document.getElementById('itemWordInput').value = data.itemWord || '';
+
+    const word = itemWord();
+    const wordPlural = itemWordPlural();
+    const letter = itemLetter();
+
+    document.title = word + ' Progress Tracker';
+    document.getElementById('appTitle').textContent = word + ' Progress Tracker';
+    document.getElementById('brandMark').textContent = letter;
+    document.getElementById('manageBtn').textContent = 'Manage ' + wordPlural;
+    document.getElementById('settingsHeading').textContent = word + ' sections';
+    document.getElementById('settingsHint').textContent =
+      'Group your ' + wordPlural + ' into sections — one per unit or test. Rename a ' + word +
+      ', and set how many parts and quizzes it has (0 quizzes hides that column). Collapse a section ' +
+      'from the grid below once it\'s done, and add a new section when you start the next set. Use ' +
+      '"Download backup" any time to save a copy of everything to your computer.';
+    document.getElementById('emptyStateText').textContent =
+      'Add your roster above to start tracking who\'s finished which ' + wordPlural + '.';
+
+    renderSettings();
+    renderToolbarSummary();
+    renderGrid();
+    document.getElementById('emptyState').hidden = data.students.length !== 0;
+    document.getElementById('gridWrap').style.display = data.students.length === 0 ? 'none' : '';
+  }
+
+  function renderAssignmentRow(section, a, globalIndex){
+    const row = document.createElement('div');
+    row.className = 'assignment-row';
+
+    const seq = document.createElement('span');
+    seq.className = 'seq';
+    seq.textContent = itemLetter() + globalIndex;
+    row.appendChild(seq);
+
+    const nameInput = document.createElement('input');
+    nameInput.type = 'text';
+    nameInput.value = a.name;
+    nameInput.addEventListener('change', ()=>{
+      a.name = nameInput.value.trim() || a.name;
+      scheduleSave();
+      renderGrid();
+    });
+    row.appendChild(nameInput);
+
+    const partsWrap = document.createElement('div');
+    partsWrap.className = 'parts-control';
+    const partsLabel = document.createElement('span');
+    partsLabel.textContent = 'parts';
+    const partsInput = document.createElement('input');
+    partsInput.type = 'number';
+    partsInput.min = 1;
+    partsInput.max = 8;
+    partsInput.value = a.parts;
+    partsInput.addEventListener('change', ()=>{
+      let v = parseInt(partsInput.value, 10);
+      if(isNaN(v) || v < 1) v = 1;
+      if(v > 8) v = 8;
+      a.parts = v;
+      partsInput.value = v;
+      scheduleSave();
+      render();
+    });
+    partsWrap.appendChild(partsInput);
+    partsWrap.appendChild(partsLabel);
+    row.appendChild(partsWrap);
+
+    const quizWrap = document.createElement('div');
+    quizWrap.className = 'parts-control';
+    const quizLabel = document.createElement('span');
+    quizLabel.textContent = 'quizzes';
+    const quizCountInput = document.createElement('input');
+    quizCountInput.type = 'number';
+    quizCountInput.min = 0;
+    quizCountInput.max = 5;
+    quizCountInput.value = a.quizzes;
+    quizCountInput.addEventListener('change', ()=>{
+      let v = parseInt(quizCountInput.value, 10);
+      if(isNaN(v) || v < 0) v = 0;
+      if(v > 5) v = 5;
+      a.quizzes = v;
+      quizCountInput.value = v;
+      scheduleSave();
+      render();
+    });
+    quizWrap.appendChild(quizCountInput);
+    quizWrap.appendChild(quizLabel);
+    row.appendChild(quizWrap);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-assignment';
+    removeBtn.title = 'Remove this ' + itemWord();
+    removeBtn.textContent = '✕';
+    removeBtn.addEventListener('click', async ()=>{
+      const ok = await openConfirm('Remove "'+a.name+'" and its checkmarks for every student?', 'Remove');
+      if(!ok) return;
+      section.assignments = section.assignments.filter(x=>x.id !== a.id);
+      scheduleSave();
+      render();
+    });
+    row.appendChild(removeBtn);
+
+    return row;
+  }
+
+  function renderSettings(){
+    const wrap = document.getElementById('sectionsList');
+    wrap.innerHTML = '';
+    const globalIndex = buildGlobalIndex();
+
+    data.sections.forEach((section, sIdx)=>{
+      const block = document.createElement('div');
+      block.className = 'section-block';
+
+      const header = document.createElement('div');
+      header.className = 'section-block-header';
+
+      const isCollapsedInSettings = settingsCollapsedSections.has(section.id);
+
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'settings-section-toggle';
+      toggleBtn.textContent = isCollapsedInSettings ? '▸' : '▾';
+      toggleBtn.title = isCollapsedInSettings ? ('Show this section\'s ' + itemWordPlural()) : ('Hide this section\'s ' + itemWordPlural());
+      toggleBtn.addEventListener('click', ()=>{
+        if(settingsCollapsedSections.has(section.id)) settingsCollapsedSections.delete(section.id);
+        else settingsCollapsedSections.add(section.id);
+        renderSettings();
+      });
+      header.appendChild(toggleBtn);
+
+      const nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.className = 'section-name-input';
+      nameInput.value = section.name;
+      nameInput.addEventListener('change', ()=>{
+        section.name = nameInput.value.trim() || section.name;
+        scheduleSave();
+        render();
+      });
+      header.appendChild(nameInput);
+
+      const countBadge = document.createElement('span');
+      countBadge.className = 'section-karel-count';
+      countBadge.textContent = section.assignments.length + ' ' + (section.assignments.length === 1 ? itemWord() : itemWordPlural());
+      header.appendChild(countBadge);
+
+      const removeSectionBtn = document.createElement('button');
+      removeSectionBtn.className = 'remove-section';
+      removeSectionBtn.title = 'Remove this section';
+      removeSectionBtn.textContent = '✕';
+      removeSectionBtn.addEventListener('click', async ()=>{
+        const count = section.assignments.length;
+        const msg = 'Remove section "'+section.name+'"' + (count ? ' and its '+count+' '+(count>1?itemWordPlural():itemWord())+' (with all checkmarks and grades)' : '') + '?';
+        const ok = await openConfirm(msg, 'Remove');
+        if(!ok) return;
+        const ids = section.assignments.map(a=>a.id);
+        data.sections.splice(sIdx,1);
+        ids.forEach(aid=>{
+          Object.keys(data.progress).forEach(k=>{ if(k.indexOf('|'+aid+'|') !== -1) delete data.progress[k]; });
+          Object.keys(data.grades).forEach(k=>{ if(k.indexOf('|'+aid+'|') !== -1) delete data.grades[k]; });
+        });
+        scheduleSave();
+        render();
+      });
+      header.appendChild(removeSectionBtn);
+
+      block.appendChild(header);
+
+      const body = document.createElement('div');
+      body.className = 'section-body';
+      if(isCollapsedInSettings) body.style.display = 'none';
+
+      if(section.assignments.length === 0){
+        const note = document.createElement('p');
+        note.className = 'no-karels-note';
+        note.textContent = 'No ' + itemWordPlural() + ' in this section yet.';
+        body.appendChild(note);
+      } else {
+        const rowsWrap = document.createElement('div');
+        rowsWrap.className = 'assignment-rows';
+        section.assignments.forEach(a=>{
+          rowsWrap.appendChild(renderAssignmentRow(section, a, globalIndex[a.id]));
+        });
+        body.appendChild(rowsWrap);
+      }
+
+      const addKarelBtn = document.createElement('button');
+      addKarelBtn.className = 'btn subtle';
+      addKarelBtn.textContent = '+ Add a ' + itemWord() + ' to this section';
+      addKarelBtn.addEventListener('click', ()=>{
+        section.assignments.push({ id: uid('a'), name: itemWord() + ' ' + (allAssignments().length + 1), parts: 2, quizzes: 1 });
+        scheduleSave();
+        render();
+      });
+      body.appendChild(addKarelBtn);
+
+      block.appendChild(body);
+
+      wrap.appendChild(block);
+    });
+  }
+
+  function renderToolbarSummary(){
+    const el = document.getElementById('summaryStats');
+    const n = data.students.length;
+    if(n === 0){ el.innerHTML=''; return; }
+    const totalAssignments = allAssignments().length;
+    const tp = totalParts();
+    const done = data.students.filter(s => completedAssignments(s.id) === totalAssignments && totalAssignments > 0).length;
+    let avg = 0;
+    if(tp > 0){
+      const sumPct = data.students.reduce((acc,s)=> acc + (completedParts(s.id)/tp), 0);
+      avg = Math.round((sumPct / n) * 100);
+    }
+    el.innerHTML =
+      '<span><strong>'+n+'</strong> students</span>' +
+      '<span><strong>'+done+'</strong> / '+n+' finished all '+totalAssignments+'</span>' +
+      '<span>Class average: <strong>'+avg+'%</strong></span>';
+  }
+
+  function getSortedFilteredStudents(){
+    let list = data.students.slice();
+    const onlyIncomplete = document.getElementById('filterIncomplete').checked;
+    const totalAssignments = allAssignments().length;
+    if(onlyIncomplete){
+      list = list.filter(s => completedAssignments(s.id) < totalAssignments);
+    }
+    const sortMode = document.getElementById('sortSelect').value;
+    const tp = totalParts();
+    list.sort((s1,s2)=>{
+      if(sortMode === 'name-asc') return s1.name.localeCompare(s2.name);
+      if(sortMode === 'name-desc') return s2.name.localeCompare(s1.name);
+      const p1 = tp ? completedParts(s1.id)/tp : 0;
+      const p2 = tp ? completedParts(s2.id)/tp : 0;
+      if(sortMode === 'progress-asc') return p1 - p2;
+      if(sortMode === 'progress-desc') return p2 - p1;
+      return 0;
+    });
+    return list;
+  }
+
+  function renderGrid(){
+    const wrap = document.getElementById('gridWrap');
+    wrap.innerHTML = '';
+    if(data.students.length === 0) return;
+
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+
+    const rowSection = document.createElement('tr');
+    rowSection.className = 'section-header-row';
+    const rowAssignment = document.createElement('tr');
+    rowAssignment.className = 'assignment-header';
+    const rowPart = document.createElement('tr');
+    rowPart.className = 'part-header';
+
+    const cornerTh = document.createElement('th');
+    cornerTh.className = 'corner';
+    cornerTh.rowSpan = 3;
+    cornerTh.textContent = 'Student';
+    rowSection.appendChild(cornerTh);
+
+    const globalIndex = buildGlobalIndex();
+
+    data.sections.forEach(section=>{
+      const isEmpty = section.assignments.length === 0;
+      const collapsed = section.collapsed || isEmpty;
+      let cols = 0;
+      if(!collapsed){
+        section.assignments.forEach(a=>{ cols += a.parts + a.quizzes; });
+      }
+      if(cols === 0) cols = 1;
+
+      const sh = document.createElement('th');
+      sh.className = 'section-head';
+      sh.colSpan = cols;
+      sh.rowSpan = collapsed ? 3 : 1;
+      if(!isEmpty){
+        sh.style.cursor = 'pointer';
+        sh.title = section.collapsed ? 'Click to show checkboxes' : 'Click to collapse to a summary';
+        sh.addEventListener('click', ()=>{
+          section.collapsed = !section.collapsed;
+          scheduleSave();
+          render();
+        });
+      }
+
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className = 'section-toggle';
+      toggleBtn.textContent = section.collapsed ? '▸' : '▾';
+      toggleBtn.title = section.collapsed ? 'Open this section' : 'Close this section';
+      if(isEmpty) toggleBtn.disabled = true;
+      toggleBtn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        section.collapsed = !section.collapsed;
+        scheduleSave();
+        render();
+      });
+      sh.appendChild(toggleBtn);
+
+      const nameLabel = document.createElement('span');
+      nameLabel.className = 'section-name-label';
+      nameLabel.textContent = section.name;
+      sh.appendChild(nameLabel);
+
+      if(isEmpty){
+        const note = document.createElement('span');
+        note.className = 'section-mini';
+        note.textContent = 'No ' + itemWordPlural() + ' yet';
+        sh.appendChild(note);
+      }
+
+      rowSection.appendChild(sh);
+
+      if(!collapsed){
+        section.assignments.forEach(a=>{
+          const th = document.createElement('th');
+          th.colSpan = a.parts + a.quizzes;
+          const tag = document.createElement('span');
+          tag.className = 'k-tag';
+          tag.textContent = itemLetter() + globalIndex[a.id];
+          const nameSpan = document.createElement('span');
+          nameSpan.className = 'a-name';
+          nameSpan.textContent = a.name;
+          nameSpan.title = 'Click to rename';
+          nameSpan.addEventListener('click', async ()=>{
+            const newName = await openPrompt('Rename this ' + itemWord() + ':', a.name);
+            if(newName && newName.trim()){
+              a.name = newName.trim();
+              scheduleSave();
+              render();
+            }
+          });
+          th.appendChild(tag);
+          th.appendChild(nameSpan);
+          rowAssignment.appendChild(th);
+
+          for(let p=0;p<a.parts;p++){
+            const pth = document.createElement('th');
+            pth.textContent = a.parts > 1 ? String.fromCharCode(97+p) : '✓';
+            rowPart.appendChild(pth);
+          }
+          for(let q=0;q<a.quizzes;q++){
+            const qth = document.createElement('th');
+            qth.className = 'quiz-th';
+            qth.textContent = a.quizzes > 1 ? 'Quiz '+(q+1) : 'Quiz';
+            rowPart.appendChild(qth);
+          }
+        });
+      }
+    });
+
+    const progressHeadA = document.createElement('th');
+    progressHeadA.className = 'progress-head';
+    progressHeadA.rowSpan = 3;
+    progressHeadA.textContent = 'Progress';
+    rowSection.appendChild(progressHeadA);
+
+    thead.appendChild(rowSection);
+    thead.appendChild(rowAssignment);
+    thead.appendChild(rowPart);
+    table.appendChild(thead);
+
+    // tbody
+    const tbody = document.createElement('tbody');
+    const students = getSortedFilteredStudents();
+    const tp = totalParts();
+    const totalAssignments = allAssignments().length;
+
+    students.forEach(s=>{
+      const tr = document.createElement('tr');
+
+      const nameTd = document.createElement('td');
+      nameTd.className = 'name-cell';
+      const nameRow = document.createElement('div');
+      nameRow.className = 'name-row';
+      const badge = document.createElement('span');
+      badge.className = 'student-badge';
+      const allDone = completedAssignments(s.id) === totalAssignments && totalAssignments > 0;
+      badge.textContent = (allDone ? '🟡 ' : '') + s.name;
+      badge.title = 'Click to rename';
+      badge.addEventListener('click', async ()=>{
+        const newName = await openPrompt('Rename this student:', s.name);
+        if(newName && newName.trim()){
+          s.name = newName.trim();
+          scheduleSave();
+          render();
+        }
+      });
+      const rm = document.createElement('button');
+      rm.className = 'remove-student';
+      rm.textContent = '✕';
+      rm.title = 'Remove student';
+      rm.addEventListener('click', async ()=>{
+        const ok = await openConfirm('Remove '+s.name+' from the tracker?', 'Remove');
+        if(!ok) return;
+        data.students = data.students.filter(x=>x.id !== s.id);
+        Object.keys(data.progress).forEach(k=>{
+          if(k.startsWith(s.id+'|')) delete data.progress[k];
+        });
+        Object.keys(data.grades).forEach(k=>{
+          if(k.startsWith(s.id+'|')) delete data.grades[k];
+        });
+        scheduleSave();
+        render();
+      });
+      nameRow.appendChild(badge);
+      nameRow.appendChild(rm);
+      nameTd.appendChild(nameRow);
+      tr.appendChild(nameTd);
+
+      data.sections.forEach(section=>{
+        const isEmpty = section.assignments.length === 0;
+        const collapsed = section.collapsed || isEmpty;
+
+        if(collapsed){
+          const td = document.createElement('td');
+          td.className = 'section-summary-cell';
+          if(isEmpty){
+            td.textContent = '—';
+            td.style.cursor = 'default';
+          } else {
+            const secTotal = sectionTotalParts(section);
+            const secDone = sectionCompletedParts(section, s.id);
+            const pct = secTotal ? Math.round((secDone/secTotal)*100) : 0;
+            td.textContent = secDone + '/' + secTotal;
+            td.classList.add(pct === 100 ? 'done' : pct >= 50 ? 'mid' : 'behind');
+            td.title = 'Click to show ' + section.name + '\'s checkboxes';
+            td.addEventListener('click', ()=>{
+              section.collapsed = false;
+              scheduleSave();
+              render();
+            });
+          }
+          tr.appendChild(td);
+        } else {
+          section.assignments.forEach(a=>{
+            for(let p=0;p<a.parts;p++){
+              const td = document.createElement('td');
+              td.className = 'part-cell';
+              const box = document.createElement('div');
+              const key = progKey(s.id, a.id, p);
+              const checked = !!data.progress[key];
+              box.className = 'check-box' + (checked ? ' checked' : '');
+              box.setAttribute('role','checkbox');
+              box.setAttribute('aria-checked', checked ? 'true':'false');
+              box.setAttribute('tabindex','0');
+              box.title = s.name + ' — ' + a.name + (a.parts>1 ? ' part '+String.fromCharCode(97+p) : '');
+              const toggle = ()=>{
+                data.progress[key] = !data.progress[key];
+                scheduleSave();
+                render();
+              };
+              box.addEventListener('click', toggle);
+              box.addEventListener('keydown', (e)=>{
+                if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggle(); }
+              });
+              td.appendChild(box);
+              tr.appendChild(td);
+            }
+
+            for(let q=0;q<a.quizzes;q++){
+              const quizTd = document.createElement('td');
+              quizTd.className = 'quiz-cell';
+              const quizInput = document.createElement('input');
+              quizInput.className = 'quiz-input';
+              quizInput.type = 'text';
+              quizInput.maxLength = 6;
+              quizInput.placeholder = '—';
+              quizInput.value = data.grades[gradeKey(s.id, a.id, q)] || '';
+              quizInput.title = s.name + ' — ' + a.name + (a.quizzes>1 ? ' quiz '+(q+1) : ' quiz grade');
+              quizInput.addEventListener('change', ()=>{
+                const v = quizInput.value.trim();
+                if(v){ data.grades[gradeKey(s.id, a.id, q)] = v; }
+                else{ delete data.grades[gradeKey(s.id, a.id, q)]; }
+                scheduleSave();
+              });
+              quizTd.appendChild(quizInput);
+              tr.appendChild(quizTd);
+            }
+          });
+        }
+      });
+
+      const progTd = document.createElement('td');
+      progTd.className = 'progress-cell';
+      const done = completedParts(s.id);
+      const pct = tp ? Math.round((done/tp)*100) : 0;
+      const line = document.createElement('div');
+      line.className = 'progress-line';
+      const track = document.createElement('div');
+      track.className = 'progress-track';
+      const fill = document.createElement('div');
+      fill.className = 'progress-fill' + (pct===100 ? ' done' : pct>=50 ? ' mid' : '');
+      fill.style.width = pct + '%';
+      track.appendChild(fill);
+      const frac = document.createElement('span');
+      frac.className = 'progress-fraction';
+      frac.textContent = done + '/' + tp;
+      line.appendChild(track);
+      line.appendChild(frac);
+      progTd.appendChild(line);
+
+      const kdone = completedAssignments(s.id);
+      const badgeRow = document.createElement('div');
+      badgeRow.className = 'beeper-badge';
+      badgeRow.innerHTML = '<span class="dot"></span> ' + kdone + ' / ' + totalAssignments + ' ' + itemWordPlural() + ' complete';
+      progTd.appendChild(badgeRow);
+
+      tr.appendChild(progTd);
+
+      tbody.appendChild(tr);
+    });
+
+    table.appendChild(tbody);
+    wrap.appendChild(table);
+  }
+
+  /* ---------------- Events ---------------- */
+
+  document.getElementById('classNameInput').addEventListener('change', (e)=>{
+    data.className = e.target.value;
+    scheduleSave();
+  });
+
+  document.getElementById('itemWordInput').addEventListener('change', (e)=>{
+    data.itemWord = e.target.value.trim() || 'Karel';
+    scheduleSave();
+    render();
+  });
+
+  document.getElementById('manageBtn').addEventListener('click', ()=>{
+    const panel = document.getElementById('settingsPanel');
+    panel.hidden = !panel.hidden;
+  });
+
+  document.getElementById('exportDataBtn').addEventListener('click', ()=>{
+    const payload = {
+      trackerVersion: 1,
+      exportedAt: new Date().toISOString(),
+      data: data
+    };
+    const safe = (data.className || 'tracker').replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = safe + '-tracker-backup.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=> URL.revokeObjectURL(url), 1000);
+  });
+
+  document.getElementById('importDataBtn').addEventListener('click', ()=>{
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.onchange = ()=>{
+      const file = input.files && input.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = async ()=>{
+        let incoming;
+        try{
+          const parsed = JSON.parse(reader.result);
+          incoming = parsed && parsed.data ? parsed.data : parsed;
+          if(!incoming || !Array.isArray(incoming.sections)){
+            throw new Error('This does not look like a tracker backup.');
+          }
+        }catch(err){
+          await openConfirm('Could not read that file.\n\n' + err.message);
+          return;
+        }
+        const ok = await openConfirm(
+          'Replace everything currently in this tracker with the contents of this file?\n\n' +
+          'Your current roster, sections and grades will be overwritten.'
+        );
+        if(!ok) return;
+        normalizeIntoData(incoming);
+        render();
+        scheduleSave();
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  });
+
+  document.getElementById('projectorBtn').addEventListener('click', (e)=>{
+    document.body.classList.toggle('projector');
+    e.target.classList.toggle('active');
+    e.target.textContent = document.body.classList.contains('projector') ? 'Exit projector mode' : 'Projector mode';
+  });
+
+  document.getElementById('addSectionBtn').addEventListener('click', async ()=>{
+    const suggested = 'Unit ' + (data.sections.length + 1);
+    const name = await openPrompt('Name this new section (e.g. a unit, chapter, or test range):', suggested);
+    if(name === null) return;
+    data.sections.push({ id: uid('sec'), name: (name.trim() || suggested), collapsed:false, assignments: [] });
+    scheduleSave();
+    render();
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', async ()=>{
+    const ok = await openConfirm('This clears every student, section, ' + itemWord() + ', and checkmark. This cannot be undone. Continue?', 'Clear everything');
+    if(!ok) return;
+    data = defaultData();
+    scheduleSave();
+    render();
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', ()=>{
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0,10);
+    const safeClass = (data.className || 'karel-tracker').trim().replace(/[^a-z0-9\-_ ]/gi,'').replace(/\s+/g,'-') || 'karel-tracker';
+    a.href = url;
+    a.download = safeClass + '-backup-' + dateStr + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=> URL.revokeObjectURL(url), 1000);
+  });
+
+  document.getElementById('importBtn').addEventListener('click', ()=>{
+    document.getElementById('importFile').click();
+  });
+
+  document.getElementById('importFile').addEventListener('change', async (e)=>{
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if(!file) return;
+    try{
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const looksValid = parsed && Array.isArray(parsed.students) && (Array.isArray(parsed.sections) || Array.isArray(parsed.assignments));
+      if(!looksValid){
+        await openConfirm('That file doesn\'t look like a ' + itemWord() + ' Tracker backup — nothing was changed.', 'OK');
+        return;
+      }
+      const ok = await openConfirm('Restoring this backup will replace everything currently in the tracker. Continue?', 'Restore');
+      if(!ok) return;
+      const success = normalizeIntoData(parsed);
+      if(!success){
+        await openConfirm('That file couldn\'t be read as a valid backup — nothing was changed.', 'OK');
+        return;
+      }
+      scheduleSave();
+      render();
+    }catch(err){
+      await openConfirm('That file couldn\'t be read as a valid backup — nothing was changed.', 'OK');
+    }
+  });
+
+  document.getElementById('exportPdfBtn').addEventListener('click', ()=>{
+    if(data.students.length === 0){
+      openConfirm('Add at least one student before exporting a PDF.', 'OK');
+      return;
+    }
+    const printArea = document.getElementById('printArea');
+    printArea.innerHTML = '';
+    const students = data.students.slice().sort((s1,s2)=> s1.name.localeCompare(s2.name));
+    const dateStr = new Date().toLocaleDateString();
+    const className = data.className && data.className.trim() ? data.className.trim() : (itemWord() + ' Progress Tracker');
+
+    data.sections.forEach(section=>{
+      const page = document.createElement('div');
+      page.className = 'print-page';
+
+      const title = document.createElement('div');
+      title.className = 'print-title';
+      title.textContent = className + ' — ' + section.name;
+      page.appendChild(title);
+
+      const sub = document.createElement('div');
+      sub.className = 'print-sub';
+      sub.textContent = 'Printed ' + dateStr;
+      page.appendChild(sub);
+
+      if(section.assignments.length === 0){
+        const note = document.createElement('div');
+        note.className = 'print-note';
+        note.textContent = 'No ' + itemWordPlural() + ' have been added to this section yet.';
+        page.appendChild(note);
+        printArea.appendChild(page);
+        return;
+      }
+
+      const table = document.createElement('table');
+      table.className = 'print-table';
+      const thead = document.createElement('thead');
+
+      const row1 = document.createElement('tr');
+      const cornerTh = document.createElement('th');
+      cornerTh.rowSpan = 2;
+      cornerTh.textContent = 'Student';
+      row1.appendChild(cornerTh);
+
+      const row2 = document.createElement('tr');
+
+      section.assignments.forEach(a=>{
+        const th = document.createElement('th');
+        th.colSpan = a.parts + a.quizzes;
+        th.textContent = a.name;
+        row1.appendChild(th);
+
+        for(let p=0;p<a.parts;p++){
+          const pth = document.createElement('th');
+          pth.textContent = a.parts > 1 ? String.fromCharCode(97+p) : '✓';
+          row2.appendChild(pth);
+        }
+        for(let q=0;q<a.quizzes;q++){
+          const qth = document.createElement('th');
+          qth.textContent = a.quizzes > 1 ? 'Quiz '+(q+1) : 'Quiz';
+          row2.appendChild(qth);
+        }
+      });
+
+      thead.appendChild(row1);
+      thead.appendChild(row2);
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      students.forEach(s=>{
+        const tr = document.createElement('tr');
+        const nameTd = document.createElement('td');
+        nameTd.className = 'pname';
+        nameTd.textContent = s.name;
+        tr.appendChild(nameTd);
+
+        section.assignments.forEach(a=>{
+          for(let p=0;p<a.parts;p++){
+            const td = document.createElement('td');
+            if(data.progress[progKey(s.id,a.id,p)]){
+              td.textContent = 'X';
+              td.className = 'checked-mark';
+            }
+            tr.appendChild(td);
+          }
+          for(let q=0;q<a.quizzes;q++){
+            const td = document.createElement('td');
+            td.textContent = data.grades[gradeKey(s.id,a.id,q)] || '';
+            tr.appendChild(td);
+          }
+        });
+
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+      page.appendChild(table);
+      printArea.appendChild(page);
+    });
+
+    setTimeout(()=> window.print(), 50);
+  });
+
+  function addStudent(){
+    const input = document.getElementById('newStudentName');
+    const raw = input.value.trim();
+    if(!raw) return;
+    const names = raw.split(/\n|,/).map(n=>n.trim()).filter(Boolean);
+    names.forEach(name=>{
+      data.students.push({ id: uid('s'), name });
+    });
+    input.value = '';
+    scheduleSave();
+    render();
+  }
+
+  document.getElementById('addStudentBtn').addEventListener('click', addStudent);
+  document.getElementById('newStudentName').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); addStudent(); }
+  });
+
+  document.getElementById('filterIncomplete').addEventListener('change', renderGrid);
+  document.getElementById('sortSelect').addEventListener('change', renderGrid);
+
+  loadData();
+})();
+</script>
+</body>
+</html>

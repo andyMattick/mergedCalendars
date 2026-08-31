@@ -1,0 +1,1578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teacher Content Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.11.0/mammoth.browser.min.js"></script>
+<style>
+:root{
+  --chalk-green:#1F3B2E;
+  --chalk-green-2:#2C5142;
+  --paper:#FAF6EC;
+  --card:#FFFDF6;
+  --manila:#E7D9AF;
+  --manila-dark:#CBB484;
+  --pencil:#2B2A28;
+  --pencil-soft:#6B6558;
+  --red-pen:#C1443C;
+  --red-pen-dark:#9C332C;
+  --line:#DDD3BC;
+  --shadow: 0 2px 10px rgba(31,59,46,0.08);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--paper);
+  color:var(--pencil);
+  font-family:'Inter',system-ui,sans-serif;
+  min-height:100vh;
+}
+::selection{background:var(--manila);}
+.app-header{
+  background:var(--chalk-green);
+  background-image:
+    radial-gradient(circle at 15% 30%, rgba(255,255,255,0.03) 0, transparent 40%),
+    radial-gradient(circle at 85% 70%, rgba(255,255,255,0.03) 0, transparent 40%);
+  color:#F3EFE1;
+  padding:28px 32px 22px;
+  border-bottom:6px solid var(--manila-dark);
+}
+.app-header h1{
+  font-family:'Kalam',cursive;
+  font-weight:700;
+  font-size:2.1rem;
+  margin:0 0 4px;
+  letter-spacing:0.3px;
+}
+.app-header p{
+  margin:0;
+  color:#CBD9CE;
+  font-size:0.95rem;
+  max-width:640px;
+}
+.unit-loader{
+  padding:16px 24px 0;
+  margin-top:18px;
+}
+.unit-loader-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  background:var(--manila);
+  border:1px dashed var(--pine);
+  border-radius:12px;
+  padding:12px 16px;
+}
+.unit-loader-row select{
+  margin-bottom:0;
+  max-width:340px;
+}
+.tabs{
+  display:flex;
+  gap:6px;
+  padding:0 24px;
+  margin-top:22px;
+  flex-wrap:wrap;
+}
+.tab-btn{
+  font-family:'Inter',sans-serif;
+  font-weight:600;
+  font-size:0.92rem;
+  background:var(--manila);
+  color:var(--pencil);
+  border:none;
+  border-radius:10px 10px 0 0;
+  padding:12px 20px 10px;
+  cursor:pointer;
+  position:relative;
+  top:2px;
+  opacity:0.72;
+  transition:opacity .15s, transform .15s;
+}
+.tab-btn:hover{opacity:0.9;}
+.tab-btn.active{
+  background:var(--paper);
+  opacity:1;
+  box-shadow:0 -2px 6px rgba(0,0,0,0.06);
+}
+main{
+  max-width:980px;
+  margin:0 auto;
+  padding:28px 24px 80px;
+}
+.panel{display:none;}
+.panel.active{display:block; animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+.card{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:22px 24px;
+  box-shadow:var(--shadow);
+  margin-bottom:20px;
+}
+.card h2{
+  font-family:'Kalam',cursive;
+  font-size:1.4rem;
+  margin:0 0 4px;
+  color:var(--chalk-green);
+}
+.card .sub{
+  color:var(--pencil-soft);
+  font-size:0.9rem;
+  margin:0 0 16px;
+}
+label{
+  display:block;
+  font-weight:600;
+  font-size:0.85rem;
+  margin-bottom:6px;
+  color:var(--chalk-green-2);
+}
+textarea, input[type=text], input[type=number], select{
+  width:100%;
+  font-family:'Inter',sans-serif;
+  font-size:0.95rem;
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:10px 12px;
+  background:#fff;
+  color:var(--pencil);
+  resize:vertical;
+}
+textarea:focus, input:focus, select:focus{outline:2px solid var(--chalk-green-2); outline-offset:1px;}
+textarea{min-height:160px; line-height:1.5;}
+.row{display:flex; gap:14px; flex-wrap:wrap;}
+.row > div{flex:1; min-width:160px;}
+.btn{
+  font-family:'Inter',sans-serif;
+  font-weight:600;
+  font-size:0.9rem;
+  border:none;
+  border-radius:8px;
+  padding:10px 18px;
+  cursor:pointer;
+  transition:transform .1s, background .15s;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+}
+.btn:active{transform:scale(0.97);}
+.btn-primary{background:var(--chalk-green); color:#fff;}
+.btn-primary:hover{background:var(--chalk-green-2);}
+.btn-secondary{background:var(--manila); color:var(--pencil);}
+.btn-secondary:hover{background:var(--manila-dark);}
+.btn-ghost{background:transparent; color:var(--chalk-green-2); border:1px solid var(--line);}
+.btn-ghost:hover{background:#F0EBDA;}
+.btn-danger{background:transparent; color:var(--red-pen); border:1px solid #ECC; padding:6px 10px; font-size:0.8rem;}
+.btn-danger:hover{background:#FBEAE8;}
+.btn:disabled{opacity:0.5; cursor:not-allowed;}
+.toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;}
+.direction-toggle{
+  display:inline-flex;
+  border:1px solid var(--line);
+  border-radius:8px;
+  overflow:hidden;
+  margin-bottom:16px;
+}
+.direction-toggle button{
+  border:none; background:#fff; padding:9px 16px; font-size:0.85rem; font-weight:600;
+  color:var(--pencil-soft); cursor:pointer;
+}
+.direction-toggle button.active{background:var(--chalk-green); color:#fff;}
+.loading{
+  display:flex; align-items:center; gap:10px;
+  color:var(--red-pen-dark); font-size:0.9rem; font-weight:600; margin-top:14px;
+}
+.pen-spinner{
+  width:18px; height:18px; border-radius:50%;
+  border:3px solid #ECC; border-top-color:var(--red-pen);
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+.error-box{
+  background:#FBEAE8; border:1px solid #E8B8B3; color:var(--red-pen-dark);
+  border-radius:8px; padding:10px 14px; font-size:0.85rem; margin-top:12px;
+}
+.checkmark{
+  display:inline-block; width:16px; height:16px; vertical-align:-3px;
+}
+.checkmark path{
+  fill:none; stroke:var(--red-pen); stroke-width:3; stroke-linecap:round; stroke-linejoin:round;
+  stroke-dasharray:24; stroke-dashoffset:24;
+  animation:draw .4s ease forwards;
+}
+@keyframes draw{to{stroke-dashoffset:0;}}
+
+/* Slides */
+.slide-card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:10px;
+  margin-bottom:14px;
+  overflow:hidden;
+}
+.slide-head{
+  display:flex; justify-content:space-between; align-items:center;
+  background:var(--chalk-green); color:#F3EFE1;
+  padding:8px 14px; font-family:'IBM Plex Mono',monospace; font-size:0.78rem;
+}
+.slide-body{padding:16px;}
+.slide-title-input{
+  font-family:'Kalam',cursive; font-size:1.25rem; font-weight:700;
+  border:none; border-bottom:2px dashed var(--line); width:100%;
+  padding:4px 0; margin-bottom:10px; background:transparent; color:var(--chalk-green);
+}
+.bullet-row{display:flex; align-items:flex-start; gap:8px; margin-bottom:6px;}
+.bullet-row span.dot{color:var(--red-pen); font-weight:700; margin-top:9px;}
+.bullet-row input{border:none; border-bottom:1px solid var(--line); padding:6px 2px; background:transparent;}
+.bullet-row .btn-danger{padding:4px 8px;}
+.add-bullet{font-size:0.8rem; color:var(--chalk-green-2); background:none; border:none; cursor:pointer; font-weight:600; margin-top:4px;}
+.notes-field{
+  margin-top:10px; font-size:0.85rem; color:var(--pencil-soft);
+  border-top:1px dashed var(--line); padding-top:8px;
+}
+.notes-field textarea{min-height:60px; font-size:0.85rem;}
+
+/* Answer key / assessment */
+.qa-item{
+  background:#fff; border:1px solid var(--line); border-radius:10px;
+  padding:14px 16px; margin-bottom:12px; position:relative;
+}
+.qa-item .tag{
+  display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:0.7rem;
+  background:var(--manila); color:var(--pencil); padding:2px 8px; border-radius:20px; margin-bottom:8px;
+}
+.qa-item textarea, .qa-item input{margin-bottom:8px;}
+.qa-item .opt-row{display:flex; align-items:center; gap:8px; margin-bottom:6px;}
+.qa-item .opt-row input[type=radio]{width:auto;}
+.qa-item-actions{display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;}
+.answer-block{
+  background:#FBF3E4; border-left:3px solid var(--red-pen); padding:8px 12px;
+  border-radius:0 6px 6px 0; font-size:0.88rem; margin-top:8px;
+}
+.answer-block b{color:var(--red-pen-dark);}
+.config-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:14px;}
+.config-grid div{background:#fff; border:1px solid var(--line); border-radius:8px; padding:10px 12px;}
+.config-grid label{margin-bottom:4px; font-size:0.8rem;}
+.add-more-row{
+  display:flex; gap:10px; align-items:center; margin-top:16px; padding-top:16px;
+  border-top:1px dashed var(--line); flex-wrap:wrap;
+}
+.upload-row{
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  margin-bottom:10px; padding:10px 12px;
+  border:1.5px dashed var(--manila-dark); border-radius:8px; background:#FCFAF2;
+}
+.upload-row .btn{padding:8px 14px; font-size:0.85rem;}
+.file-status{font-size:0.82rem; color:var(--pencil-soft);}
+.empty-state{
+  text-align:center; color:var(--pencil-soft); padding:30px 10px; font-size:0.9rem;
+}
+footer{
+  text-align:center; color:var(--pencil-soft); font-size:0.78rem; padding:20px; opacity:0.7;
+}
+@media print{
+  .app-header, .tabs, .toolbar, .add-more-row, .qa-item-actions, textarea, .btn { display:none !important; }
+  body{background:#fff;}
+  .card{box-shadow:none; border:none;}
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>Teacher Content Studio</h1>
+  <p>Turn lesson notes into slides (and back again), generate answer keys, and build assessments from your own material — no repeats, fully editable.</p>
+  <button id="settings-toggle" onclick="toggleSettings()" style="margin-top:12px; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.3); color:#F3EFE1; border-radius:20px; padding:6px 14px; font-size:0.8rem; cursor:pointer; font-family:'Inter',sans-serif;">⚙ Using this outside Claude.ai? Add your API key</button>
+  <div id="settings-panel" style="display:none; margin-top:12px; background:rgba(255,255,255,0.08); border-radius:10px; padding:14px 16px; max-width:480px;">
+    <label style="color:#F3EFE1; margin-bottom:6px;">Anthropic API key</label>
+    <input type="password" id="api-key-input" placeholder="sk-ant-..." style="margin-bottom:8px;">
+    <p style="color:#CBD9CE; font-size:0.78rem; margin:0 0 8px;">Only needed if you've downloaded this file and are opening it outside Claude.ai. Your key stays in this browser tab's memory only — it's never saved or sent anywhere except directly to Anthropic's API. If you're using this tool inside a Claude.ai chat, you don't need this.</p>
+    <button class="btn btn-secondary" onclick="saveApiKey()">Save key for this session</button>
+    <span id="api-key-status" style="color:#F3EFE1; font-size:0.8rem; margin-left:8px;"></span>
+  </div>
+</div>
+
+<div class="unit-loader" id="unitLoader">
+  <div class="unit-loader-row">
+    <button class="btn btn-ghost" onclick="document.getElementById('unit-file').click()">📥 Load unit from Planner</button>
+    <input type="file" id="unit-file" accept=".json,application/json" style="display:none" onchange="handleUnitUpload(event)">
+    <select id="unit-lesson-select" style="display:none;" onchange="fillFromSelectedLesson()"></select>
+    <span id="unit-loader-status" class="file-status">or paste notes into any tab below</span>
+    <a class="btn btn-ghost" href="../" style="text-decoration:none;">📅 Planner</a>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="slides" onclick="switchTab('slides')">📽️ Notes ↔ Slides</button>
+  <button class="tab-btn" data-tab="answerkey" onclick="switchTab('answerkey')">🔑 Answer Key</button>
+  <button class="tab-btn" data-tab="assessment" onclick="switchTab('assessment')">📝 Assessment Builder</button>
+  <button class="tab-btn" data-tab="worksheet" onclick="switchTab('worksheet')">📄 Worksheet Builder</button>
+</div>
+
+<main>
+
+  <!-- ===================== SLIDES PANEL ===================== -->
+  <section class="panel active" id="panel-slides">
+    <div class="card">
+      <h2>Notes ↔ Slides Converter</h2>
+      <p class="sub">Convert lesson notes into a slide outline, or expand an existing slide outline back into full teacher notes.</p>
+
+      <div class="direction-toggle">
+        <button id="dir-n2s" class="active" onclick="setDirection('notes2slides')">Notes → Slides</button>
+        <button id="dir-s2n" onclick="setDirection('slides2notes')">Slides → Notes</button>
+      </div>
+
+      <label id="slides-input-label">Paste your lesson notes</label>
+      <div class="upload-row">
+        <input type="file" id="slides-file" accept=".pdf,.doc,.docx,.ppt,.pptx" style="display:none" onchange="handleFileUpload(event,'slides-input','slides-file-status')">
+        <button class="btn btn-ghost" onclick="document.getElementById('slides-file').click()">📎 Upload PDF / Word / PowerPoint</button>
+        <span id="slides-file-status" class="file-status">or paste text below</span>
+      </div>
+      <textarea id="slides-input" placeholder="Paste your lesson notes here..."></textarea>
+
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="generateSlides()">Generate</button>
+        <button class="btn btn-ghost" onclick="clearSlides()">Clear</button>
+      </div>
+      <div id="slides-loading" class="loading" style="display:none;">
+        <div class="pen-spinner"></div><span id="slides-loading-text">Working...</span>
+      </div>
+      <div id="slides-error"></div>
+    </div>
+
+    <div id="slides-output"></div>
+  </section>
+
+  <!-- ===================== ANSWER KEY PANEL ===================== -->
+  <section class="panel" id="panel-answerkey">
+    <div class="card">
+      <h2>Answer Key Generator</h2>
+      <p class="sub">Paste notes, slide content, or an existing set of questions — get a clean, editable answer key back.</p>
+      <label>Paste content to generate an answer key from</label>
+      <div class="upload-row">
+        <input type="file" id="ak-file" accept=".pdf,.doc,.docx,.ppt,.pptx" style="display:none" onchange="handleFileUpload(event,'ak-input','ak-file-status')">
+        <button class="btn btn-ghost" onclick="document.getElementById('ak-file').click()">📎 Upload PDF / Word / PowerPoint</button>
+        <span id="ak-file-status" class="file-status">or paste text below</span>
+      </div>
+      <textarea id="ak-input" placeholder="Paste your notes, slides, or question list here..."></textarea>
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="generateAnswerKey()">Generate Answer Key</button>
+        <button class="btn btn-ghost" onclick="clearAnswerKey()">Clear</button>
+      </div>
+      <div id="ak-loading" class="loading" style="display:none;">
+        <div class="pen-spinner"></div><span>Grading logic in progress...</span>
+      </div>
+      <div id="ak-error"></div>
+    </div>
+    <div id="ak-output"></div>
+  </section>
+
+  <!-- ===================== ASSESSMENT PANEL ===================== -->
+  <section class="panel" id="panel-assessment">
+    <div class="card">
+      <h2>Assessment Builder</h2>
+      <p class="sub">Paste your notes, choose your question mix, and generate an assessment with no repeated questions — plus a matching answer key.</p>
+      <label>Paste your lesson notes</label>
+      <div class="upload-row">
+        <input type="file" id="as-file" accept=".pdf,.doc,.docx,.ppt,.pptx" style="display:none" onchange="handleFileUpload(event,'as-input','as-file-status')">
+        <button class="btn btn-ghost" onclick="document.getElementById('as-file').click()">📎 Upload PDF / Word / PowerPoint</button>
+        <span id="as-file-status" class="file-status">or paste text below</span>
+      </div>
+      <textarea id="as-input" placeholder="Paste your lesson notes here..."></textarea>
+
+      <div class="config-grid">
+        <div>
+          <label>Multiple Choice</label>
+          <input type="number" id="cnt-mc" min="0" max="30" value="4">
+        </div>
+        <div>
+          <label>True / False</label>
+          <input type="number" id="cnt-tf" min="0" max="30" value="3">
+        </div>
+        <div>
+          <label>Short Answer</label>
+          <input type="number" id="cnt-sa" min="0" max="30" value="3">
+        </div>
+        <div>
+          <label>Fill-in-the-Blank</label>
+          <input type="number" id="cnt-fib" min="0" max="30" value="0">
+        </div>
+        <div>
+          <label>Essay</label>
+          <input type="number" id="cnt-essay" min="0" max="30" value="0">
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="generateAssessment()">Generate Assessment</button>
+        <button class="btn btn-ghost" onclick="clearAssessment()">Clear</button>
+      </div>
+      <div id="as-loading" class="loading" style="display:none;">
+        <div class="pen-spinner"></div><span id="as-loading-text">Writing questions...</span>
+      </div>
+      <div id="as-error"></div>
+    </div>
+
+    <div id="as-output"></div>
+  </section>
+
+  <!-- ===================== WORKSHEET PANEL ===================== -->
+  <section class="panel" id="panel-worksheet">
+    <div class="card">
+      <h2>Worksheet Builder</h2>
+      <p class="sub">Paste your notes and tell us the grade &amp; subject — get a 3-part worksheet: a concept walkthrough, basic problems, and challenge problems, with strategy tips and a full answer key.</p>
+      <label>Paste your lesson notes</label>
+      <div class="upload-row">
+        <input type="file" id="ws-file" accept=".pdf,.doc,.docx,.ppt,.pptx" style="display:none" onchange="handleFileUpload(event,'ws-input','ws-file-status')">
+        <button class="btn btn-ghost" onclick="document.getElementById('ws-file').click()">📎 Upload PDF / Word / PowerPoint</button>
+        <span id="ws-file-status" class="file-status">or paste text below</span>
+      </div>
+      <textarea id="ws-input" placeholder="Paste your lesson notes here..."></textarea>
+
+      <div class="config-grid">
+        <div>
+          <label>Grade level</label>
+          <input type="text" id="ws-grade" placeholder="e.g. 9th grade">
+        </div>
+        <div>
+          <label>Subject</label>
+          <input type="text" id="ws-subject" placeholder="e.g. Algebra 1">
+        </div>
+        <div>
+          <label>Basic problems</label>
+          <input type="number" id="ws-cnt-basic" min="3" max="25" value="10">
+        </div>
+        <div>
+          <label>Challenge problems</label>
+          <input type="number" id="ws-cnt-hard" min="3" max="25" value="8">
+        </div>
+      </div>
+      <p style="font-size:0.8rem;color:var(--pencil-soft);margin:-8px 0 4px;">Total problems must be between 10 and 30 (basic + challenge combined). The concept walkthrough section doesn't count toward this total.</p>
+
+      <div class="toolbar">
+        <button class="btn btn-primary" onclick="generateWorksheet()">Generate Worksheet</button>
+        <button class="btn btn-ghost" onclick="clearWorksheet()">Clear</button>
+      </div>
+      <div id="ws-loading" class="loading" style="display:none;">
+        <div class="pen-spinner"></div><span id="ws-loading-text">Working...</span>
+      </div>
+      <div id="ws-error"></div>
+    </div>
+
+    <div id="ws-output"></div>
+  </section>
+
+</main>
+
+<footer>Built with Teacher Content Studio · content is generated by AI — please review before classroom use.</footer>
+
+<script>
+/* ============================================================
+   GLOBAL STATE
+   ============================================================ */
+const state = {
+  slides: { direction: 'notes2slides', slides: [], notesOutput: '' },
+  answerkey: { items: [] },
+  assessment: { questions: [] }
+};
+let idCounter = 1;
+const nextId = () => 'id' + (idCounter++);
+
+/* ============================================================
+   TAB SWITCHING
+   ============================================================ */
+/* ============================================================
+   SHARED UNIT SCHEMA v1 — load a unit from the Planner / Unit Builder
+   See shared/UNIT_SCHEMA.md
+   ============================================================ */
+const UNIT_SCHEMA_VERSION = 1;
+let loadedUnit = null;
+
+// Every tab's input box. Loading a lesson fills them all so you can switch
+// tabs and generate slides, a worksheet, and an assessment from the same source.
+const UNIT_TARGET_INPUTS = ['slides-input', 'ak-input', 'as-input', 'ws-input'];
+
+function lessonToText(day){
+  if (!day) return '';
+  // Prefer the flattened text the producer already wrote.
+  if (day.lessonPlan && day.lessonPlan.trim()) return day.lessonPlan;
+
+  // Fall back to rebuilding from the structured lesson.
+  const d = day.lesson;
+  if (!d) return day.topic || '';
+  const out = [];
+  if (d.title) out.push(d.title);
+  if (d.objective) out.push('\nObjective: ' + d.objective);
+  if (d.bellRinger && d.bellRinger.task) out.push('\nBell-ringer: ' + d.bellRinger.task);
+  if (Array.isArray(d.vocabulary) && d.vocabulary.length){
+    out.push('\nVocabulary:');
+    d.vocabulary.forEach(v => out.push('  • ' + v.term + ': ' + (v.definition || '')));
+  }
+  if (d.explanation) out.push('\nExplanation:\n' + d.explanation);
+  if (d.example) out.push('\nExample:\n' + (typeof d.example === 'string' ? d.example : JSON.stringify(d.example)));
+  if (d.practice){
+    ['easy','medium','hard'].forEach(t => {
+      const items = d.practice[t];
+      if (Array.isArray(items) && items.length){
+        out.push('\n' + t.charAt(0).toUpperCase() + t.slice(1) + ' practice:');
+        items.forEach((p,i) => out.push('  ' + (i+1) + '. ' + (p.question || p.prompt || p)));
+      }
+    });
+  }
+  return out.join('\n');
+}
+
+function handleUnitUpload(event){
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  const status = document.getElementById('unit-loader-status');
+  const reader = new FileReader();
+  reader.onload = () => {
+    let p;
+    try { p = JSON.parse(reader.result); }
+    catch(e){ status.textContent = '⚠️ That file is not valid JSON.'; return; }
+
+    if (!p || !Array.isArray(p.days)){
+      status.textContent = '⚠️ That does not look like a unit file.';
+      return;
+    }
+    if (p.schemaVersion !== UNIT_SCHEMA_VERSION &&
+        !confirm(`This file uses schema version ${p.schemaVersion ?? 'unknown'}, expected ${UNIT_SCHEMA_VERSION}. Load anyway?`)) return;
+
+    // Only days that actually have usable content
+    const usable = p.days.filter(d => (d.lessonPlan && d.lessonPlan.trim()) || d.lesson || d.topic);
+    if (!usable.length){
+      status.textContent = '⚠️ That unit has no lesson content yet — generate lessons in the Unit Builder first.';
+      return;
+    }
+
+    loadedUnit = { ...p, days: usable };
+    const sel = document.getElementById('unit-lesson-select');
+    sel.innerHTML = usable.map((d, i) => {
+      const label = d.topic || (d.lesson && d.lesson.title) || ('Day ' + (d.sourceDayNum || d.dayNum || i+1));
+      return `<option value="${i}">Day ${d.sourceDayNum || d.dayNum || i+1} — ${label.replace(/"/g,'&quot;')}</option>`;
+    }).join('');
+    sel.style.display = '';
+    status.textContent = `Loaded "${p.unitTitle}" — pick a lesson:`;
+    fillFromSelectedLesson();
+  };
+  reader.readAsText(file);
+  event.target.value = ''; // allow re-selecting the same file
+}
+
+function fillFromSelectedLesson(){
+  if (!loadedUnit) return;
+  const idx = Number(document.getElementById('unit-lesson-select').value) || 0;
+  const day = loadedUnit.days[idx];
+  const text = lessonToText(day);
+  if (!text.trim()){
+    document.getElementById('unit-loader-status').textContent = '⚠️ That day has no content yet.';
+    return;
+  }
+  UNIT_TARGET_INPUTS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = text;
+  });
+  const label = day.topic || (day.lesson && day.lesson.title) || 'lesson';
+  document.getElementById('unit-loader-status').textContent =
+    `✓ "${label}" loaded into every tab — pick a tab and Generate.`;
+}
+
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+}
+
+/* ============================================================
+   CLAUDE API HELPER
+   ============================================================ */
+let USER_API_KEY = '';
+
+function toggleSettings(){
+  const panel = document.getElementById('settings-panel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+function saveApiKey(){
+  USER_API_KEY = document.getElementById('api-key-input').value.trim();
+  const status = document.getElementById('api-key-status');
+  status.textContent = USER_API_KEY ? '✓ Key saved for this session' : '';
+}
+
+// ---------------------------------------------------------------------------
+// AI TRANSPORT — the ONLY place this tool talks to a model.
+//
+// Works two ways today:
+//   1. Inside Claude's artifact sandbox, which injects credentials, or
+//   2. Standalone, if the teacher supplies their own Anthropic key (⚙ settings).
+//
+// To route through a shared backend later, change ONLY this function to POST to
+// your proxy (which holds the key server-side). Nothing else needs to change.
+// ---------------------------------------------------------------------------
+async function callClaude(systemPrompt, userPrompt){
+  const headers = { "Content-Type": "application/json" };
+  if(USER_API_KEY){
+    headers["x-api-key"] = USER_API_KEY;
+    headers["anthropic-version"] = "2023-06-01";
+    headers["anthropic-dangerous-direct-browser-access"] = "true";
+  }
+  let response;
+  try{
+    response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }]
+      })
+    });
+  }catch(networkErr){
+    if(USER_API_KEY){
+      throw new Error("Couldn't reach Anthropic's API. Double-check your API key and internet connection.");
+    }
+    throw new Error("Couldn't reach the AI service. This tool's built-in AI features only work while running inside a Claude.ai chat — if you've downloaded and opened this file on its own, click ⚙ above and add your own Anthropic API key to use it standalone.");
+  }
+  if(!response.ok){
+    if(response.status === 401){
+      throw new Error("That API key was rejected. Please check it and try again via the ⚙ settings above.");
+    }
+    throw new Error("The AI request failed (status " + response.status + "). Please try again.");
+  }
+  const data = await response.json();
+  const textBlocks = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
+  let cleaned = textBlocks.trim().replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
+  try{
+    return JSON.parse(cleaned);
+  }catch(e){
+    throw new Error("Couldn't parse the AI's response. Please try generating again.");
+  }
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str == null ? '' : String(str);
+  return d.innerHTML;
+}
+
+function checkmarkSvg(){
+  return '<svg class="checkmark" viewBox="0 0 24 24"><path d="M4 12.5 L9.5 18 L20 5"/></svg>';
+}
+
+/* ============================================================
+   FILE UPLOAD: PDF / DOCX / PPTX TEXT EXTRACTION
+   ============================================================ */
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.worker.min.js';
+}
+
+function decodeXmlEntities(str){
+  return String(str)
+    .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"')
+    .replace(/&apos;/g,"'").replace(/&amp;/g,'&');
+}
+
+async function extractPdfText(arrayBuffer){
+  const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+  let text = '';
+  for(let i=1;i<=pdf.numPages;i++){
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map(it => it.str).join(' ') + '\n\n';
+  }
+  return text.trim();
+}
+
+async function extractDocxText(arrayBuffer){
+  const result = await mammoth.extractRawText({arrayBuffer});
+  return (result.value || '').trim();
+}
+
+async function extractPptxText(arrayBuffer){
+  const zip = await JSZip.loadAsync(arrayBuffer);
+  const slideFiles = Object.keys(zip.files)
+    .filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n))
+    .sort((a,b) => parseInt(a.match(/slide(\d+)\.xml/)[1]) - parseInt(b.match(/slide(\d+)\.xml/)[1]));
+
+  let text = '';
+  for(let i=0;i<slideFiles.length;i++){
+    const xml = await zip.files[slideFiles[i]].async('string');
+    const bodyMatches = [...xml.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(m => decodeXmlEntities(m[1]));
+    text += 'Slide ' + (i+1) + ':\n' + bodyMatches.join(' ').trim() + '\n';
+
+    const num = slideFiles[i].match(/slide(\d+)\.xml/)[1];
+    const notesPath = 'ppt/notesSlides/notesSlide' + num + '.xml';
+    if(zip.files[notesPath]){
+      const nxml = await zip.files[notesPath].async('string');
+      const notesMatches = [...nxml.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(m => decodeXmlEntities(m[1]));
+      const notesText = notesMatches.join(' ').trim();
+      if(notesText) text += 'Speaker notes: ' + notesText + '\n';
+    }
+    text += '\n';
+  }
+  return text.trim();
+}
+
+async function handleFileUpload(event, textareaId, statusId){
+  const file = event.target.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById(statusId);
+  const ext = file.name.split('.').pop().toLowerCase();
+  statusEl.innerHTML = 'Reading ' + escapeHtml(file.name) + '...';
+  try{
+    const buffer = await file.arrayBuffer();
+    let text = '';
+    if(ext === 'pdf'){
+      text = await extractPdfText(buffer);
+    } else if(ext === 'docx'){
+      text = await extractDocxText(buffer);
+    } else if(ext === 'pptx'){
+      text = await extractPptxText(buffer);
+    } else if(ext === 'doc' || ext === 'ppt'){
+      throw new Error("Older ." + ext + " files aren't supported — please save it as ." + (ext==='doc'?'docx':'pptx') + " (or PDF) in Word/PowerPoint first, then upload again.");
+    } else {
+      throw new Error('Unsupported file type. Please upload a PDF, Word (.docx), or PowerPoint (.pptx) file.');
+    }
+    if(!text){
+      throw new Error("Couldn't find any readable text in that file. If it's a scanned/image-based PDF, try pasting the text manually instead.");
+    }
+    document.getElementById(textareaId).value = text;
+    statusEl.innerHTML = '✓ Loaded ' + escapeHtml(file.name) + ' (' + text.length.toLocaleString() + ' characters)';
+  }catch(e){
+    statusEl.innerHTML = '<span style="color:var(--red-pen-dark);">' + escapeHtml(e.message || 'Could not read that file.') + '</span>';
+  }finally{
+    event.target.value = '';
+  }
+}
+
+/* ============================================================
+   NOTES <-> SLIDES
+   ============================================================ */
+function setDirection(dir){
+  state.slides.direction = dir;
+  document.getElementById('dir-n2s').classList.toggle('active', dir === 'notes2slides');
+  document.getElementById('dir-s2n').classList.toggle('active', dir === 'slides2notes');
+  const label = document.getElementById('slides-input-label');
+  const input = document.getElementById('slides-input');
+  if(dir === 'notes2slides'){
+    label.textContent = 'Paste your lesson notes';
+    input.placeholder = 'Paste your lesson notes here...';
+  } else {
+    label.textContent = 'Paste your slide outline (titles + bullets)';
+    input.placeholder = 'Paste your slide titles and bullet points here...';
+  }
+  document.getElementById('slides-output').innerHTML = '';
+  state.slides.slides = [];
+  state.slides.notesOutput = '';
+}
+
+async function generateSlides(){
+  const input = document.getElementById('slides-input').value.trim();
+  const errBox = document.getElementById('slides-error');
+  errBox.innerHTML = '';
+  if(!input){ errBox.innerHTML = '<div class="error-box">Please paste some content first.</div>'; return; }
+
+  const loading = document.getElementById('slides-loading');
+  const loadingText = document.getElementById('slides-loading-text');
+  loading.style.display = 'flex';
+  document.getElementById('slides-output').innerHTML = '';
+
+  try{
+    if(state.slides.direction === 'notes2slides'){
+      loadingText.textContent = 'Turning notes into slides...';
+      const system = "You are a teaching assistant that converts lesson notes into a slide deck outline. Respond ONLY with valid JSON, no markdown fences, no commentary. Keep total output under 900 tokens: use short bullets (max 10 words each, max 5 bullets per slide) and a title-case slide title. Aim for the number of slides that best fits the content (typically 5-12). JSON schema: {\"slides\":[{\"title\":\"string\",\"bullets\":[\"string\"],\"notes\":\"1-2 sentence speaker note\"}]}";
+      const result = await callClaude(system, "Lesson notes:\n\n" + input);
+      state.slides.slides = (result.slides || []).map(s => ({
+        id: nextId(),
+        title: s.title || 'Untitled Slide',
+        bullets: Array.isArray(s.bullets) ? s.bullets : [],
+        notes: s.notes || ''
+      }));
+      renderSlides();
+    } else {
+      loadingText.textContent = 'Expanding slides into notes...';
+      const system = "You are a teaching assistant that expands a slide outline into full teacher lesson notes in flowing prose, organized by section headers matching the slide titles. Respond ONLY with valid JSON, no markdown fences. Keep it under 900 tokens. JSON schema: {\"notes\":\"string with markdown-style ## headers per section\"}";
+      const result = await callClaude(system, "Slide outline:\n\n" + input);
+      state.slides.notesOutput = result.notes || '';
+      renderNotesOutput();
+    }
+  }catch(e){
+    errBox.innerHTML = '<div class="error-box">' + escapeHtml(e.message) + '</div>';
+  }finally{
+    loading.style.display = 'none';
+  }
+}
+
+function renderSlides(){
+  const out = document.getElementById('slides-output');
+  if(state.slides.slides.length === 0){ out.innerHTML = ''; return; }
+  let html = '<div class="card"><h2>' + checkmarkSvg() + ' Slide Outline</h2><p class="sub">Click any title, bullet, or note to edit. Export when ready.</p>';
+  state.slides.slides.forEach((s, i) => {
+    html += '<div class="slide-card">';
+    html += '<div class="slide-head"><span>SLIDE ' + (i+1) + '</span><button class="btn-danger" onclick="removeSlide(\'' + s.id + '\')">Remove</button></div>';
+    html += '<div class="slide-body">';
+    html += '<input class="slide-title-input" value="' + escapeHtml(s.title) + '" oninput="updateSlideTitle(\'' + s.id + '\', this.value)">';
+    s.bullets.forEach((b, bi) => {
+      html += '<div class="bullet-row"><span class="dot">•</span><input value="' + escapeHtml(b) + '" oninput="updateBullet(\'' + s.id + '\', ' + bi + ', this.value)"><button class="btn-danger" onclick="removeBullet(\'' + s.id + '\', ' + bi + ')">✕</button></div>';
+    });
+    html += '<button class="add-bullet" onclick="addBullet(\'' + s.id + '\')">+ Add bullet</button>';
+    html += '<div class="notes-field"><label>Speaker notes</label><textarea oninput="updateNotes(\'' + s.id + '\', this.value)">' + escapeHtml(s.notes) + '</textarea></div>';
+    html += '</div></div>';
+  });
+  html += '<div class="toolbar"><button class="btn btn-primary" onclick="addSlide()">+ Add slide</button><button class="btn btn-secondary" onclick="copySlidesOutline()">📋 Copy outline</button><button class="btn btn-ghost" onclick="exportPptx()">⬇ Try .pptx download</button><button class="btn btn-ghost" onclick="exportSlidesText()">⬇ Try text download</button></div>';
+  html += '<p style="font-size:0.8rem;color:var(--pencil-soft);margin:10px 0 0;">Tip: "Copy outline" is the most reliable option here. Paste it into Google Slides\' outline view, or paste it back to Claude and ask for a polished .pptx file.</p>';
+  html += '</div>';
+  out.innerHTML = html;
+}
+
+function renderNotesOutput(){
+  const out = document.getElementById('slides-output');
+  out.innerHTML = '<div class="card"><h2>' + checkmarkSvg() + ' Lesson Notes</h2><p class="sub">Edit directly below.</p>' +
+    '<textarea id="notes-output-textarea" style="min-height:320px;" oninput="state.slides.notesOutput=this.value">' + escapeHtml(state.slides.notesOutput) + '</textarea>' +
+    '<div class="toolbar"><button class="btn btn-secondary" onclick="copyToClipboard(state.slides.notesOutput,\'the lesson notes\')">📋 Copy notes</button><button class="btn btn-ghost" onclick="exportNotesText()">⬇ Try text download</button></div></div>';
+}
+
+function updateSlideTitle(id, val){ const s = state.slides.slides.find(x=>x.id===id); if(s) s.title = val; }
+function updateBullet(id, idx, val){ const s = state.slides.slides.find(x=>x.id===id); if(s) s.bullets[idx] = val; }
+function updateNotes(id, val){ const s = state.slides.slides.find(x=>x.id===id); if(s) s.notes = val; }
+function addBullet(id){ const s = state.slides.slides.find(x=>x.id===id); if(s){ s.bullets.push('New point'); renderSlides(); } }
+function removeBullet(id, idx){ const s = state.slides.slides.find(x=>x.id===id); if(s){ s.bullets.splice(idx,1); renderSlides(); } }
+function removeSlide(id){ state.slides.slides = state.slides.slides.filter(x=>x.id!==id); renderSlides(); }
+function addSlide(){ state.slides.slides.push({id:nextId(), title:'New Slide', bullets:['New point'], notes:''}); renderSlides(); }
+function clearSlides(){ state.slides.slides=[]; state.slides.notesOutput=''; document.getElementById('slides-input').value=''; document.getElementById('slides-output').innerHTML=''; document.getElementById('slides-error').innerHTML=''; }
+
+function copySlidesOutline(){ copyToClipboard(buildSlidesOutlineText(), 'the slide outline'); }
+function buildSlidesOutlineText(){
+  let text = 'SLIDE OUTLINE\n\n';
+  state.slides.slides.forEach((s,i) => {
+    text += 'Slide ' + (i+1) + ': ' + s.title + '\n';
+    s.bullets.forEach(b => text += '  • ' + b + '\n');
+    if(s.notes) text += '  Speaker notes: ' + s.notes + '\n';
+    text += '\n';
+  });
+  return text;
+}
+function exportSlidesText(){
+  downloadText(buildSlidesOutlineText(), 'slide-outline.txt');
+}
+function exportNotesText(){ downloadText(state.slides.notesOutput, 'lesson-notes.txt'); }
+
+function showToast(message){
+  let toast = document.getElementById('app-toast');
+  if(!toast){
+    toast = document.createElement('div');
+    toast.id = 'app-toast';
+    toast.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 16px;box-shadow:var(--shadow);z-index:9999;font-size:0.85rem;max-width:300px;color:var(--pencil);';
+    document.body.appendChild(toast);
+  }
+  toast.innerHTML = message;
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => { if(toast.parentNode) toast.remove(); }, 6000);
+}
+
+async function copyToClipboard(text, label){
+  try{
+    await navigator.clipboard.writeText(text);
+    showToast('✓ Copied ' + (label || 'content') + ' to your clipboard. Paste it into Google Slides, a doc, or right back here in chat.');
+  }catch(e){
+    // fallback: show a selectable textarea the user can copy manually
+    let box = document.getElementById('manual-copy-box');
+    if(box) box.remove();
+    box = document.createElement('div');
+    box.id = 'manual-copy-box';
+    box.style.cssText = 'position:fixed;inset:0;background:rgba(31,59,46,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;';
+    box.innerHTML = '<div style="background:#fff;border-radius:12px;padding:20px;max-width:600px;width:100%;"><p style="margin:0 0 8px;font-weight:600;color:var(--chalk-green);">Select all and copy (Ctrl/Cmd+C):</p><textarea style="width:100%;min-height:300px;font-family:\'IBM Plex Mono\',monospace;font-size:0.8rem;" readonly>'+escapeHtml(text)+'</textarea><div style="margin-top:10px;text-align:right;"><button class="btn btn-primary" onclick="document.getElementById(\'manual-copy-box\').remove()">Close</button></div></div>';
+    document.body.appendChild(box);
+    const ta = box.querySelector('textarea');
+    ta.focus(); ta.select();
+  }
+}
+
+function downloadText(text, filename){
+  const blob = new Blob([text], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ============================================================
+   PPTX EXPORT (hand-built OOXML via JSZip)
+   ============================================================ */
+function xmlEscape(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+}
+
+async function exportPptx(){
+  if(state.slides.slides.length === 0) return;
+  const zip = new JSZip();
+  const slides = state.slides.slides;
+  const n = slides.length;
+
+  zip.file("[Content_Types].xml", pptxContentTypes(n));
+  zip.file("_rels/.rels", pptxRootRels());
+  zip.file("docProps/core.xml", pptxCore());
+  zip.file("docProps/app.xml", pptxApp(n));
+  zip.file("ppt/presentation.xml", pptxPresentation(n));
+  zip.file("ppt/_rels/presentation.xml.rels", pptxPresentationRels(n));
+  zip.file("ppt/theme/theme1.xml", pptxTheme());
+  zip.file("ppt/slideMasters/slideMaster1.xml", pptxSlideMaster());
+  zip.file("ppt/slideMasters/_rels/slideMaster1.xml.rels", pptxSlideMasterRels());
+  zip.file("ppt/slideLayouts/slideLayout1.xml", pptxSlideLayout());
+  zip.file("ppt/slideLayouts/_rels/slideLayout1.xml.rels", pptxSlideLayoutRels());
+
+  slides.forEach((s, i) => {
+    zip.file("ppt/slides/slide" + (i+1) + ".xml", pptxSlideXml(s));
+    zip.file("ppt/slides/_rels/slide" + (i+1) + ".xml.rels", pptxSlideRels());
+  });
+
+  const blob = await zip.generateAsync({type:"blob", mimeType:"application/vnd.openxmlformats-officedocument.presentationml.presentation"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'lesson-slides.pptx'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function pptxContentTypes(n){
+  let overrides = '';
+  for(let i=1;i<=n;i++){
+    overrides += '<Override PartName="/ppt/slides/slide'+i+'.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>';
+  }
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
+  '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
+  '<Default Extension="xml" ContentType="application/xml"/>'+
+  '<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>'+
+  '<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>'+
+  '<Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>'+
+  '<Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>'+
+  overrides+
+  '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>'+
+  '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>'+
+  '</Types>';
+}
+function pptxRootRels(){
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+  '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>'+
+  '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>'+
+  '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>'+
+  '</Relationships>';
+}
+function pptxCore(){
+  const now = new Date().toISOString();
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'+
+  '<dc:title>Lesson Slides</dc:title><dc:creator>Teacher Content Studio</dc:creator>'+
+  '<dcterms:created xsi:type="dcterms:W3CDTF">'+now+'</dcterms:created>'+
+  '<dcterms:modified xsi:type="dcterms:W3CDTF">'+now+'</dcterms:modified>'+
+  '</cp:coreProperties>';
+}
+function pptxApp(n){
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">'+
+  '<Application>Teacher Content Studio</Application><Slides>'+n+'</Slides>'+
+  '</Properties>';
+}
+function pptxPresentation(n){
+  let sldIds = '';
+  for(let i=1;i<=n;i++){ sldIds += '<p:sldId id="'+(255+i)+'" r:id="rId'+(i+1)+'"/>'; }
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">'+
+  '<p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId'+(n+2)+'"/></p:sldMasterIdLst>'+
+  '<p:sldIdLst>'+sldIds+'</p:sldIdLst>'+
+  '<p:sldSz cx="12192000" cy="6858000"/>'+
+  '<p:notesSz cx="6858000" cy="9144000"/>'+
+  '</p:presentation>';
+}
+function pptxPresentationRels(n){
+  let rels = '';
+  for(let i=1;i<=n;i++){
+    rels += '<Relationship Id="rId'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide'+i+'.xml"/>';
+  }
+  rels += '<Relationship Id="rId'+(n+2)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>';
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+rels+'</Relationships>';
+}
+function pptxTheme(){
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Chalkboard">'+
+  '<a:themeElements>'+
+  '<a:clrScheme name="Chalkboard">'+
+  '<a:dk1><a:srgbClr val="2B2A28"/></a:dk1>'+
+  '<a:lt1><a:srgbClr val="FFFFFF"/></a:lt1>'+
+  '<a:dk2><a:srgbClr val="1F3B2E"/></a:dk2>'+
+  '<a:lt2><a:srgbClr val="FAF6EC"/></a:lt2>'+
+  '<a:accent1><a:srgbClr val="1F3B2E"/></a:accent1>'+
+  '<a:accent2><a:srgbClr val="C1443C"/></a:accent2>'+
+  '<a:accent3><a:srgbClr val="E7D9AF"/></a:accent3>'+
+  '<a:accent4><a:srgbClr val="2C5142"/></a:accent4>'+
+  '<a:accent5><a:srgbClr val="6B6558"/></a:accent5>'+
+  '<a:accent6><a:srgbClr val="9C332C"/></a:accent6>'+
+  '<a:hlink><a:srgbClr val="1F3B2E"/></a:hlink>'+
+  '<a:folHlink><a:srgbClr val="9C332C"/></a:folHlink>'+
+  '</a:clrScheme>'+
+  '<a:fontScheme name="Chalkboard">'+
+  '<a:majorFont><a:latin typeface="Georgia"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont>'+
+  '<a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont>'+
+  '</a:fontScheme>'+
+  '<a:fmtScheme name="Chalkboard">'+
+  '<a:fillStyleLst>'+
+  '<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>'+
+  '<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>'+
+  '<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>'+
+  '</a:fillStyleLst>'+
+  '<a:lnStyleLst>'+
+  '<a:ln w="6350"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln>'+
+  '<a:ln w="12700"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln>'+
+  '<a:ln w="19050"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln>'+
+  '</a:lnStyleLst>'+
+  '<a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst>'+
+  '<a:bgFillStyleLst>'+
+  '<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>'+
+  '<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>'+
+  '<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>'+
+  '</a:bgFillStyleLst>'+
+  '</a:fmtScheme>'+
+  '</a:themeElements>'+
+  '</a:theme>';
+}
+function pptxSlideMaster(){
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">'+
+  '<p:cSld><p:bg><p:bgRef idx="1001"><a:schemeClr val="lt1"/></p:bgRef></p:bg>'+
+  '<p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>'+
+  '<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>'+
+  '</p:spTree></p:cSld>'+
+  '<p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>'+
+  '<p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst>'+
+  '</p:sldMaster>';
+}
+function pptxSlideMasterRels(){
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+  '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>'+
+  '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>'+
+  '</Relationships>';
+}
+function pptxSlideLayout(){
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="blank" preserve="1">'+
+  '<p:cSld name="Blank">'+
+  '<p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>'+
+  '<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>'+
+  '</p:spTree></p:cSld>'+
+  '</p:sldLayout>';
+}
+function pptxSlideLayoutRels(){
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+  '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/>'+
+  '</Relationships>';
+}
+function pptxSlideRels(){
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+  '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>'+
+  '</Relationships>';
+}
+function pptxSlideXml(slide){
+  const title = xmlEscape(slide.title);
+  let bulletParas = '';
+  (slide.bullets || []).forEach(b => {
+    bulletParas += '<a:p><a:pPr marL="285750" indent="-285750"><a:buFont typeface="Arial"/><a:buChar char="&#8226;"/></a:pPr>'+
+      '<a:r><a:rPr lang="en-US" sz="2000" dirty="0"><a:solidFill><a:srgbClr val="2B2A28"/></a:solidFill></a:rPr><a:t>'+xmlEscape(b)+'</a:t></a:r></a:p>';
+  });
+  if(!bulletParas) bulletParas = '<a:p><a:endParaRPr lang="en-US"/></a:p>';
+
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">'+
+  '<p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>'+
+  '<p:spTree>'+
+  '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>'+
+  '<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>'+
+  '<p:sp><p:nvSpPr><p:cNvPr id="2" name="Title"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>'+
+  '<p:spPr><a:xfrm><a:off x="609600" y="365125"/><a:ext cx="10972800" cy="914400"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>'+
+  '<p:txBody><a:bodyPr wrap="square"><a:normAutofit/></a:bodyPr><a:lstStyle/>'+
+  '<a:p><a:r><a:rPr lang="en-US" sz="3200" b="1" dirty="0"><a:solidFill><a:srgbClr val="1F3B2E"/></a:solidFill></a:rPr><a:t>'+title+'</a:t></a:r></a:p>'+
+  '</p:txBody></p:sp>'+
+  '<p:sp><p:nvSpPr><p:cNvPr id="3" name="Body"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>'+
+  '<p:spPr><a:xfrm><a:off x="609600" y="1500250"/><a:ext cx="10972800" cy="5100000"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>'+
+  '<p:txBody><a:bodyPr wrap="square"><a:normAutofit/></a:bodyPr><a:lstStyle/>'+
+  bulletParas+
+  '</p:txBody></p:sp>'+
+  '</p:spTree></p:cSld>'+
+  '<p:clrMapOvr><a:overrideClrMapping bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/></p:clrMapOvr>'+
+  '</p:sld>';
+}
+
+/* ============================================================
+   ANSWER KEY GENERATOR
+   ============================================================ */
+async function generateAnswerKey(){
+  const input = document.getElementById('ak-input').value.trim();
+  const errBox = document.getElementById('ak-error');
+  errBox.innerHTML = '';
+  if(!input){ errBox.innerHTML = '<div class="error-box">Please paste some content first.</div>'; return; }
+  document.getElementById('ak-loading').style.display = 'flex';
+  document.getElementById('ak-output').innerHTML = '';
+  try{
+    const system = "You are a teaching assistant that builds an answer key from provided content. If the content already contains questions, answer those. If it's raw notes, identify the most testable facts/concepts and write a question plus its correct answer for each. Respond ONLY with valid JSON, no markdown fences, under 900 tokens. JSON schema: {\"items\":[{\"question\":\"string\",\"answer\":\"string\",\"rationale\":\"short 1-sentence explanation, or empty string if not needed\"}]}";
+    const result = await callClaude(system, "Content:\n\n" + input);
+    state.answerkey.items = (result.items || []).map(it => ({ id: nextId(), question: it.question||'', answer: it.answer||'', rationale: it.rationale||'' }));
+    renderAnswerKey();
+  }catch(e){
+    errBox.innerHTML = '<div class="error-box">' + escapeHtml(e.message) + '</div>';
+  }finally{
+    document.getElementById('ak-loading').style.display = 'none';
+  }
+}
+
+function renderAnswerKey(){
+  const out = document.getElementById('ak-output');
+  if(state.answerkey.items.length === 0){ out.innerHTML=''; return; }
+  let html = '<div class="card"><h2>' + checkmarkSvg() + ' Answer Key</h2><p class="sub">Editable — click any field to change it.</p>';
+  state.answerkey.items.forEach((it, i) => {
+    html += '<div class="qa-item"><span class="tag">Q' + (i+1) + '</span>';
+    html += '<textarea style="min-height:50px;" oninput="updateAkField(\'' + it.id + '\',\'question\',this.value)">' + escapeHtml(it.question) + '</textarea>';
+    html += '<div class="answer-block"><b>Answer:</b><br><textarea style="min-height:40px; background:transparent; border:none;" oninput="updateAkField(\'' + it.id + '\',\'answer\',this.value)">' + escapeHtml(it.answer) + '</textarea>';
+    if(it.rationale){
+      html += '<div style="margin-top:6px; font-size:0.82rem; color:var(--pencil-soft);"><i>Why: </i><span contenteditable="true" oninput="updateAkField(\'' + it.id + '\',\'rationale\',this.innerText)">' + escapeHtml(it.rationale) + '</span></div>';
+    }
+    html += '</div>';
+    html += '<div class="qa-item-actions"><button class="btn-danger" onclick="removeAkItem(\'' + it.id + '\')">Remove</button></div>';
+    html += '</div>';
+  });
+  html += '<div class="toolbar"><button class="btn btn-secondary" onclick="copyToClipboard(buildAnswerKeyText(),\'the answer key\')">📋 Copy answer key</button><button class="btn btn-ghost" onclick="exportAnswerKeyText()">⬇ Try text download</button><button class="btn btn-ghost" onclick="window.print()">🖨 Print / Save as PDF</button></div>';
+  html += '</div>';
+  out.innerHTML = html;
+}
+function updateAkField(id, field, val){ const it = state.answerkey.items.find(x=>x.id===id); if(it) it[field]=val; }
+function removeAkItem(id){ state.answerkey.items = state.answerkey.items.filter(x=>x.id!==id); renderAnswerKey(); }
+function clearAnswerKey(){ state.answerkey.items=[]; document.getElementById('ak-input').value=''; document.getElementById('ak-output').innerHTML=''; document.getElementById('ak-error').innerHTML=''; }
+function buildAnswerKeyText(){
+  let text = 'ANSWER KEY\n\n';
+  state.answerkey.items.forEach((it,i) => {
+    text += (i+1) + '. ' + it.question + '\n   Answer: ' + it.answer + (it.rationale ? '\n   Why: ' + it.rationale : '') + '\n\n';
+  });
+  return text;
+}
+function exportAnswerKeyText(){ downloadText(buildAnswerKeyText(), 'answer-key.txt'); }
+
+/* ============================================================
+   ASSESSMENT BUILDER
+   ============================================================ */
+const TYPE_LABELS = { mc:'Multiple Choice', tf:'True / False', sa:'Short Answer', fib:'Fill-in-the-Blank', essay:'Essay' };
+
+function getAssessmentSourceText(){
+  return document.getElementById('as-input').value.trim();
+}
+function existingTopicsList(){
+  return state.assessment.questions.map(q => q.question).join(' | ');
+}
+
+async function requestQuestions(type, count, notesText, avoidList){
+  // batch in groups of 5 to stay within token budget & keep dedup instructions manageable
+  let all = [];
+  let remaining = count;
+  while(remaining > 0){
+    const batch = Math.min(5, remaining);
+    const system = "You write " + batch + " " + TYPE_LABELS[type] + " assessment question(s) strictly based on the lesson notes provided. Every question must test a DIFFERENT fact or concept — never repeat or closely resemble any question in the avoid-list. Respond ONLY with valid JSON, no markdown fences, under 900 tokens. For multiple_choice include 4 options with exactly one correct. For true_false include the statement and correct boolean. For short_answer, fill_blank, and essay include a model answer. JSON schema: {\"questions\":[{\"question\":\"string\",\"options\":[\"string\"] or null,\"answer\":\"string\",\"rationale\":\"short explanation\"}]}";
+    const user = "Lesson notes:\n\n" + notesText + "\n\nQuestions to avoid duplicating (topics already covered):\n" + (avoidList.concat(all.map(q=>q.question)).join(' | ') || 'none yet');
+    const result = await callClaude(system, user);
+    const qs = (result.questions || []).map(q => ({
+      id: nextId(), type: type,
+      question: q.question || '',
+      options: Array.isArray(q.options) ? q.options : null,
+      answer: q.answer || '',
+      rationale: q.rationale || ''
+    }));
+    all = all.concat(qs);
+    remaining -= batch;
+    if(qs.length === 0) break; // avoid infinite loop if model returns nothing
+  }
+  return all;
+}
+
+async function generateAssessment(){
+  const input = getAssessmentSourceText();
+  const errBox = document.getElementById('as-error');
+  errBox.innerHTML = '';
+  if(!input){ errBox.innerHTML = '<div class="error-box">Please paste your lesson notes first.</div>'; return; }
+
+  const counts = {
+    mc: parseInt(document.getElementById('cnt-mc').value)||0,
+    tf: parseInt(document.getElementById('cnt-tf').value)||0,
+    sa: parseInt(document.getElementById('cnt-sa').value)||0,
+    fib: parseInt(document.getElementById('cnt-fib').value)||0,
+    essay: parseInt(document.getElementById('cnt-essay').value)||0
+  };
+  const total = Object.values(counts).reduce((a,b)=>a+b,0);
+  if(total === 0){ errBox.innerHTML = '<div class="error-box">Set at least one question count above 0.</div>'; return; }
+
+  const loading = document.getElementById('as-loading');
+  const loadingText = document.getElementById('as-loading-text');
+  loading.style.display = 'flex';
+  document.getElementById('as-output').innerHTML = '';
+  state.assessment.questions = [];
+
+  try{
+    for(const type of Object.keys(counts)){
+      if(counts[type] > 0){
+        loadingText.textContent = 'Writing ' + TYPE_LABELS[type] + ' questions...';
+        const avoid = state.assessment.questions.map(q=>q.question);
+        const qs = await requestQuestions(type, counts[type], input, avoid);
+        state.assessment.questions = state.assessment.questions.concat(qs);
+        renderAssessment(); // progressive render
+      }
+    }
+  }catch(e){
+    errBox.innerHTML = '<div class="error-box">' + escapeHtml(e.message) + '</div>';
+  }finally{
+    loading.style.display = 'none';
+  }
+}
+
+function renderAssessment(){
+  const out = document.getElementById('as-output');
+  if(state.assessment.questions.length === 0){ out.innerHTML=''; return; }
+  let html = '<div class="card"><h2>' + checkmarkSvg() + ' Assessment</h2><p class="sub">Click Replace to swap a question, or use Add more below. Toggle the answer key any time.</p>';
+  html += '<div class="toolbar" style="margin-top:0; margin-bottom:16px;"><button class="btn btn-ghost" onclick="toggleAnswers()" id="toggle-answers-btn">Show Answer Key</button><button class="btn btn-secondary" onclick="copyToClipboard(buildAssessmentText(),\'the assessment\')">📋 Copy assessment + key</button><button class="btn btn-ghost" onclick="exportAssessmentText()">⬇ Try text download</button><button class="btn btn-ghost" onclick="window.print()">🖨 Print / Save as PDF</button></div>';
+
+  state.assessment.questions.forEach((q, i) => {
+    html += '<div class="qa-item">';
+    html += '<span class="tag">Q' + (i+1) + ' · ' + TYPE_LABELS[q.type] + '</span>';
+    html += '<textarea style="min-height:50px;" oninput="updateAsField(\'' + q.id + '\',\'question\',this.value)">' + escapeHtml(q.question) + '</textarea>';
+    if(q.type === 'mc' && q.options){
+      q.options.forEach((opt, oi) => {
+        html += '<div class="opt-row"><input type="text" value="' + escapeHtml(opt) + '" oninput="updateAsOption(\'' + q.id + '\',' + oi + ',this.value)"></div>';
+      });
+    }
+    html += '<div class="answer-block as-answer" style="display:none;"><b>Answer:</b> <span contenteditable="true" oninput="updateAsField(\'' + q.id + '\',\'answer\',this.innerText)">' + escapeHtml(q.answer) + '</span>';
+    if(q.rationale) html += '<div style="margin-top:4px; font-size:0.82rem; color:var(--pencil-soft);"><i>' + escapeHtml(q.rationale) + '</i></div>';
+    html += '</div>';
+    html += '<div class="qa-item-actions">';
+    html += '<button class="btn btn-ghost" onclick="replaceQuestion(\'' + q.id + '\')">↻ Replace</button>';
+    html += '<button class="btn-danger" onclick="removeAsQuestion(\'' + q.id + '\')">Remove</button>';
+    html += '</div></div>';
+  });
+
+  html += '<div class="add-more-row"><label style="margin:0;">Add more:</label>';
+  html += '<select id="add-more-type">';
+  Object.keys(TYPE_LABELS).forEach(t => { html += '<option value="'+t+'">' + TYPE_LABELS[t] + '</option>'; });
+  html += '</select>';
+  html += '<button class="btn btn-primary" onclick="addMoreQuestion()">+ Add question</button>';
+  html += '</div>';
+
+  html += '</div>';
+  out.innerHTML = html;
+
+  // preserve answer visibility state
+  if(window._answersVisible){
+    document.querySelectorAll('.as-answer').forEach(el => el.style.display = 'block');
+    const btn = document.getElementById('toggle-answers-btn');
+    if(btn) btn.textContent = 'Hide Answer Key';
+  }
+}
+
+function toggleAnswers(){
+  window._answersVisible = !window._answersVisible;
+  document.querySelectorAll('.as-answer').forEach(el => el.style.display = window._answersVisible ? 'block' : 'none');
+  const btn = document.getElementById('toggle-answers-btn');
+  if(btn) btn.textContent = window._answersVisible ? 'Hide Answer Key' : 'Show Answer Key';
+}
+
+function updateAsField(id, field, val){ const q = state.assessment.questions.find(x=>x.id===id); if(q) q[field]=val; }
+function updateAsOption(id, idx, val){ const q = state.assessment.questions.find(x=>x.id===id); if(q && q.options) q.options[idx]=val; }
+function removeAsQuestion(id){ state.assessment.questions = state.assessment.questions.filter(x=>x.id!==id); renderAssessment(); }
+
+async function replaceQuestion(id){
+  const q = state.assessment.questions.find(x=>x.id===id);
+  if(!q) return;
+  const input = getAssessmentSourceText();
+  if(!input) return;
+  const errBox = document.getElementById('as-error');
+  errBox.innerHTML = '';
+  document.getElementById('as-loading').style.display = 'flex';
+  document.getElementById('as-loading-text').textContent = 'Replacing question...';
+  try{
+    const avoid = state.assessment.questions.filter(x=>x.id!==id).map(x=>x.question);
+    const qs = await requestQuestions(q.type, 1, input, avoid);
+    if(qs.length > 0){
+      const idx = state.assessment.questions.findIndex(x=>x.id===id);
+      state.assessment.questions[idx] = qs[0];
+      renderAssessment();
+    }
+  }catch(e){
+    errBox.innerHTML = '<div class="error-box">' + escapeHtml(e.message) + '</div>';
+  }finally{
+    document.getElementById('as-loading').style.display = 'none';
+  }
+}
+
+async function addMoreQuestion(){
+  const type = document.getElementById('add-more-type').value;
+  const input = getAssessmentSourceText();
+  if(!input) return;
+  const errBox = document.getElementById('as-error');
+  errBox.innerHTML = '';
+  document.getElementById('as-loading').style.display = 'flex';
+  document.getElementById('as-loading-text').textContent = 'Adding a ' + TYPE_LABELS[type] + ' question...';
+  try{
+    const avoid = state.assessment.questions.map(x=>x.question);
+    const qs = await requestQuestions(type, 1, input, avoid);
+    state.assessment.questions = state.assessment.questions.concat(qs);
+    renderAssessment();
+  }catch(e){
+    errBox.innerHTML = '<div class="error-box">' + escapeHtml(e.message) + '</div>';
+  }finally{
+    document.getElementById('as-loading').style.display = 'none';
+  }
+}
+
+function clearAssessment(){
+  state.assessment.questions = [];
+  document.getElementById('as-input').value = '';
+  document.getElementById('as-output').innerHTML = '';
+  document.getElementById('as-error').innerHTML = '';
+}
+
+function buildAssessmentText(){
+  let qText = 'ASSESSMENT\n\n';
+  let aText = 'ANSWER KEY\n\n';
+  state.assessment.questions.forEach((q,i) => {
+    qText += (i+1) + '. [' + TYPE_LABELS[q.type] + '] ' + q.question + '\n';
+    if(q.type === 'mc' && q.options){
+      q.options.forEach((opt,oi) => qText += '   ' + String.fromCharCode(65+oi) + '. ' + opt + '\n');
+    }
+    qText += '\n';
+    aText += (i+1) + '. ' + q.answer + (q.rationale ? '  (' + q.rationale + ')' : '') + '\n';
+  });
+  return qText + '\n\n' + aText;
+}
+function exportAssessmentText(){
+  downloadText(buildAssessmentText(), 'assessment-with-key.txt');
+}
+
+/* ============================================================
+   WORKSHEET BUILDER
+   ============================================================ */
+state.worksheet = {
+  gradeLevel: '', subject: '',
+  intro: '', keyPoints: [], examples: [],
+  basicProblems: [], difficultProblems: [], strategy: ''
+};
+
+async function requestWorksheetProblems(level, count, notes, grade, subject, avoidList){
+  let all = [];
+  let remaining = count;
+  const levelDesc = level === 'difficult'
+    ? 'challenging, multi-step problems that combine more than one concept from the notes and require deeper reasoning'
+    : 'straightforward, single-concept problems suitable as an introduction to practicing this material';
+  while(remaining > 0){
+    const batch = Math.min(5, remaining);
+    const system = "You write " + batch + " " + levelDesc + ", for " + (grade||'students') + " " + (subject||'') + " students, based strictly on the lesson notes provided. Every problem must be different from any problem in the avoid-list — no duplicates or near-duplicates. Respond ONLY with valid JSON, no markdown fences, under 900 tokens. JSON schema: {\"problems\":[{\"prompt\":\"string\",\"answer\":\"string\"}]}";
+    const user = "Lesson notes:\n\n" + notes + "\n\nProblems to avoid duplicating:\n" + (avoidList.concat(all.map(p=>p.prompt)).join(' | ') || 'none yet');
+    const result = await callClaude(system, user);
+    const ps = (result.problems || []).map(p => ({ id: nextId(), level: level, prompt: p.prompt || '', answer: p.answer || '' }));
+    all = all.concat(ps);
+    remaining -= batch;
+    if(ps.length === 0) break;
+  }
+  return all;
+}
+
+async function generateWorksheet(){
+  const notes = document.getElementById('ws-input').value.trim();
+  const grade = document.getElementById('ws-grade').value.trim();
+  const subject = document.getElementById('ws-subject').value.trim();
+  const basicCount = parseInt(document.getElementById('ws-cnt-basic').value) || 0;
+  const hardCount = parseInt(document.getElementById('ws-cnt-hard').value) || 0;
+  const total = basicCount + hardCount;
+  const errBox = document.getElementById('ws-error');
+  errBox.innerHTML = '';
+
+  if(!notes){ errBox.innerHTML = '<div class="error-box">Please paste your lesson notes first.</div>'; return; }
+  if(!grade || !subject){ errBox.innerHTML = '<div class="error-box">Please fill in both grade level and subject.</div>'; return; }
+  if(total < 10 || total > 30){ errBox.innerHTML = '<div class="error-box">Basic + Challenge problems must total between 10 and 30 (currently ' + total + ').</div>'; return; }
+
+  const loading = document.getElementById('ws-loading');
+  const loadingText = document.getElementById('ws-loading-text');
+  loading.style.display = 'flex';
+  document.getElementById('ws-output').innerHTML = '';
+  state.worksheet = { gradeLevel: grade, subject: subject, intro: '', keyPoints: [], examples: [], basicProblems: [], difficultProblems: [], strategy: '' };
+
+  try{
+    loadingText.textContent = 'Writing the concept walkthrough...';
+    const wSystem = "You are a teaching assistant creating the concept-walkthrough section of a worksheet for " + grade + " " + subject + " students, based on the lesson notes below. Respond ONLY with valid JSON, no markdown fences, under 900 tokens. Include: a short 2-3 sentence intro orienting students to the topic, 3-6 key-concept bullet points in plain student-friendly language, and 2 fully worked example problems with clear step-by-step solutions (numbered steps) so students can see the process modeled. JSON schema: {\"intro\":\"string\",\"key_points\":[\"string\"],\"examples\":[{\"problem\":\"string\",\"solution\":\"string\"}]}";
+    const wResult = await callClaude(wSystem, "Lesson notes:\n\n" + notes);
+    state.worksheet.intro = wResult.intro || '';
+    state.worksheet.keyPoints = Array.isArray(wResult.key_points) ? wResult.key_points : [];
+    state.worksheet.examples = (Array.isArray(wResult.examples) ? wResult.examples : []).map(e => ({ id: nextId(), problem: e.problem || '', solution: e.solution || '' }));
+    renderWorksheet();
+
+    loadingText.textContent = 'Writing basic problems...';
+    state.worksheet.basicProblems = await requestWorksheetProblems('basic', basicCount, notes, grade, subject, []);
+    renderWorksheet();
+
+    loadingText.textContent = 'Writing strategy tips for challenge problems...';
+    const stratSystem = "Write brief step-by-step strategy instructions (3-5 short numbered steps) to help " + grade + " " + subject + " students approach more difficult, multi-step problems on this topic, based on the lesson notes. Respond ONLY with valid JSON, no markdown fences, under 400 tokens. JSON schema: {\"strategy\":\"string\"}";
+    const stratResult = await callClaude(stratSystem, "Lesson notes:\n\n" + notes);
+    state.worksheet.strategy = stratResult.strategy || '';
+    renderWorksheet();
+
+    loadingText.textContent = 'Writing challenge problems...';
+    const avoidBasic = state.worksheet.basicProblems.map(p=>p.prompt);
+    state.worksheet.difficultProblems = await requestWorksheetProblems('difficult', hardCount, notes, grade, subject, avoidBasic);
+    renderWorksheet();
+  }catch(e){
+    errBox.innerHTML = '<div class="error-box">' + escapeHtml(e.message) + '</div>';
+  }finally{
+    loading.style.display = 'none';
+  }
+}
+
+function renderWorksheet(){
+  const out = document.getElementById('ws-output');
+  const w = state.worksheet;
+  const hasContent = w.intro || w.keyPoints.length || w.examples.length || w.basicProblems.length || w.difficultProblems.length;
+  if(!hasContent){ out.innerHTML=''; return; }
+
+  let html = '<div class="card"><h2>' + checkmarkSvg() + ' Worksheet — ' + escapeHtml(w.subject) + ' (' + escapeHtml(w.gradeLevel) + ')</h2><p class="sub">Edit any text directly. Toggle the answer key any time.</p>';
+
+  html += '<div class="toolbar" style="margin-top:0; margin-bottom:18px;"><button class="btn btn-ghost" onclick="toggleWorksheetAnswers()" id="toggle-ws-answers-btn">Show Answer Key</button><button class="btn btn-secondary" onclick="copyToClipboard(buildWorksheetText(),\'the worksheet\')">📋 Copy worksheet + key</button><button class="btn btn-ghost" onclick="exportWorksheetText()">⬇ Try text download</button><button class="btn btn-ghost" onclick="window.print()">🖨 Print / Save as PDF</button></div>';
+
+  // Section 1: concept walkthrough
+  html += '<div class="slide-card"><div class="slide-head"><span>SECTION 1 · CONCEPT WALKTHROUGH</span></div><div class="slide-body">';
+  html += '<textarea style="min-height:60px;" oninput="state.worksheet.intro=this.value">' + escapeHtml(w.intro) + '</textarea>';
+  html += '<label style="margin-top:10px;">Key concepts</label>';
+  w.keyPoints.forEach((kp, i) => {
+    html += '<div class="bullet-row"><span class="dot">•</span><input value="' + escapeHtml(kp) + '" oninput="updateWsKeyPoint(' + i + ',this.value)"><button class="btn-danger" onclick="removeWsKeyPoint(' + i + ')">✕</button></div>';
+  });
+  html += '<button class="add-bullet" onclick="addWsKeyPoint()">+ Add key point</button>';
+  w.examples.forEach((ex, i) => {
+    html += '<div class="notes-field" style="margin-top:14px;"><label>Worked example ' + (i+1) + '</label>';
+    html += '<textarea style="min-height:40px;" oninput="updateWsExample(\'' + ex.id + '\',\'problem\',this.value)">' + escapeHtml(ex.problem) + '</textarea>';
+    html += '<textarea style="min-height:70px;margin-top:6px;" oninput="updateWsExample(\'' + ex.id + '\',\'solution\',this.value)">' + escapeHtml(ex.solution) + '</textarea></div>';
+  });
+  html += '</div></div>';
+
+  // Section 2: basic problems
+  html += '<div class="slide-card"><div class="slide-head"><span>SECTION 2 · BASIC PROBLEMS (' + w.basicProblems.length + ')</span></div><div class="slide-body">';
+  w.basicProblems.forEach((p, i) => { html += renderWsProblem(p, i+1); });
+  html += '<div class="add-more-row"><button class="btn btn-primary" onclick="addWsProblem(\'basic\')">+ Add basic problem</button></div>';
+  html += '</div></div>';
+
+  // Section 3: challenge problems
+  html += '<div class="slide-card"><div class="slide-head"><span>SECTION 3 · CHALLENGE PROBLEMS (' + w.difficultProblems.length + ')</span></div><div class="slide-body">';
+  html += '<div class="notes-field" style="border-top:none; padding-top:0; margin-top:0;"><label>How to approach these</label><textarea style="min-height:70px;" oninput="state.worksheet.strategy=this.value">' + escapeHtml(w.strategy) + '</textarea></div>';
+  w.difficultProblems.forEach((p, i) => { html += renderWsProblem(p, i+1); });
+  html += '<div class="add-more-row"><button class="btn btn-primary" onclick="addWsProblem(\'difficult\')">+ Add challenge problem</button></div>';
+  html += '</div></div>';
+
+  html += '</div>';
+  out.innerHTML = html;
+
+  if(window._wsAnswersVisible){
+    document.querySelectorAll('.ws-answer').forEach(el => el.style.display = 'block');
+    const btn = document.getElementById('toggle-ws-answers-btn');
+    if(btn) btn.textContent = 'Hide Answer Key';
+  }
+}
+
+function renderWsProblem(p, num){
+  let html = '<div class="qa-item"><span class="tag">#' + num + '</span>';
+  html += '<textarea style="min-height:50px;" oninput="updateWsProblem(\'' + p.id + '\',\'prompt\',this.value)">' + escapeHtml(p.prompt) + '</textarea>';
+  html += '<div class="answer-block ws-answer" style="display:none;"><b>Answer:</b> <span contenteditable="true" oninput="updateWsProblem(\'' + p.id + '\',\'answer\',this.innerText)">' + escapeHtml(p.answer) + '</span></div>';
+  html += '<div class="qa-item-actions"><button class="btn-danger" onclick="removeWsProblem(\'' + p.id + '\')">Remove</button></div></div>';
+  return html;
+}
+
+function toggleWorksheetAnswers(){
+  window._wsAnswersVisible = !window._wsAnswersVisible;
+  document.querySelectorAll('.ws-answer').forEach(el => el.style.display = window._wsAnswersVisible ? 'block' : 'none');
+  const btn = document.getElementById('toggle-ws-answers-btn');
+  if(btn) btn.textContent = window._wsAnswersVisible ? 'Hide Answer Key' : 'Show Answer Key';
+}
+
+function updateWsKeyPoint(i, val){ state.worksheet.keyPoints[i] = val; }
+function removeWsKeyPoint(i){ state.worksheet.keyPoints.splice(i,1); renderWorksheet(); }
+function addWsKeyPoint(){ state.worksheet.keyPoints.push('New key point'); renderWorksheet(); }
+function updateWsExample(id, field, val){ const ex = state.worksheet.examples.find(x=>x.id===id); if(ex) ex[field]=val; }
+function updateWsProblem(id, field, val){
+  const list = state.worksheet.basicProblems.find(x=>x.id===id) ? state.worksheet.basicProblems : state.worksheet.difficultProblems;
+  const p = list.find(x=>x.id===id);
+  if(p) p[field]=val;
+}
+function removeWsProblem(id){
+  state.worksheet.basicProblems = state.worksheet.basicProblems.filter(x=>x.id!==id);
+  state.worksheet.difficultProblems = state.worksheet.difficultProblems.filter(x=>x.id!==id);
+  renderWorksheet();
+}
+async function addWsProblem(level){
+  const notes = document.getElementById('ws-input').value.trim();
+  if(!notes) return;
+  const errBox = document.getElementById('ws-error');
+  errBox.innerHTML = '';
+  document.getElementById('ws-loading').style.display = 'flex';
+  document.getElementById('ws-loading-text').textContent = 'Adding a ' + (level === 'difficult' ? 'challenge' : 'basic') + ' problem...';
+  try{
+    const avoid = state.worksheet.basicProblems.concat(state.worksheet.difficultProblems).map(p=>p.prompt);
+    const ps = await requestWorksheetProblems(level, 1, notes, state.worksheet.gradeLevel, state.worksheet.subject, avoid);
+    if(level === 'difficult'){ state.worksheet.difficultProblems = state.worksheet.difficultProblems.concat(ps); }
+    else { state.worksheet.basicProblems = state.worksheet.basicProblems.concat(ps); }
+    renderWorksheet();
+  }catch(e){
+    errBox.innerHTML = '<div class="error-box">' + escapeHtml(e.message) + '</div>';
+  }finally{
+    document.getElementById('ws-loading').style.display = 'none';
+  }
+}
+
+function clearWorksheet(){
+  state.worksheet = { gradeLevel: '', subject: '', intro: '', keyPoints: [], examples: [], basicProblems: [], difficultProblems: [], strategy: '' };
+  document.getElementById('ws-input').value = '';
+  document.getElementById('ws-grade').value = '';
+  document.getElementById('ws-subject').value = '';
+  document.getElementById('ws-output').innerHTML = '';
+  document.getElementById('ws-error').innerHTML = '';
+}
+
+function buildWorksheetText(){
+  const w = state.worksheet;
+  let text = 'WORKSHEET — ' + w.subject + ' (' + w.gradeLevel + ')\n\n';
+  text += 'SECTION 1: CONCEPT WALKTHROUGH\n' + w.intro + '\n\nKey Concepts:\n';
+  w.keyPoints.forEach(kp => text += '  • ' + kp + '\n');
+  text += '\nWorked Examples:\n';
+  w.examples.forEach((ex,i) => { text += (i+1) + '. ' + ex.problem + '\n   Solution:\n   ' + ex.solution.replace(/\n/g,'\n   ') + '\n\n'; });
+
+  text += '\nSECTION 2: BASIC PROBLEMS\n';
+  w.basicProblems.forEach((p,i) => { text += (i+1) + '. ' + p.prompt + '\n'; });
+
+  text += '\nSECTION 3: CHALLENGE PROBLEMS\nHow to approach these:\n' + w.strategy + '\n\n';
+  w.difficultProblems.forEach((p,i) => { text += (i+1) + '. ' + p.prompt + '\n'; });
+
+  text += '\n\nANSWER KEY\n\nBasic Problems:\n';
+  w.basicProblems.forEach((p,i) => { text += (i+1) + '. ' + p.answer + '\n'; });
+  text += '\nChallenge Problems:\n';
+  w.difficultProblems.forEach((p,i) => { text += (i+1) + '. ' + p.answer + '\n'; });
+
+  return text;
+}
+function exportWorksheetText(){
+  downloadText(buildWorksheetText(), 'worksheet-with-key.txt');
+}
+</script>
+</body>
+</html>

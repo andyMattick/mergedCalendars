@@ -1,0 +1,1744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unit Lesson Builder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+
+  :root{
+    --paper: #FAF7F0;
+    --paper-deep: #F3EDDD;
+    --ink: #1F2A44;
+    --ink-soft: #4B5468;
+    --pine: #2F4F42;
+    --pine-deep: #24392F;
+    --red-pen: #B33A3A;
+    --manila: #D9C9A3;
+    --manila-deep: #C2AE7C;
+    --sage: #7C9885;
+    --rule: #E4DCC8;
+    --white: #FFFEFB;
+    --shadow: 0 8px 24px rgba(31,42,68,0.10);
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--paper-deep);
+    color: var(--ink);
+    font-family: 'Source Sans 3', sans-serif;
+    min-height: 100vh;
+  }
+  h1,h2,h3,h4{ font-family:'Fraunces', serif; font-weight:600; margin:0; color:var(--ink); }
+  .mono{ font-family:'IBM Plex Mono', monospace; letter-spacing:0.04em; }
+
+  /* ---------- SETUP SCREEN ---------- */
+  #setupScreen{
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    padding:40px 20px;
+  }
+  .setup-card{
+    background:var(--white);
+    max-width:640px;
+    width:100%;
+    padding:44px 48px 40px;
+    border-radius:4px;
+    box-shadow:var(--shadow);
+    border-top:6px solid var(--pine);
+    position:relative;
+  }
+  .saved-units-card{
+    background:var(--paper);
+    max-width:640px;
+    width:100%;
+    padding:22px 26px 8px;
+    border-radius:4px;
+    border:1.5px dashed var(--manila-deep);
+    margin-bottom:20px;
+  }
+  .saved-units-heading{
+    font-size:16px;
+    margin-bottom:14px;
+  }
+  .setup-eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--sage);
+    margin-bottom:10px;
+    display:block;
+  }
+  .setup-card h1{
+    font-size:32px;
+    line-height:1.15;
+    margin-bottom:6px;
+  }
+  .setup-sub{
+    color:var(--ink-soft);
+    font-size:15px;
+    margin-bottom:30px;
+    line-height:1.5;
+  }
+  .field{ margin-bottom:22px; }
+  .field label{
+    display:block;
+    font-size:12px;
+    font-family:'IBM Plex Mono', monospace;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--ink-soft);
+    margin-bottom:7px;
+  }
+  .field input[type="text"],
+  .field input[type="number"],
+  .field textarea{
+    width:100%;
+    padding:11px 13px;
+    border:1.5px solid var(--rule);
+    border-radius:3px;
+    font-family:'Source Sans 3', sans-serif;
+    font-size:15px;
+    background:var(--paper);
+    color:var(--ink);
+    resize:vertical;
+  }
+  .field input:focus, .field textarea:focus{
+    outline:none;
+    border-color:var(--pine);
+    background:var(--white);
+  }
+  .field textarea{ min-height:150px; line-height:1.6; }
+  .field-hint{ font-size:12.5px; color:var(--ink-soft); margin-top:6px; }
+  .row-2{ display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+
+  .btn{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:13px;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    padding:13px 26px;
+    border-radius:3px;
+    border:none;
+    cursor:pointer;
+    transition:transform .12s ease, box-shadow .12s ease, background .15s ease;
+  }
+  .btn:active{ transform:translateY(1px); }
+  .btn-primary{ background:var(--pine); color:var(--white); }
+  .btn-primary:hover{ background:var(--pine-deep); }
+  .btn-primary:disabled{ background:#9aa89f; cursor:not-allowed; }
+  .btn-ghost{ background:transparent; color:var(--pine); border:1.5px solid var(--pine); }
+  .btn.is-running{ background:var(--pine); color:#fff; }
+  .api-panel{
+    max-width:520px;
+    margin:14px 0 0;
+    padding:16px 18px;
+    background:var(--white);
+    border:1px solid var(--rule);
+    border-radius:12px;
+  }
+  .api-panel label{ display:block; font-weight:700; margin-bottom:6px; color:var(--ink); }
+  .api-panel input{ width:100%; padding:9px 11px; border:1px solid var(--rule); border-radius:8px; margin-bottom:8px; font:inherit; }
+  .api-panel p{ font-size:0.78rem; color:var(--ink-soft); margin:0 0 10px; line-height:1.45; }
+  #apiKeyStatus{ font-size:0.8rem; color:var(--pine); margin-left:8px; font-weight:600; }
+  .btn-ghost:hover{ background:rgba(47,79,66,0.06); }
+  .btn-small{ padding:8px 14px; font-size:11px; }
+  .btn-red{ background:var(--red-pen); color:var(--white); }
+  .btn-red:hover{ filter:brightness(0.92); }
+
+  .setup-submit{ display:flex; justify-content:flex-end; margin-top:8px; }
+
+  .saved-unit-row{
+    display:flex; align-items:center; justify-content:space-between; gap:14px;
+    padding:12px 14px;
+    border:1.5px solid var(--rule);
+    border-radius:4px;
+    margin-bottom:10px;
+    background:var(--white);
+  }
+  .saved-unit-info{ min-width:0; }
+  .saved-unit-title{ font-family:'Fraunces', serif; font-size:16.5px; color:var(--ink); margin-bottom:3px; }
+  .saved-unit-meta{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--ink-soft); letter-spacing:0.03em; }
+  .saved-unit-actions{ display:flex; gap:8px; flex-shrink:0; }
+
+  /* ---------- APP SHELL ---------- */
+  #appScreen{ display:none; min-height:100vh; }
+  .shell{ display:flex; min-height:100vh; }
+
+  /* Sidebar: folder tabs */
+  .sidebar{
+    width:230px;
+    flex-shrink:0;
+    background:var(--pine-deep);
+    padding:26px 0 26px 0;
+    display:flex;
+    flex-direction:column;
+  }
+  .sidebar-header{
+    padding:0 20px 18px;
+    border-bottom:1px solid rgba(255,255,255,0.12);
+    margin-bottom:14px;
+  }
+  .sidebar-unit-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    color:var(--manila);
+    display:block;
+    margin-bottom:6px;
+  }
+  .sidebar-unit-title{
+    color:var(--white);
+    font-family:'Fraunces', serif;
+    font-size:19px;
+    line-height:1.25;
+  }
+  .tab-list{ flex:1; overflow-y:auto; padding-right:2px; }
+  .tab{
+    position:relative;
+    margin:3px 0 3px 0;
+    padding:12px 16px 12px 20px;
+    cursor:pointer;
+    color:rgba(255,255,255,0.72);
+    font-size:14px;
+    border-left:4px solid transparent;
+    display:flex;
+    align-items:center;
+    gap:9px;
+    transition:background .12s ease;
+  }
+  .tab:hover{ background:rgba(255,255,255,0.06); }
+  .tab.active{
+    background:var(--paper);
+    color:var(--ink);
+    border-left-color:var(--red-pen);
+    border-radius:4px 0 0 4px;
+    margin-right:-1px;
+    font-weight:600;
+  }
+  .tab-num{ font-family:'IBM Plex Mono', monospace; font-size:12px; opacity:0.8; min-width:20px; }
+  .tab-status{ margin-left:auto; font-size:11px; }
+  .tab-status.dot-done{ color:var(--sage); }
+  .tab-status.dot-error{ color:#e8a5a5; }
+  .tab.active .tab-status.dot-done{ color:var(--pine); }
+  .tab.active .tab-status.dot-error{ color:var(--red-pen); }
+  .spin{
+    width:11px;height:11px;border-radius:50%;
+    border:2px solid rgba(255,255,255,0.35);
+    border-top-color:var(--manila);
+    animation:spin .7s linear infinite;
+  }
+  .tab.active .spin{ border-color:rgba(47,79,66,0.25); border-top-color:var(--pine); }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  .sidebar-footer{ padding:16px 20px 0; border-top:1px solid rgba(255,255,255,0.12); margin-top:14px; }
+  .sidebar-footer .btn{ width:100%; }
+  .sidebar-footer .btn-ghost{
+    color:var(--manila);
+    border-color:rgba(217,201,163,0.55);
+  }
+  .sidebar-footer .btn-ghost:hover{
+    background:rgba(255,255,255,0.08);
+    border-color:var(--manila);
+  }
+
+  /* Main content */
+  .main{ flex:1; padding:36px 44px 80px; overflow-y:auto; }
+  .main-toolbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:26px;
+    gap:16px;
+    flex-wrap:wrap;
+  }
+  .toolbar-actions{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .answer-toggle{
+    display:flex; align-items:center; gap:7px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:0.05em;
+    cursor:pointer;
+    user-select:none;
+  }
+
+  .lesson-page{
+    background:var(--white);
+    border-radius:4px;
+    box-shadow:var(--shadow);
+    padding:40px 46px 50px;
+    position:relative;
+  }
+  .lesson-page::before{
+    content:"";
+    position:absolute; top:0; left:0; bottom:0; width:5px;
+    background:linear-gradient(var(--red-pen), var(--manila-deep));
+    border-radius:4px 0 0 4px;
+  }
+  .worksheet-header{
+    display:flex; gap:28px; flex-wrap:wrap;
+    font-size:12px; color:var(--ink-soft);
+    border-bottom:1px solid var(--rule);
+    padding-bottom:14px; margin-bottom:20px;
+  }
+  .worksheet-header i{
+    display:inline-block; width:120px; border-bottom:1px solid var(--rule);
+    height:12px; vertical-align:middle; font-style:normal;
+  }
+  .lesson-eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px; letter-spacing:0.12em; text-transform:uppercase;
+    color:var(--sage); margin-bottom:8px; display:block;
+  }
+  .lesson-page h2{ font-size:28px; margin-bottom:6px; }
+  .lesson-objective{ color:var(--ink-soft); font-size:15.5px; margin-bottom:8px; }
+  .learning-target{
+    background:var(--paper); border-left:3px solid var(--manila-deep);
+    padding:10px 16px; border-radius:0 3px 3px 0; margin-top:14px;
+  }
+  .lt-label{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:#8a6d1f; display:block; margin-bottom:3px; }
+  .learning-target p{ margin:0; font-size:14.5px; font-style:italic; }
+
+  .reflection-list{ display:flex; flex-direction:column; gap:18px; }
+  .reflection-item p{ margin:0 0 8px; font-size:14.5px; }
+  .reflection-line{ border-bottom:1px solid var(--rule); height:22px; }
+
+  /* Answer key document */
+  .ak-section{ margin-top:24px; }
+  .ak-tier-title{
+    font-family:'IBM Plex Mono', monospace; font-size:12px; text-transform:uppercase;
+    letter-spacing:0.08em; color:var(--ink-soft);
+    border-bottom:1px solid var(--rule); padding-bottom:6px; margin-bottom:10px;
+  }
+  .ak-list{ list-style:none; margin:0; padding:0; counter-reset:akitem; }
+  .ak-item{
+    counter-increment:akitem;
+    display:flex; gap:14px; align-items:flex-start;
+    padding:8px 0; border-bottom:1px solid var(--rule);
+    font-size:14px;
+  }
+  .ak-item:last-child{ border-bottom:none; }
+  .ak-item::before{
+    content:counter(akitem);
+    font-family:'IBM Plex Mono', monospace; font-size:11.5px;
+    width:20px; height:20px; border-radius:50%; flex-shrink:0;
+    background:var(--paper); border:1px solid var(--rule); color:var(--ink-soft);
+    display:flex; align-items:center; justify-content:center; margin-top:1px;
+  }
+  .ak-q{ color:var(--ink-soft); flex:1; }
+  .ak-a{ color:var(--red-pen); font-weight:600; flex:1; }
+
+  /* Custom modal (native confirm/alert are unreliable in sandboxed previews) */
+  .modal-overlay{
+    position:fixed; inset:0; z-index:1000;
+    background:rgba(31,42,68,0.55);
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+  }
+  .modal-box{
+    background:var(--white);
+    max-width:440px; width:100%;
+    padding:28px 30px 24px;
+    border-radius:6px;
+    box-shadow:var(--shadow);
+    border-top:5px solid var(--pine);
+  }
+  .modal-box h3{ font-size:19px; margin-bottom:12px; }
+  .modal-message{ font-size:14.5px; color:var(--ink-soft); line-height:1.6; margin-bottom:22px; }
+  .modal-message ul{ margin:10px 0 0; padding-left:20px; }
+  .modal-message li{ margin-bottom:4px; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:10px; }
+
+  .section{ margin-top:34px; padding-top:26px; border-top:1px dashed var(--rule); }
+  .section:first-of-type{ margin-top:30px; }
+  .section-head{ display:flex; align-items:baseline; gap:10px; margin-bottom:14px; }
+  .section-head h3{ font-size:19px; }
+  .section-tag{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px;
+    text-transform:uppercase; letter-spacing:0.08em;
+    padding:3px 8px; border-radius:20px;
+  }
+  .tag-review{ background:rgba(124,152,133,0.18); color:var(--sage); }
+  .tag-bell{ background:rgba(217,201,163,0.35); color:#8a6d1f; }
+  .tag-lesson{ background:rgba(47,79,66,0.10); color:var(--pine); }
+  .tag-practice{ background:rgba(179,58,58,0.10); color:var(--red-pen); }
+
+  .review-list{ list-style:none; padding:0; margin:0; }
+  .review-list li{
+    padding:10px 0 10px 30px;
+    position:relative;
+    border-bottom:1px solid var(--rule);
+    font-size:15px;
+  }
+  .review-list li:last-child{ border-bottom:none; }
+  .review-list li::before{
+    content:"?";
+    position:absolute; left:0; top:9px;
+    font-family:'IBM Plex Mono', monospace;
+    color:var(--sage); font-weight:600;
+  }
+  .review-empty{ color:var(--ink-soft); font-style:italic; font-size:14.5px; }
+
+  .bell-box{
+    background:var(--paper);
+    border:1.5px solid var(--manila);
+    border-radius:4px;
+    padding:18px 20px;
+  }
+  .bell-box p{ margin:0; line-height:1.6; font-size:15px; }
+
+  .vocab-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-bottom:20px; }
+  .vocab-card{
+    background:var(--paper);
+    border-left:3px solid var(--pine);
+    padding:10px 14px;
+    border-radius:0 3px 3px 0;
+  }
+  .vocab-term{ font-weight:700; font-size:14px; color:var(--pine); }
+  .vocab-def{ font-size:13.5px; color:var(--ink-soft); margin-top:2px; line-height:1.45; }
+
+  .explanation p{ line-height:1.7; font-size:15.5px; margin:0 0 14px; }
+  .example-box{
+    margin-top:16px;
+    background:var(--paper);
+    border:1px solid var(--rule);
+    border-left:4px solid var(--sage);
+    padding:16px 20px;
+    border-radius:0 4px 4px 0;
+  }
+  .example-box .label{ font-family:'IBM Plex Mono', monospace; font-size:11px; text-transform:uppercase; color:var(--sage); letter-spacing:0.08em; display:block; margin-bottom:6px;}
+  .example-box p{ margin:0; line-height:1.6; font-size:14.5px; }
+
+  /* Practice staircase */
+  .stair{ display:flex; flex-direction:column; gap:22px; }
+  .stair-tier{ }
+  .tier-head{ display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .tier-chip{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; text-transform:uppercase;
+    letter-spacing:0.08em; padding:4px 10px; border-radius:20px; color:var(--white);
+  }
+  .chip-easy{ background:var(--sage); }
+  .chip-medium{ background:#B8923A; }
+  .chip-hard{ background:var(--red-pen); }
+  .tier-meter{ display:flex; gap:3px; }
+  .tier-meter span{ width:8px; height:8px; border-radius:2px; background:var(--rule); }
+  .tier-meter span.fill{ background:var(--ink); }
+  .tier-easy{ margin-left:0; }
+  .tier-medium{ margin-left:26px; }
+  .tier-hard{ margin-left:52px; }
+  .problem-list{ list-style:none; margin:0; padding:0; counter-reset:prob; }
+  .problem-item{
+    counter-increment:prob;
+    padding:9px 0 9px 34px;
+    position:relative;
+    border-bottom:1px solid var(--rule);
+    font-size:14.5px;
+    line-height:1.55;
+  }
+  .problem-item:last-child{ border-bottom:none; }
+  .problem-item::before{
+    content:counter(prob);
+    position:absolute; left:0; top:8px;
+    font-family:'IBM Plex Mono', monospace; font-size:12px;
+    width:22px; height:22px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--paper); border:1px solid var(--rule); color:var(--ink-soft);
+  }
+  .problem-answer{
+    display:none;
+    margin-top:5px;
+    font-size:13.5px;
+    color:var(--red-pen);
+    font-style:italic;
+  }
+  .show-answers .problem-answer{ display:block; }
+
+  /* Loading / error states in main */
+  .state-box{
+    background:var(--white);
+    border-radius:4px;
+    box-shadow:var(--shadow);
+    padding:60px 40px;
+    text-align:center;
+    color:var(--ink-soft);
+  }
+  .state-box .spin-big{
+    width:34px;height:34px;border-radius:50%;
+    border:3px solid var(--rule);
+    border-top-color:var(--pine);
+    animation:spin .8s linear infinite;
+    margin:0 auto 18px;
+  }
+  .state-box h3{ margin-bottom:8px; color:var(--ink); }
+  .error-box{ border-top:4px solid var(--red-pen); }
+
+  @media (max-width:820px){
+    .shell{ flex-direction:column; }
+    .sidebar{ width:100%; }
+    .main{ padding:24px 18px 60px; }
+    .lesson-page{ padding:28px 22px 36px; }
+    .row-2{ grid-template-columns:1fr; }
+    .tier-medium{ margin-left:14px; }
+    .tier-hard{ margin-left:28px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ SETUP SCREEN ============ -->
+<div id="setupScreen">
+  <div class="saved-units-card" id="savedUnitsCard" style="display:none;">
+    <span class="setup-eyebrow">Saved units</span>
+    <h2 class="saved-units-heading">Continue a unit you've already started</h2>
+    <div id="savedUnitsList"></div>
+  </div>
+
+  <div class="setup-card">
+    <span class="setup-eyebrow">Unit Lesson Builder</span>
+    <h1>Turn a unit outline into a full set of lessons</h1>
+    <p class="setup-sub">Paste your topics in teaching order. Each lesson gets a review of the one before it, a bell-ringer, new content, and a set of practice problems that gets harder as it goes (about 8 easy, 6 medium, 4 hard).</p>
+
+    <div class="row-2">
+      <div class="field">
+        <label for="unitTitle">Unit title</label>
+        <input type="text" id="unitTitle" placeholder="e.g. Ratios &amp; Proportional Relationships">
+      </div>
+      <div class="field">
+        <label for="gradeLevel">Grade / level</label>
+        <input type="text" id="gradeLevel" value="6th grade" placeholder="e.g. 6th grade">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="subject">Subject</label>
+      <input type="text" id="subject" placeholder="e.g. Math, Science, ELA, Social Studies">
+    </div>
+
+    <div class="field">
+      <label for="topics">Topics / objectives (one per line, in the order you'll teach them)</label>
+      <textarea id="topics" placeholder="Understanding ratios as a comparison&#10;Writing ratios three ways&#10;Equivalent ratios&#10;Ratio tables&#10;Unit rates&#10;..."></textarea>
+      <div class="field-hint" id="topicCount">0 topics listed</div>
+    </div>
+
+    <div class="field">
+      <label for="numLessons">Number of lessons to generate</label>
+      <input type="number" id="numLessons" min="1" max="30" placeholder="Defaults to number of topics">
+      <div class="field-hint">Leave blank to generate one lesson per topic. Set a custom number to combine or spread topics across more/fewer lessons.</div>
+    </div>
+
+    <div class="setup-submit">
+      <button class="btn btn-primary" id="generateBtn">Generate unit</button>
+      <button class="btn" id="importUnitBtn" title="Load a unit exported from the Planner">📥 Import unit from Planner</button>
+      <a class="btn" href="../" title="Back to the Planner">📅 Planner</a>
+      <button class="btn" type="button" onclick="toggleApiSettings()" title="Only needed outside Claude.ai">⚙ Using this outside Claude.ai?</button>
+    </div>
+
+    <div id="apiSettingsPanel" class="api-panel" style="display:none;">
+      <label for="apiKeyInput">Anthropic API key</label>
+      <input type="password" id="apiKeyInput" placeholder="sk-ant-...">
+      <p>Only needed if you're running this outside Claude.ai. The key stays in this tab's memory — it is never saved to disk or sent anywhere except directly to Anthropic.</p>
+      <button class="btn" type="button" onclick="saveApiKey()">Save key for this session</button>
+      <span id="apiKeyStatus"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP SCREEN ============ -->
+<div id="appScreen">
+  <div class="shell">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-unit-label" id="sbSubject">SUBJECT</span>
+        <div class="sidebar-unit-title" id="sbTitle">Unit Title</div>
+      </div>
+      <div class="tab-list" id="tabList"></div>
+      <div class="sidebar-footer">
+        <button class="btn btn-ghost btn-small" id="generateAllBtn">Generate all remaining</button>
+        <div style="height:8px;"></div>
+        <button class="btn btn-ghost btn-small" id="exportUnitBtn" title="Send back to the Planner">📤 Export for Planner</button>
+        <div style="height:8px;"></div>
+        <button class="btn btn-ghost btn-small" id="copyLessonBtn" title="Copy this lesson as text for Content Studio">📋 Copy lesson as notes</button>
+        <div style="height:8px;"></div>
+        <button class="btn btn-ghost btn-small" id="newUnitBtn">+ New unit</button>
+        <div style="height:8px;"></div>
+        <a class="btn btn-ghost btn-small" href="../" style="display:block; text-align:center; text-decoration:none;">📅 Planner</a>
+      </div>
+    </div>
+
+    <div class="main">
+      <div class="main-toolbar">
+        <div>
+          <span class="lesson-eyebrow" id="mtEyebrow">LESSON</span>
+        </div>
+        <div class="toolbar-actions">
+          <label class="answer-toggle">
+            <input type="checkbox" id="answerToggle"> Show answers on screen
+          </label>
+          <button class="btn btn-ghost btn-small" id="regenerateBtn">Regenerate this lesson</button>
+          <select id="printScope" class="mono" style="font-size:12px; padding:8px 10px; border-radius:3px; border:1.5px solid var(--rule); background:var(--white);">
+            <option value="current">This lesson</option>
+            <option value="all">Full unit</option>
+          </select>
+          <button class="btn btn-ghost btn-small" id="printStudentBtn">Print student copy (PDF)</button>
+          <button class="btn btn-ghost btn-small" id="printAnswerKeyBtn">Print answer key (PDF)</button>
+        </div>
+      </div>
+      <div id="mainContent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- print root: holds clones of lesson pages when printing -->
+<div id="printRoot"></div>
+
+<!-- custom modal (replaces native confirm/alert, which are blocked in this sandboxed preview) -->
+<div id="modalOverlay" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <h3 id="modalTitle"></h3>
+    <div id="modalMessage" class="modal-message"></div>
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// STATE
+// ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// AI TRANSPORT — the ONLY place this tool talks to a model.
+//
+// Today this works because Claude's artifact sandbox injects credentials into
+// requests to api.anthropic.com. It will NOT work when this file is served from
+// GitHub Pages (no API key, and CORS would block it).
+//
+// To make this tool distributable later, change ONLY this function to POST to
+// your own backend proxy, which holds the key server-side. Nothing else in the
+// file should need to change.
+// ---------------------------------------------------------------------------
+const AI_MODEL = "claude-sonnet-4-6";
+let USER_API_KEY = '';
+
+function toggleApiSettings(){
+  const p = document.getElementById('apiSettingsPanel');
+  if (p) p.style.display = p.style.display === 'none' ? '' : 'none';
+}
+
+function saveApiKey(){
+  const input = document.getElementById('apiKeyInput');
+  const status = document.getElementById('apiKeyStatus');
+  USER_API_KEY = (input && input.value || '').trim();
+  if (status) status.textContent = USER_API_KEY ? '✓ Key set for this session' : 'Key cleared';
+}
+
+async function callClaude({ system, user, maxTokens = 4096 }){
+  const headers = { "Content-Type": "application/json" };
+  if (USER_API_KEY){
+    headers["x-api-key"] = USER_API_KEY;
+    headers["anthropic-version"] = "2023-06-01";
+    headers["anthropic-dangerous-direct-browser-access"] = "true";
+  }
+
+  let response;
+  try {
+    response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        model: AI_MODEL,
+        max_tokens: maxTokens,
+        system,
+        messages: [{ role: "user", content: user }]
+      })
+    });
+  } catch (networkErr) {
+    if (USER_API_KEY) {
+      throw new Error("Couldn't reach Anthropic's API. Check your key and connection.");
+    }
+    throw new Error("Couldn't reach the AI service. Generation only works inside Claude.ai — if you're running this standalone, click ⚙ in the header and add your own Anthropic API key.");
+  }
+
+  if (response.status === 401) {
+    throw new Error("That API key was rejected. Check it via ⚙ in the header.");
+  }
+  if (!response.ok) {
+    throw new Error(`AI request failed (${response.status}).`);
+  }
+  return await response.json();
+}
+
+// ---------------------------------------------------------------------------
+// STORAGE ADAPTER — mirrors to Claude artifact storage and localStorage, and
+// reads whichever has data, so work survives moving between environments.
+// ---------------------------------------------------------------------------
+const store = {
+  async get(key){
+    let artifactVal = null;
+    if (typeof window !== "undefined" && window.storage && window.storage.get) {
+      try {
+        const r = await window.storage.get(key, false);
+        if (r && r.value) artifactVal = r.value;
+      } catch(e){ /* not present */ }
+    }
+    let localVal = null;
+    try { localVal = localStorage.getItem(key); } catch(e){ /* blocked */ }
+    const value = artifactVal || localVal;
+    if (!value) throw new Error('not found');
+    return { key, value };
+  },
+  async set(key, value){
+    let wrote = false;
+    if (typeof window !== "undefined" && window.storage && window.storage.set) {
+      try { await window.storage.set(key, value, false); wrote = true; } catch(e){ /* fall through */ }
+    }
+    try { localStorage.setItem(key, value); wrote = true; } catch(e){ /* quota */ }
+    if (!wrote) throw new Error('no writable storage');
+    return { key, value };
+  },
+  async delete(key){
+    if (typeof window !== "undefined" && window.storage && window.storage.delete) {
+      try { await window.storage.delete(key, false); } catch(e){ /* ignore */ }
+    }
+    try { localStorage.removeItem(key); } catch(e){ /* ignore */ }
+  }
+};
+
+let state = {
+  unitId: null,
+  unitTitle: '',
+  subject: '',
+  gradeLevel: '',
+  topics: [],
+  numLessons: 0,
+  lessons: [],      // { status: 'pending'|'loading'|'done'|'error', data: {...} | null, assignedTopics: [] }
+  currentIndex: 0
+};
+
+// ---------------------------------------------------------------------------
+// SETUP SCREEN WIRING
+// ---------------------------------------------------------------------------
+const topicsEl = document.getElementById('topics');
+const topicCountEl = document.getElementById('topicCount');
+topicsEl.addEventListener('input', () => {
+  const n = topicsEl.value.split('\n').map(s => s.trim()).filter(Boolean).length;
+  topicCountEl.textContent = n + (n === 1 ? ' topic listed' : ' topics listed');
+});
+
+document.getElementById('generateBtn').addEventListener('click', startGeneration);
+
+function escapeHtml(str){
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function distributeTopics(topics, numLessons){
+  const groups = Array.from({length:numLessons}, () => []);
+  topics.forEach((t, i) => {
+    let idx = Math.floor(i * numLessons / topics.length);
+    if (idx >= numLessons) idx = numLessons - 1;
+    groups[idx].push(t);
+  });
+  // Ensure no empty group by borrowing from neighbors
+  for (let i=0;i<groups.length;i++){
+    if (groups[i].length === 0){
+      const donor = groups.slice(0,i).concat(groups.slice(i+1)).reduce((a,b)=> a.length>=b.length?a:b, []);
+      if (donor.length > 1) {
+        groups[i].push(donor.pop());
+      }
+    }
+  }
+  return groups;
+}
+
+// ---------------------------------------------------------------------------
+// PERSISTENT STORAGE (units saved so they can be reopened later)
+// ---------------------------------------------------------------------------
+function makeUnitId(){
+  return 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+}
+
+async function loadUnitsIndex(){
+  try{
+    const res = await store.get('units-index');
+    if (!res || !res.value) return [];
+    const parsed = JSON.parse(res.value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch(err){
+    return [];
+  }
+}
+
+async function saveUnitsIndex(list){
+  try{
+    await store.set('units-index', JSON.stringify(list));
+  } catch(err){
+    console.error('Failed to save units index', err);
+  }
+}
+
+async function saveCurrentUnit(){
+  if (!state.unitId) return;
+  const doneCount = state.lessons.filter(l => l.status === 'done').length;
+  const payload = {
+    unitId: state.unitId,
+    unitTitle: state.unitTitle,
+    subject: state.subject,
+    gradeLevel: state.gradeLevel,
+    periodNum: state.periodNum || null,
+    totalUnitDays: state.totalUnitDays || null,
+    sourceDayNums: state.sourceDayNums || null,
+    topics: state.topics,
+    numLessons: state.numLessons,
+    lessons: state.lessons.map(l => ({
+      status: l.status === 'loading' ? 'pending' : l.status, // don't persist a stuck "loading" state
+      data: l.data,
+      assignedTopics: l.assignedTopics
+    }))
+  };
+  try{
+    await store.set('unit:' + state.unitId, JSON.stringify(payload));
+    const index = await loadUnitsIndex();
+    const existing = index.findIndex(u => u.unitId === state.unitId);
+    const entry = {
+      unitId: state.unitId,
+      unitTitle: state.unitTitle,
+      subject: state.subject,
+      gradeLevel: state.gradeLevel,
+      totalLessons: state.lessons.length,
+      doneCount,
+      updatedAt: Date.now()
+    };
+    if (existing >= 0) index[existing] = entry; else index.unshift(entry);
+    await saveUnitsIndex(index);
+  } catch(err){
+    console.error('Failed to save unit', err);
+  }
+}
+
+async function loadUnit(unitId){
+  try{
+    const res = await store.get('unit:' + unitId);
+    if (!res || !res.value) return null;
+    return JSON.parse(res.value);
+  } catch(err){
+    return null;
+  }
+}
+
+async function deleteUnit(unitId){
+  try{ await store.delete('unit:' + unitId); } catch(err){ /* already gone */ }
+  const index = await loadUnitsIndex();
+  await saveUnitsIndex(index.filter(u => u.unitId !== unitId));
+}
+
+async function renderSavedUnitsList(){
+  const card = document.getElementById('savedUnitsCard');
+  const list = document.getElementById('savedUnitsList');
+  const index = await loadUnitsIndex();
+  if (index.length === 0){
+    card.style.display = 'none';
+    return;
+  }
+  index.sort((a,b) => b.updatedAt - a.updatedAt);
+  card.style.display = 'block';
+  list.innerHTML = index.map(u => `
+    <div class="saved-unit-row" data-unit-id="${escapeHtml(u.unitId)}">
+      <div class="saved-unit-info">
+        <div class="saved-unit-title">${escapeHtml(u.unitTitle)}</div>
+        <div class="saved-unit-meta">${escapeHtml(u.subject)} · ${escapeHtml(u.gradeLevel)} · ${u.doneCount}/${u.totalLessons} lessons generated · updated ${new Date(u.updatedAt).toLocaleDateString()}</div>
+      </div>
+      <div class="saved-unit-actions">
+        <button class="btn btn-primary btn-small open-unit-btn">Open</button>
+        <button class="btn btn-ghost btn-small delete-unit-btn">Delete</button>
+      </div>
+    </div>`).join('');
+
+  list.querySelectorAll('.open-unit-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.target.closest('.saved-unit-row').getAttribute('data-unit-id');
+      const unit = await loadUnit(id);
+      if (!unit){ await showAlert('Could not load that unit — it may have been deleted.', { title: 'Unit not found' }); renderSavedUnitsList(); return; }
+      openLoadedUnit(unit);
+    });
+  });
+  list.querySelectorAll('.delete-unit-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const row = e.target.closest('.saved-unit-row');
+      const id = row.getAttribute('data-unit-id');
+      const title = row.querySelector('.saved-unit-title').textContent;
+      if (!(await showConfirm(`Delete "${title}"? This can't be undone.`, { title: 'Delete this unit?', confirmText: 'Delete', danger: true }))) return;
+      await deleteUnit(id);
+      renderSavedUnitsList();
+    });
+  });
+}
+
+function openLoadedUnit(unit){
+  state.unitId = unit.unitId;
+  state.unitTitle = unit.unitTitle;
+  state.subject = unit.subject;
+  state.gradeLevel = unit.gradeLevel;
+  state.periodNum = unit.periodNum || null;
+  state.totalUnitDays = unit.totalUnitDays || null;
+  state.sourceDayNums = unit.sourceDayNums || null;
+  state.topics = unit.topics;
+  state.numLessons = unit.numLessons;
+  state.lessons = unit.lessons;
+  state.currentIndex = 0;
+
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  document.getElementById('sbSubject').textContent = (state.subject + ' · ' + state.gradeLevel).toUpperCase();
+  document.getElementById('sbTitle').textContent = state.unitTitle;
+
+  renderTabs();
+  renderMain();
+}
+
+
+// ---------------------------------------------------------------------------
+// CUSTOM MODAL (native confirm/alert are blocked in this sandboxed preview)
+// ---------------------------------------------------------------------------
+function showModal({ title, message, buttons }){
+  return new Promise(resolve => {
+    const overlay = document.getElementById('modalOverlay');
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalMessage').innerHTML = message;
+    const actions = document.getElementById('modalActions');
+    actions.innerHTML = '';
+    buttons.forEach(b => {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-small ' + (b.primary ? 'btn-primary' : (b.danger ? 'btn-red' : 'btn-ghost'));
+      btn.textContent = b.label;
+      btn.addEventListener('click', () => {
+        overlay.style.display = 'none';
+        resolve(b.value);
+      });
+      actions.appendChild(btn);
+    });
+    overlay.style.display = 'flex';
+  });
+}
+
+function showConfirm(message, opts = {}){
+  return showModal({
+    title: opts.title || 'Are you sure?',
+    message,
+    buttons: [
+      { label: opts.cancelText || 'Cancel', value: false },
+      { label: opts.confirmText || 'Confirm', value: true, primary: !opts.danger, danger: opts.danger }
+    ]
+  });
+}
+
+function showAlert(message, opts = {}){
+  return showModal({
+    title: opts.title || 'Heads up',
+    message,
+    buttons: [{ label: 'OK', value: true, primary: true }]
+  });
+}
+
+
+function validateSetupForm(unitTitle, subject, gradeLevel, topics, numLessons){
+  const warnings = [];
+  if (!document.getElementById('unitTitle').value.trim()){
+    warnings.push('No unit title was entered — it will be saved as "Untitled Unit".');
+  }
+  if (!document.getElementById('subject').value.trim()){
+    warnings.push('No subject was entered — generic "General" content will be used instead of subject-specific language.');
+  }
+  if (topics.length === 1){
+    warnings.push('Only one topic/objective was listed. More topics usually give each lesson clearer, more specific content.');
+  }
+  const avgLen = topics.reduce((sum, t) => sum + t.length, 0) / (topics.length || 1);
+  if (avgLen < 8){
+    warnings.push('Your topics look very short. Short, vague topics (e.g. single words) often produce vague lessons — a short phrase per topic works better.');
+  }
+  if (numLessons > topics.length * 3){
+    warnings.push(`You're generating ${numLessons} lessons from just ${topics.length} topic(s) — many lessons may end up repeating the same topic.`);
+  }
+  return warnings;
+}
+
+// ---------------------------------------------------------------------------
+// SHARED UNIT SCHEMA v1 — bridges to the Planner and Content Studio
+// See shared/UNIT_SCHEMA.md
+// ---------------------------------------------------------------------------
+const UNIT_SCHEMA_VERSION = 1;
+
+// Flatten one generated lesson into readable plain text (for lessonPlan + clipboard)
+function lessonToPlainText(d){
+  if (!d) return '';
+  const out = [];
+  if (d.title) out.push(d.title);
+  if (d.objective) out.push('\nObjective: ' + d.objective);
+  if (Array.isArray(d.review) && d.review.length){
+    out.push('\nReview:');
+    d.review.forEach(r => out.push('  • ' + (r.prompt || r.text || r)));
+  }
+  if (d.bellRinger && d.bellRinger.task) out.push('\nBell-ringer: ' + d.bellRinger.task);
+  if (Array.isArray(d.vocabulary) && d.vocabulary.length){
+    out.push('\nVocabulary:');
+    d.vocabulary.forEach(v => out.push('  • ' + v.term + ': ' + (v.definition || '')));
+  }
+  if (d.explanation) out.push('\nExplanation:\n' + d.explanation);
+  if (d.example) out.push('\nExample:\n' + (typeof d.example === 'string' ? d.example : JSON.stringify(d.example)));
+  if (d.practice){
+    ['easy','medium','hard'].forEach(tier => {
+      const items = d.practice[tier];
+      if (Array.isArray(items) && items.length){
+        out.push('\n' + tier.charAt(0).toUpperCase() + tier.slice(1) + ' practice:');
+        items.forEach((p,i) => out.push('  ' + (i+1) + '. ' + (p.question || p.prompt || p)));
+      }
+    });
+  }
+  return out.join('\n');
+}
+
+function exportUnitToSchema(){
+  return {
+    schemaVersion: UNIT_SCHEMA_VERSION,
+    unitId: state.unitId || ('u_' + Date.now().toString(36)),
+    unitTitle: state.unitTitle || 'Untitled Unit',
+    subject: state.subject || '',
+    gradeLevel: state.gradeLevel || '',
+    periodNum: state.periodNum || null,
+    source: 'unit-builder',
+    exportedAt: new Date().toISOString(),
+    description: '',
+    objectives: '',
+    materials: '',
+    totalUnitDays: state.totalUnitDays || state.lessons.length,
+    // Only send lessons that actually generated. Partial exports then can't
+    // overwrite or blank out days the builder never produced content for.
+    days: state.lessons
+      .map((l, i) => ({ l, i }))
+      .filter(x => x.l.status === 'done' && x.l.data)
+      .map(({ l, i }) => ({
+        dayNum: i + 1,
+        // Which day of the original planner unit this lesson belongs to.
+        // Preserved so quiz/test days aren't overwritten on the way back.
+        sourceDayNum: (state.sourceDayNums && state.sourceDayNums[i]) || (i + 1),
+        date: null, // only the Planner assigns real dates
+        topic: (l.assignedTopics && l.assignedTopics.join('; ')) || (l.data && l.data.title) || '',
+        lessonPlan: lessonToPlainText(l.data),
+        isQuiz: false,
+        isTest: false,
+        checkpoint: null,
+        lesson: l.data
+      })),
+    rubric: null
+  };
+}
+
+function downloadUnitJson(){
+  const payload = exportUnitToSchema();
+  const safe = (payload.unitTitle || 'unit').replace(/[^a-z0-9]+/gi,'-').toLowerCase();
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = safe + '.unit.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+
+function importUnitFromSchema(){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json,application/json';
+  input.onchange = () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let p;
+      try { p = JSON.parse(reader.result); }
+      catch(e){ alert('That file is not valid JSON.'); return; }
+      if (!p || !Array.isArray(p.days)) { alert('That does not look like a unit file.'); return; }
+      if (p.schemaVersion !== UNIT_SCHEMA_VERSION &&
+          !confirm(`This file uses schema version ${p.schemaVersion ?? 'unknown'}, expected ${UNIT_SCHEMA_VERSION}. Import anyway?`)) return;
+
+      document.getElementById('unitTitle').value = p.unitTitle || '';
+      document.getElementById('subject').value = p.subject || '';
+      document.getElementById('gradeLevel').value = p.gradeLevel || '';
+      const topics = p.days.map(d => d.topic).filter(Boolean);
+      topicsEl.value = topics.join('\n');
+      topicsEl.dispatchEvent(new Event('input'));
+      document.getElementById('numLessons').value = p.days.length || '';
+
+      // Remember identity + day mapping so a round-trip updates the same unit
+      // and lessons land back on the correct (non-quiz/test) days.
+      state.unitId = p.unitId || null;
+      state.periodNum = p.periodNum || null;
+      state.totalUnitDays = p.totalUnitDays || p.days.length;
+      state.sourceDayNums = p.days.map((d, i) => d.sourceDayNum || (i + 1));
+
+      const skipped = (p.totalUnitDays || p.days.length) - p.days.length;
+      alert(
+        `Loaded "${p.unitTitle}" — ${topics.length} topic${topics.length===1?'':'s'} across ${p.days.length} teaching day${p.days.length===1?'':'s'}.` +
+        (skipped > 0
+          ? `\n\n${skipped} day${skipped===1?'':'s'} skipped (quiz/test days don't need generated lessons).`
+          : '') +
+        `\n\nReview below, then Generate unit.`
+      );
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+document.getElementById('importUnitBtn').addEventListener('click', importUnitFromSchema);
+
+async function startGeneration(){
+  const unitTitle = document.getElementById('unitTitle').value.trim() || 'Untitled Unit';
+  const subject = document.getElementById('subject').value.trim() || 'General';
+  const gradeLevel = document.getElementById('gradeLevel').value.trim() || '6th grade';
+  const topics = topicsEl.value.split('\n').map(s => s.trim()).filter(Boolean);
+
+  if (topics.length === 0){
+    await showAlert('Add at least one topic or objective before generating.', { title: 'Nothing to generate yet' });
+    return;
+  }
+  let numLessons = parseInt(document.getElementById('numLessons').value, 10);
+  if (!numLessons || numLessons < 1) numLessons = topics.length;
+
+  const warnings = validateSetupForm(unitTitle, subject, gradeLevel, topics, numLessons);
+  if (warnings.length > 0){
+    const proceed = await showConfirm(
+      `<p>Before this uses API calls to generate lessons, a few things look worth double-checking:</p><ul>${warnings.map(w => `<li>${w}</li>`).join('')}</ul>`,
+      { title: 'Double-check before generating', cancelText: 'Go back and edit', confirmText: 'Generate anyway' }
+    );
+    if (!proceed) return;
+  }
+
+  // Keep the id if this unit came from the Planner, so exporting back updates
+  // the same unit rather than creating a duplicate.
+  state.unitId = state.unitId || makeUnitId();
+  state.unitTitle = unitTitle;
+  state.subject = subject;
+  state.gradeLevel = gradeLevel;
+  state.topics = topics;
+  state.numLessons = numLessons;
+
+  const groups = distributeTopics(topics, numLessons);
+  state.lessons = groups.map(g => ({ status:'pending', data:null, assignedTopics:g }));
+  state.currentIndex = 0;
+
+  document.getElementById('setupScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  document.getElementById('sbSubject').textContent = (subject + ' · ' + gradeLevel).toUpperCase();
+  document.getElementById('sbTitle').textContent = unitTitle;
+
+  renderTabs();
+  renderMain();
+  saveCurrentUnit();
+}
+
+// ---------------------------------------------------------------------------
+// GENERATION (calls Claude via the Anthropic API)
+// ---------------------------------------------------------------------------
+function tryRepairJson(text){
+  // Attempt to salvage a truncated JSON object: trim to the last fully-closed
+  // string/value and close off any open arrays/objects/strings.
+  let s = text;
+  // If the string was cut off mid-string-literal, trim back to the last quote
+  // that isn't itself the start of a dangling literal.
+  const lastBrace = Math.max(s.lastIndexOf('"}'), s.lastIndexOf('"]'), s.lastIndexOf('true'), s.lastIndexOf('false'));
+  // Count unmatched braces/brackets and unescaped quotes up to a safe cut point.
+  let cut = s.length;
+  // Walk backward to find the last position that ends a complete value.
+  const safeEndings = ['"', '}', ']'];
+  while (cut > 0 && !safeEndings.includes(s[cut-1])) cut--;
+  s = s.slice(0, cut);
+
+  // Balance quotes: if there's an odd number of unescaped quotes, close the string.
+  let quoteCount = 0;
+  for (let i=0;i<s.length;i++){
+    if (s[i] === '"' && s[i-1] !== '\\') quoteCount++;
+  }
+  if (quoteCount % 2 !== 0) s += '"';
+
+  // Close any open arrays/objects in the right order.
+  const stack = [];
+  let inStr = false;
+  for (let i=0;i<s.length;i++){
+    const ch = s[i];
+    if (ch === '"' && s[i-1] !== '\\') inStr = !inStr;
+    if (inStr) continue;
+    if (ch === '{' || ch === '[') stack.push(ch);
+    else if (ch === '}' ) stack.pop();
+    else if (ch === ']') stack.pop();
+  }
+  while (stack.length){
+    const open = stack.pop();
+    s += (open === '{') ? '}' : ']';
+  }
+  return s;
+}
+
+function normalizeLesson(d){
+  d = d || {};
+  d.title = d.title || 'Untitled lesson';
+  d.objective = d.objective || '';
+  d.learningTarget = d.learningTarget || '';
+  d.review = Array.isArray(d.review) ? d.review : [];
+  d.bellRinger = d.bellRinger && d.bellRinger.task ? d.bellRinger : { task: '' };
+  d.vocabulary = Array.isArray(d.vocabulary) ? d.vocabulary : [];
+  d.explanation = d.explanation || '';
+  d.example = d.example || '';
+  d.practice = d.practice || {};
+  ['easy','medium','hard'].forEach(tier => {
+    if (!Array.isArray(d.practice[tier])) d.practice[tier] = [];
+    d.practice[tier] = d.practice[tier].map(p => ({
+      problem: (p && p.problem) || '',
+      answer: (p && p.answer) || ''
+    })).filter(p => p.problem);
+  });
+  d.reflection = Array.isArray(d.reflection) ? d.reflection : [];
+  return d;
+}
+
+async function generateLesson(index){
+  // ensure the previous lesson exists first so the review section has real context
+  if (index > 0 && state.lessons[index-1].status !== 'done' && state.lessons[index-1].status !== 'loading'){
+    await generateLesson(index-1);
+  }
+
+  state.lessons[index].status = 'loading';
+  renderTabs();
+  if (state.currentIndex === index) renderMain();
+
+  const lessonMeta = state.lessons[index];
+  const prevLesson = index > 0 ? state.lessons[index-1] : null;
+  const prevSummary = prevLesson && prevLesson.data
+    ? `Title: "${prevLesson.data.title}". Objective: "${prevLesson.data.objective}". Key vocabulary: ${(prevLesson.data.vocabulary||[]).map(v=>v.term).join(', ')}.`
+    : null;
+
+  const schema = `{
+  "title": "string, short lesson title",
+  "objective": "string, one sentence 'Students will be able to...' objective",
+  "learningTarget": "string, one 'I can...' statement written for students, e.g. 'I can use ratio language to describe the relationship between two quantities.'",
+  "review": ["3 to 4 short recall questions/prompts about the PREVIOUS lesson. Empty array if this is lesson 1."],
+  "bellRinger": {"task": "string, a short warm-up task or question tied to today's new topic, 1-3 sentences, solvable in under 5 minutes"},
+  "vocabulary": [{"term":"string","definition":"string, one short student-friendly sentence"}],
+  "explanation": "string, the core teaching content. 3-5 short paragraphs separated by \\n\\n, written clearly for the grade level, building from what students already know",
+  "example": "string, one fully worked example that models the skill step by step",
+  "practice": {
+    "easy":   [{"problem":"string","answer":"string, short answer or solution"} x8],
+    "medium": [{"problem":"string","answer":"string"} x6],
+    "hard":   [{"problem":"string","answer":"string"} x4]
+  },
+  "reflection": ["2 to 3 short open-ended reflection prompts about the big idea of the lesson, for students to answer in their own words at the end of the practice set"]
+}`;
+
+  const systemPrompt = `You are an expert curriculum writer creating a single classroom lesson as part of a larger unit. Respond ONLY with a single valid JSON object matching this exact schema, with no markdown code fences, no commentary, and no text outside the JSON:
+${schema}
+
+Rules:
+- Write for ${state.gradeLevel} students studying ${state.subject}.
+- The practice set (8 easy, 6 medium, 4 hard — 18 items total) must progress in difficulty within and across the three tiers, and should read like a well-designed conceptual worksheet rather than a plug-and-chug drill set:
+  - EASY (8 items): identify/label/write the core skill directly from a simple given situation. Straightforward, one correct answer, minimal wording.
+  - MEDIUM (6 items): apply the skill using its full language/meaning in a new context — include at least one item that asks students to explain their answer in a sentence (e.g. "Explain what this means using..." or "Explain why..."), and at least one that reverses an order/direction or changes a given condition so students must think, not just recall.
+  - HARD (4 items): reasoning and justification items. Include at least one "which statement/student is correct?" comparison item where two students give different interpretations and the learner must decide which is right and explain why, at least one multi-part item (use "\\n" inside the "problem" string to separate parts like "a. ...\\nb. ...\\nc. Explain why..."), and at least one item where students must reason about a relationship WITHOUT doing a full calculation (e.g. "without calculating the total, explain how you could...").
+  - For every item that asks students to "explain," the "answer" field should give the correct choice/value AND a one-sentence model explanation.
+  - Avoid pure arithmetic drill; prioritize items that test whether students understand what the concept means, not just whether they can compute it.
+- Be concise everywhere it doesn't hurt clarity: limit "vocabulary" to at most 4 terms, keep "explanation" to 3 short paragraphs (not 5), and keep each practice "problem" and "answer" tight — one to three sentences, even for multi-part items. The lesson must still fit comfortably in a single response.
+- The "reflection" prompts should ask students to state the big idea in their own words (e.g. what a core concept means, why some detail like order/direction matters, or the difference between two things that are easy to conflate) — written so a student fills in a blank line, not multiple choice.
+- Keep language age-appropriate and concrete. Avoid filler.
+- The "review" array must be empty ([]) if there is no previous lesson.
+- Ensure the JSON is syntactically valid: escape any quotes or newlines properly.`;
+
+  const userPrompt = `Unit: "${state.unitTitle}" (${state.subject}, ${state.gradeLevel})
+Full ordered topic list for the unit: ${state.topics.join('; ')}
+
+This is lesson ${index+1} of ${state.lessons.length}.
+Topic(s) this lesson must teach: ${lessonMeta.assignedTopics.join('; ')}
+${prevSummary ? `Previous lesson (for the review section): ${prevSummary}` : 'This is the first lesson in the unit — there is no previous lesson, so "review" must be [].'}
+
+Generate this one lesson now as JSON per the schema.`;
+
+  try{
+    const data = await callClaude({
+      system: systemPrompt,
+      user: userPrompt,
+      maxTokens: 4096
+    });
+    const textBlocks = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+    const cleaned = textBlocks.replace(/```json/g,'').replace(/```/g,'').trim();
+    let parsed;
+    try{
+      parsed = JSON.parse(cleaned);
+    } catch(firstErr){
+      // The response likely got cut off mid-object (hit the token limit). Try to repair it.
+      parsed = JSON.parse(tryRepairJson(cleaned));
+    }
+    state.lessons[index].data = normalizeLesson(parsed);
+    state.lessons[index].status = 'done';
+  } catch(err){
+    console.error('Lesson generation failed', err);
+    state.lessons[index].status = 'error';
+    // Keep the reason so the UI can explain it (e.g. missing API key).
+    state.lessons[index].errorMsg = (err && err.message) || 'Generation failed.';
+    state.lastError = state.lessons[index].errorMsg;
+  }
+  renderTabs();
+  if (state.currentIndex === index) renderMain();
+  saveCurrentUnit();
+}
+
+// ---------------------------------------------------------------------------
+// RENDER: SIDEBAR TABS
+// ---------------------------------------------------------------------------
+function renderTabs(){
+  const list = document.getElementById('tabList');
+  list.innerHTML = state.lessons.map((l, i) => {
+    const active = i === state.currentIndex ? 'active' : '';
+    let statusHtml = '';
+    if (l.status === 'loading') statusHtml = '<span class="spin"></span>';
+    else if (l.status === 'done') statusHtml = '<span class="tab-status dot-done mono">●</span>';
+    else if (l.status === 'error') statusHtml = '<span class="tab-status dot-error mono">!</span>';
+    const label = l.data ? l.data.title : (l.assignedTopics[0] || 'Lesson ' + (i+1));
+    return `<div class="tab ${active}" data-index="${i}">
+      <span class="tab-num mono">${String(i+1).padStart(2,'0')}</span>
+      <span class="tab-label">${escapeHtml(label)}</span>
+      ${statusHtml}
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.tab').forEach(tabEl => {
+    tabEl.addEventListener('click', () => {
+      state.currentIndex = parseInt(tabEl.getAttribute('data-index'), 10);
+      renderTabs();
+      renderMain();
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// RENDER: MAIN CONTENT
+// ---------------------------------------------------------------------------
+function renderMain(){
+  const container = document.getElementById('mainContent');
+  const idx = state.currentIndex;
+  const lesson = state.lessons[idx];
+  document.getElementById('mtEyebrow').textContent = `LESSON ${idx+1} OF ${state.lessons.length}`;
+  document.querySelector('.toolbar-actions').style.display = lesson.status === 'done' ? 'flex' : 'none';
+
+  if (lesson.status === 'pending'){
+    const needsPrev = idx > 0 && state.lessons[idx-1].status !== 'done';
+    container.innerHTML = `<div class="state-box">
+      <h3>Lesson ${idx+1} hasn't been generated yet</h3>
+      <p style="margin-bottom:18px;">${needsPrev ? `Generating this will also generate lesson ${idx} first, so the review section has real content to point back to.` : `Generate the review, bell-ringer, new content, and a full practice set for this lesson.`}</p>
+      <button class="btn btn-primary btn-small" id="generateOneBtn">Generate this lesson</button>
+    </div>`;
+    document.getElementById('generateOneBtn').addEventListener('click', () => generateLesson(idx));
+    return;
+  }
+  if (lesson.status === 'loading'){
+    container.innerHTML = `<div class="state-box">
+      <div class="spin-big"></div>
+      <h3>Writing lesson ${idx+1}…</h3>
+      <p>Building the review, bell-ringer, new content, and a full practice set.</p>
+    </div>`;
+    return;
+  }
+  if (lesson.status === 'error'){
+    const reason = lesson.errorMsg || 'Something went wrong reaching the model.';
+    container.innerHTML = `<div class="state-box error-box">
+      <h3>This lesson didn't generate</h3>
+      <p style="margin-bottom:18px;">${escapeHtml(reason)}</p>
+      <button class="btn btn-red btn-small" id="retryBtn">Retry lesson ${idx+1}</button>
+    </div>`;
+    document.getElementById('retryBtn').addEventListener('click', () => generateLesson(idx));
+    return;
+  }
+
+  container.innerHTML = renderLessonPageHtml(lesson.data, idx);
+}
+
+function renderLessonPageHtml(d, idx){
+  const showAnswersClass = document.getElementById('answerToggle').checked ? 'show-answers' : '';
+  const reviewHtml = (d.review && d.review.length)
+    ? `<ul class="review-list">${d.review.map(q => `<li>${escapeHtml(q)}</li>`).join('')}</ul>`
+    : `<p class="review-empty">This is the first lesson in the unit — no prior lesson to review.</p>`;
+
+  const vocabHtml = (d.vocabulary && d.vocabulary.length)
+    ? `<div class="vocab-grid">${d.vocabulary.map(v => `
+        <div class="vocab-card">
+          <div class="vocab-term">${escapeHtml(v.term)}</div>
+          <div class="vocab-def">${escapeHtml(v.definition)}</div>
+        </div>`).join('')}</div>`
+    : '';
+
+  const explanationHtml = (d.explanation || '').split(/\n\n+/).map(p => `<p>${escapeHtml(p)}</p>`).join('');
+
+  const tier = (label, chipClass, items, filled) => `
+    <div class="stair-tier tier-${label.toLowerCase()}">
+      <div class="tier-head">
+        <span class="tier-chip ${chipClass} mono">${label}</span>
+        <span class="tier-meter">${[1,2,3].map(n => `<span class="${n<=filled?'fill':''}"></span>`).join('')}</span>
+      </div>
+      <ol class="problem-list">
+        ${items.map(p => `<li class="problem-item">
+            <div class="problem-text">${escapeHtml(p.problem).replace(/\n/g,'<br>')}</div>
+            <div class="problem-answer">Answer: ${escapeHtml(p.answer).replace(/\n/g,'<br>')}</div>
+          </li>`).join('')}
+      </ol>
+    </div>`;
+
+  const practiceHtml = `<div class="stair ${showAnswersClass}" id="stairContainer">
+      ${tier('Easy','chip-easy', d.practice.easy, 1)}
+      ${tier('Medium','chip-medium', d.practice.medium, 2)}
+      ${tier('Hard','chip-hard', d.practice.hard, 3)}
+    </div>`;
+
+  const reflectionHtml = (d.reflection && d.reflection.length)
+    ? `<div class="section">
+        <div class="section-head"><h3>Final reflection</h3><span class="section-tag tag-review mono">in your own words</span></div>
+        <div class="reflection-list">
+          ${d.reflection.map(r => `<div class="reflection-item">
+              <p>${escapeHtml(r)}</p>
+              <div class="reflection-line"></div>
+              <div class="reflection-line"></div>
+            </div>`).join('')}
+        </div>
+      </div>`
+    : '';
+
+  return `<div class="lesson-page" id="lessonPage-${idx}">
+    <div class="worksheet-header mono">
+      <span>Name: <i></i></span>
+      <span>Date: <i></i></span>
+      <span>Class: <i></i></span>
+    </div>
+    <span class="lesson-eyebrow">LESSON ${idx+1} · ${escapeHtml(state.subject).toUpperCase()}</span>
+    <h2>${escapeHtml(d.title)}</h2>
+    <p class="lesson-objective">${escapeHtml(d.objective)}</p>
+    ${d.learningTarget ? `<div class="learning-target"><span class="lt-label mono">Learning target</span><p>${escapeHtml(d.learningTarget)}</p></div>` : ''}
+
+    <div class="section">
+      <div class="section-head"><h3>Review: last lesson</h3><span class="section-tag tag-review mono">warm recall</span></div>
+      ${reviewHtml}
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>Bell-ringer</h3><span class="section-tag tag-bell mono">5 min</span></div>
+      <div class="bell-box"><p>${escapeHtml(d.bellRinger.task)}</p></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>New lesson</h3><span class="section-tag tag-lesson mono">core content</span></div>
+      ${vocabHtml}
+      <div class="explanation">${explanationHtml}</div>
+      <div class="example-box">
+        <span class="label">Worked example</span>
+        <p>${escapeHtml(d.example)}</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h3>Practice</h3><span class="section-tag tag-practice mono">8 · 6 · 4, ascending</span></div>
+      ${practiceHtml}
+    </div>
+    ${reflectionHtml}
+  </div>`;
+}
+
+function renderAnswerKeyPageHtml(d, idx){
+  const tierList = (items, startNum) => `<ol class="ak-list" style="counter-reset: akitem ${startNum - 1};">
+    ${items.map(p => `<li class="ak-item">
+        <span class="ak-q">${escapeHtml(p.problem).replace(/\n/g,' — ')}</span>
+        <span class="ak-a">${escapeHtml(p.answer).replace(/\n/g,'<br>')}</span>
+      </li>`).join('')}
+  </ol>`;
+
+  const easyCount = d.practice.easy.length;
+  const mediumCount = d.practice.medium.length;
+
+  return `<div class="lesson-page" id="akPage-${idx}">
+    <span class="lesson-eyebrow">LESSON ${idx+1} · ANSWER KEY</span>
+    <h2>${escapeHtml(d.title)}</h2>
+    <p class="lesson-objective">${escapeHtml(d.objective)}</p>
+
+    <div class="ak-section">
+      <div class="ak-tier-title">Easy</div>
+      ${tierList(d.practice.easy, 1)}
+    </div>
+    <div class="ak-section">
+      <div class="ak-tier-title">Medium</div>
+      ${tierList(d.practice.medium, easyCount + 1)}
+    </div>
+    <div class="ak-section">
+      <div class="ak-tier-title">Hard</div>
+      ${tierList(d.practice.hard, easyCount + mediumCount + 1)}
+    </div>
+  </div>`;
+}
+
+document.getElementById('answerToggle').addEventListener('change', renderMain);
+document.getElementById('regenerateBtn').addEventListener('click', async () => {
+  const idx = state.currentIndex;
+  if (!(await showConfirm('Regenerate lesson ' + (idx+1) + '? This replaces its current content.', { title: 'Regenerate this lesson?', confirmText: 'Regenerate' }))) return;
+  generateLesson(idx);
+});
+
+// ---------------------------------------------------------------------------
+// PRINT / PDF
+// ---------------------------------------------------------------------------
+function printLessons(indices, mode){
+  const pages = indices
+    .filter(i => state.lessons[i] && state.lessons[i].status === 'done')
+    .map(i => mode === 'answerkey'
+      ? renderAnswerKeyPageHtml(state.lessons[i].data, i)
+      : renderLessonPageHtml(state.lessons[i].data, i));
+  if (pages.length === 0){
+    showAlert('No completed lessons to print yet.', { title: 'Nothing to print' });
+    return;
+  }
+
+  const bodyHtml = `<div>${pages.join('')}</div>`;
+  const baseStyles = document.querySelector('style').innerHTML;
+  const scopeLabel = indices.length > 1 ? state.unitTitle : (state.lessons[indices[0]].data.title || state.unitTitle);
+  const docTitle = (scopeLabel || 'Lesson') + (mode === 'answerkey' ? ' — Answer Key' : '');
+
+  const doc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>${docTitle.replace(/</g,'')}</title>
+<style>
+${baseStyles}
+
+@page{
+  size: letter;
+  margin: 0.75in 0.7in;
+}
+body{ background:#fff; padding:0; }
+.print-bar{
+  padding:18px 0.7in;
+  margin:0 0 6px;
+  display:flex; justify-content:space-between; align-items:center;
+  background:var(--paper-deep);
+}
+.print-bar h4{ font-family:'IBM Plex Mono', monospace; font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-soft); margin:0; }
+.print-bar button{
+  font-family:'IBM Plex Mono', monospace; font-size:13px; text-transform:uppercase;
+  letter-spacing:0.05em; padding:11px 22px; border-radius:3px; border:none;
+  background:#2F4F42; color:#fff; cursor:pointer;
+}
+.lesson-page{
+  box-shadow:none;
+  padding:0;
+  margin:0 auto;
+  max-width:7.1in;
+  border-radius:0;
+}
+.lesson-page::before{ display:none; }
+
+/* Keep instructions, questions, and headings from splitting across a page break */
+.problem-item, .ak-item, .review-list li, .vocab-card, .bell-box, .example-box,
+.reflection-item, .learning-target, .worksheet-header{
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+h2, h3, .section-head, .lesson-eyebrow, .ak-tier-title, .lt-label{
+  break-after: avoid;
+  page-break-after: avoid;
+}
+.section{ break-before: auto; }
+p, li{ orphans: 3; widows: 3; }
+
+@media print{
+  body{ padding:0; }
+  .print-bar{ display:none !important; }
+  .lesson-page{ page-break-after:always; }
+  .lesson-page:last-child{ page-break-after:auto; }
+}
+@media screen{
+  .lesson-page{ padding:36px 0.7in 50px; }
+}
+</style>
+</head>
+<body>
+<div class="print-bar">
+  <h4>${mode === 'answerkey' ? 'Answer key' : 'Student copy'}</h4>
+  <button onclick="window.print()">Print / save as PDF</button>
+</div>
+${bodyHtml}
+</body>
+</html>`;
+
+  const blob = new Blob([doc], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+
+  if (!win){
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = docTitle.replace(/[^a-z0-9]+/gi, '-').toLowerCase() + '.html';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    showAlert("Your browser blocked the popup, so it downloaded as an HTML file instead. Open it in your browser and use Print > Save as PDF.", { title: 'Popup blocked' });
+  }
+}
+
+function getScopeIndices(){
+  const scope = document.getElementById('printScope').value;
+  return scope === 'all' ? state.lessons.map((_, i) => i) : [state.currentIndex];
+}
+document.getElementById('printStudentBtn').addEventListener('click', () => {
+  printLessons(getScopeIndices(), 'student');
+});
+document.getElementById('printAnswerKeyBtn').addEventListener('click', () => {
+  printLessons(getScopeIndices(), 'answerkey');
+});
+
+// Batch generation: paced, resumable, and cancellable.
+// Firing every lesson at once overwhelms the API and fails the whole run, so
+// this goes one at a time with a gap between calls, backs off on errors, and
+// stops after repeated failures rather than hammering.
+let batchRunning = false;
+let batchCancel = false;
+const BATCH_GAP_MS = 1500;      // pause between successful calls
+const BATCH_BACKOFF_MS = 5000;  // longer pause after a failure
+const BATCH_MAX_FAILS = 2;      // consecutive failures before stopping
+
+function setBatchButton(label, running){
+  const btn = document.getElementById('generateAllBtn');
+  if (!btn) return;
+  btn.textContent = label;
+  btn.classList.toggle('is-running', !!running);
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function runBatchGeneration(){
+  if (batchRunning){
+    // Second click = cancel
+    batchCancel = true;
+    setBatchButton('Stopping…', true);
+    return;
+  }
+
+  const pending = state.lessons
+    .map((l,i)=>({l,i}))
+    .filter(x => x.l.status !== 'done');
+
+  if (!pending.length){
+    alert('All lessons are already generated.');
+    return;
+  }
+
+  batchRunning = true;
+  batchCancel = false;
+  let consecutiveFails = 0;
+  let completed = 0;
+
+  for (const { i } of pending){
+    if (batchCancel) break;
+
+    setBatchButton(`Generating ${completed + 1} of ${pending.length}… (click to stop)`, true);
+    await generateLesson(i);
+
+    if (state.lessons[i].status === 'done'){
+      completed++;
+      consecutiveFails = 0;
+      if (!batchCancel) await sleep(BATCH_GAP_MS);
+    } else {
+      consecutiveFails++;
+      if (consecutiveFails >= BATCH_MAX_FAILS){
+        setBatchButton('Generate all remaining', false);
+        batchRunning = false;
+        alert(
+          `Stopped after ${consecutiveFails} failures in a row.\n\n` +
+          (state.lastError ? `Reason: ${state.lastError}\n\n` : '') +
+          `${completed} lesson${completed===1?'':'s'} generated so far — those are saved.\n\n` +
+          `You can export what you have now, or click "Generate all remaining" again later to pick up where this left off.`
+        );
+        return;
+      }
+      await sleep(BATCH_BACKOFF_MS); // give the API room before retrying
+    }
+  }
+
+  batchRunning = false;
+  setBatchButton('Generate all remaining', false);
+
+  const remaining = state.lessons.filter(l => l.status !== 'done').length;
+  if (batchCancel){
+    alert(`Stopped. ${completed} lesson${completed===1?'':'s'} generated this run.\n\n${remaining} still to go — your progress is saved.`);
+  } else if (remaining){
+    alert(`Finished with ${remaining} lesson${remaining===1?'':'s'} still incomplete.\n\nClick "Generate all remaining" again to retry just those.`);
+  }
+}
+
+document.getElementById('generateAllBtn').addEventListener('click', runBatchGeneration);
+
+document.getElementById('exportUnitBtn').addEventListener('click', () => {
+  const done = state.lessons.filter(l => l.status === 'done').length;
+  const total = state.lessons.length;
+
+  if (!done){
+    alert('No lessons have been generated yet — there is nothing to send back.');
+    return;
+  }
+
+  if (done < total){
+    const ok = confirm(
+      `${done} of ${total} lessons are generated.\n\n` +
+      `Exporting now sends those ${done} back to the Planner. The ungenerated days are left alone — ` +
+      `nothing already on them gets erased.\n\n` +
+      `You can finish the rest later and export again; the Planner merges each time.\n\nExport now?`
+    );
+    if (!ok) return;
+  }
+
+  downloadUnitJson();
+});
+
+document.getElementById('copyLessonBtn').addEventListener('click', async () => {
+  const lesson = state.lessons[state.currentIndex];
+  if (!lesson || !lesson.data) { alert('Generate this lesson first.'); return; }
+  const text = lessonToPlainText(lesson.data);
+  try{
+    await navigator.clipboard.writeText(text);
+    const btn = document.getElementById('copyLessonBtn');
+    const original = btn.textContent;
+    btn.textContent = '✓ Copied — paste into Content Studio';
+    setTimeout(()=>{ btn.textContent = original; }, 2200);
+  } catch(e){
+    // Clipboard API can be blocked; fall back to a selectable prompt
+    window.prompt('Copy this lesson text:', text);
+  }
+});
+
+document.getElementById('newUnitBtn').addEventListener('click', () => {
+  // Clear identity too — otherwise this would save over the unit we just left.
+  state.unitId = null;
+  state.periodNum = null;
+  state.totalUnitDays = null;
+  state.sourceDayNums = null;
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('setupScreen').style.display = 'flex';
+  document.getElementById('unitTitle').value = '';
+  document.getElementById('subject').value = '';
+  document.getElementById('gradeLevel').value = '6th grade';
+  document.getElementById('topics').value = '';
+  document.getElementById('numLessons').value = '';
+  topicCountEl.textContent = '0 topics listed';
+  renderSavedUnitsList();
+});
+
+renderSavedUnitsList();
+</script>
+</body>
+</html>
