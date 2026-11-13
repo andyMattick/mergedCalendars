@@ -1,10 +1,10 @@
 {
   "name": "mergedcalendars",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Teacher Suite: rotation-day planner, unit builder, content studio and progress tracker",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node smoke-test.js",
+    "start": "python3 -m http.server 4173"
   },
   "repository": {
     "type": "git",
@@ -20,5 +20,6 @@
   "homepage": "https://github.com/andyMattick/mergedCalendars#readme",
   "devDependencies": {
     "playwright": "^1.62.1"
-  }
+  },
+  "private": true
 }

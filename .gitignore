@@ -1,2 +1,5 @@
-git rm -r --cached node_modules
-git commit -m "Remove node_modules from tracking"
+node_modules/
+.DS_Store
+*.log
+test-results/
+playwright-report/
