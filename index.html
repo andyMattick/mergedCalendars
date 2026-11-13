@@ -2404,7 +2404,7 @@ function openPackPeriodMapEditor() {
     "position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:200;";
   modal.innerHTML = `
     <div style="background:${panelBg};color:${panelFg};border:1px solid ${panelBorder};padding:1.25rem;border-radius:8px;max-width:640px;max-height:90vh;overflow:auto;min-width:320px;">
-      <h3>Period map — ${pack.name || "Pack"}</h3>
+      <h3>Period map — ${escapeHtml(pack.name || "Pack")}</h3>
       <p class="small">Which periods meet on each letter day.</p>
       <div id="periodMapRows"></div>
       <div style="margin-top:1rem;display:flex;gap:8px;justify-content:flex-end;">
@@ -2492,7 +2492,7 @@ function refreshPackSelect() {
   sel.innerHTML =
     '<option value="builtin">Built-in (HS/MS/LS)</option>' +
     savedPacks.map(p =>
-      `<option value="${p.id}">${p.name} (${p.days?.length || 0} days)</option>`
+      `<option value="${p.id}">${escapeHtml(p.name || "")} (${p.days?.length || 0} days)</option>`
     ).join("");
   sel.value = activePackId || "builtin";
   hydratePackFormFromSelection(sel.value);
@@ -2935,8 +2935,8 @@ function noteToPlain(html) {
 
 function noteToHtml(note) {
   if (!note) return "";
-  // already HTML
-  if (/<[a-z][\s\S]*>/i.test(note)) return note;
+  // already HTML (a real tag, not just text such as "x<y, then z>3")
+  if (/<\/?[a-z][a-z0-9]*(\s[^<>]*)?\/?>/i.test(note)) return note;
   // plain → escape only
   return String(note)
     .replace(/&/g, "&amp;")
@@ -6817,11 +6817,11 @@ function renderProjects() {
 
       row.innerHTML = `
         <div style="font-size:0.85rem;">
-          <strong>${p.name}</strong><br>
-          <span class="small">Due ${p.dueDate}
+          <strong>${escapeHtml(p.name || "")}</strong><br>
+          <span class="small">Due ${escapeHtml(p.dueDate || "")}
             · ${calDays} day${calDays === 1 ? "" : "s"}
             · ${classDays} class day${classDays === 1 ? "" : "s"}
-            ${unitName && unitName !== "No unit" ? ` · ${unitName}` : ""}
+            ${unitName && unitName !== "No unit" ? ` · ${escapeHtml(unitName)}` : ""}
           </span>
           ${p.notes ? `<div class="small" style="margin-top:4px;"><em>Notes:</em> ${escapeHtml(p.notes)}</div>` : ""}
           ${p.rubric ? `<div class="small"><em>Rubric:</em> ${escapeHtml(p.rubric)}</div>` : ""}
@@ -6878,7 +6878,7 @@ function renderProfileSelector() {
 
   select.innerHTML = Object.values(profiles)
     .sort((a, b) => a.name.localeCompare(b.name))
-    .map(p => `<option value="${p.id}" ${p.id === currentId ? "selected" : ""}>${p.name}</option>`)
+    .map(p => `<option value="${p.id}" ${p.id === currentId ? "selected" : ""}>${escapeHtml(p.name || "")}</option>`)
     .join("");
 }
 
@@ -6997,7 +6997,7 @@ function renderKnownClasses() {
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     `;
     pill.innerHTML = `
-      ${className}
+      ${escapeHtml(className)}
       <span onclick="removeKnownClass(${index}); event.stopImmediatePropagation();" 
             style="cursor:pointer; color:#ef4444; font-weight:bold; font-size:1.1rem;">×</span>
     `;
@@ -7430,7 +7430,7 @@ function renderCalendar() {
       offBadge.className = "status-badge off-badge";
       const label = (override?.label || "").trim();
       offBadge.innerHTML = label
-        ? `NO SCHOOL<br><span class="off-badge-sub">${label}</span>`
+        ? `NO SCHOOL<br><span class="off-badge-sub">${escapeHtml(label)}</span>`
         : `NO SCHOOL`;
       badgeRow.appendChild(offBadge);
     } else if (isNoSchool) {
@@ -7729,19 +7729,19 @@ function buildQuickPrintDayHtml(iso) {
 
   let periodsHtml = "";
   if (d.isOff || d.isNoSchool) {
-    periodsHtml = `<div class="qp-off">🎉 No School${d.noSchoolLabel ? ` — ${d.noSchoolLabel}` : ""}</div>`;
+    periodsHtml = `<div class="qp-off">🎉 No School${d.noSchoolLabel ? ` — ${escapeHtml(d.noSchoolLabel)}` : ""}</div>`;
   } else if (!d.periods.length) {
     periodsHtml = `<div class="qp-empty">No classes scheduled.</div>`;
   } else {
     periodsHtml = d.periods.map(p => `
       <div class="qp-period" style="border-left-color:${p.color};">
         <div class="qp-period-head">
-          <span class="qp-period-title" style="color:${p.color};">Period ${p.periodNum} — ${p.courseName}</span>
+          <span class="qp-period-title" style="color:${p.color};">Period ${p.periodNum} — ${escapeHtml(p.courseName)}</span>
           ${p.bellTime ? `<span class="qp-time">${p.bellTime}</span>` : ""}
           ${p.isTest ? `<span class="qp-badge qp-badge-test">TEST</span>` : ""}
           ${p.isQuiz ? `<span class="qp-badge qp-badge-quiz">QUIZ</span>` : ""}
         </div>
-        ${p.unitName ? `<div class="qp-unit">${p.unitName}${p.topicName ? `: ${p.topicName}` : ""}${p.dayInUnit ? ` (Day ${p.dayInUnit}/${p.unitLength})` : ""}</div>` : ""}
+        ${p.unitName ? `<div class="qp-unit">${escapeHtml(p.unitName)}${p.topicName ? `: ${escapeHtml(p.topicName)}` : ""}${p.dayInUnit ? ` (Day ${p.dayInUnit}/${p.unitLength})` : ""}</div>` : ""}
         ${p.lessonPlan ? `<div class="qp-lessonplan"><strong>📝 Lesson Plan:</strong> ${noteToHtml(p.lessonPlan)}</div>` : ""}
         ${p.note ? `<div class="qp-note"><strong>📓 Notes:</strong> ${noteToHtml(p.note)}</div>` : ""}
         ${p.homework ? `<div class="qp-hw"><strong>📚 HW:</strong> ${noteToHtml(p.homework)}</div>` : ""}
@@ -7749,7 +7749,7 @@ function buildQuickPrintDayHtml(iso) {
   }
 
   const specialsHtml = d.specialEntries.length
-    ? `<div class="qp-specials">${d.specialEntries.map(e => `<span class="qp-pill">${e.label}</span>`).join("")}</div>`
+    ? `<div class="qp-specials">${d.specialEntries.map(e => `<span class="qp-pill">${escapeHtml(e.label)}</span>`).join("")}</div>`
     : "";
   const annList = getAnnouncementsForDate(iso);
   const annHtml = annList.length
@@ -7796,7 +7796,7 @@ function buildQuickPrintDayHtml(iso) {
 </style></head>
 <body>
   <h1>${d.weekdayName}, ${formatDateLabel(iso)}</h1>
-  <div class="qp-sub">${teacherName ? teacherName + (!d.isOff && !d.isNoSchool && d.letter ? " · " : "") : ""}${!d.isOff && !d.isNoSchool && d.letter ? `Letter Day ${d.letter}` : ""}</div>
+  <div class="qp-sub">${teacherName ? escapeHtml(teacherName) + (!d.isOff && !d.isNoSchool && d.letter ? " · " : "") : ""}${!d.isOff && !d.isNoSchool && d.letter ? `Letter Day ${d.letter}` : ""}</div>
   ${specialsHtml}
   ${annHtml}
   ${generalHtml}
@@ -7825,25 +7825,25 @@ function buildQuickPrintWeekHtml(anchorIso) {
     const d = buildDaySummaryData(iso);
     let inner = "";
     if (d.isOff || d.isNoSchool) {
-      inner = `<div class="qpw-off">🎉 No School${d.noSchoolLabel ? `<br>${d.noSchoolLabel}` : ""}</div>`;
+      inner = `<div class="qpw-off">🎉 No School${d.noSchoolLabel ? `<br>${escapeHtml(d.noSchoolLabel)}` : ""}</div>`;
     } else if (!d.periods.length) {
       inner = `<div class="qpw-empty">No classes</div>`;
     } else {
       inner = d.periods.map(p => `
         <div class="qpw-period" style="border-left-color:${p.color};">
           <div class="qpw-period-head">
-            <span class="qpw-period-title" style="color:${p.color};">P${p.periodNum} ${p.courseName}</span>
+            <span class="qpw-period-title" style="color:${p.color};">P${p.periodNum} ${escapeHtml(p.courseName)}</span>
             ${p.isTest ? `<span class="qpw-badge qpw-badge-test">T</span>` : ""}
             ${p.isQuiz ? `<span class="qpw-badge qpw-badge-quiz">Q</span>` : ""}
           </div>
-          ${p.topicName ? `<div class="qpw-topic">${p.topicName}</div>` : ""}
+          ${p.topicName ? `<div class="qpw-topic">${escapeHtml(p.topicName)}</div>` : ""}
           ${p.lessonPlan ? `<div class="qpw-lp"><strong>📝</strong> ${noteToHtml(p.lessonPlan)}</div>` : ""}
           ${p.note ? `<div class="qpw-note"><strong>📓</strong> ${noteToHtml(p.note)}</div>` : ""}
           ${p.homework ? `<div class="qpw-hw"><strong>📚</strong> ${noteToHtml(p.homework)}</div>` : ""}
         </div>`).join("");
     }
     const specials = d.specialEntries.length
-      ? `<div class="qpw-specials">${d.specialEntries.map(e => `<span class="qpw-pill">${e.label}</span>`).join("")}</div>`
+      ? `<div class="qpw-specials">${d.specialEntries.map(e => `<span class="qpw-pill">${escapeHtml(e.label)}</span>`).join("")}</div>`
       : "";
     const general = d.generalNote ? `<div class="qpw-general">📌 ${noteToHtml(d.generalNote)}</div>` : "";
     const wkAnns = getAnnouncementsForDate(iso);
@@ -7903,7 +7903,7 @@ function buildQuickPrintWeekHtml(anchorIso) {
 </style></head>
 <body>
   <h1>Week of ${rangeLabel}</h1>
-  <div class="qpw-sub">${teacherName || ""}</div>
+  <div class="qpw-sub">${escapeHtml(teacherName || "")}</div>
   <div class="qpw-grid">${colsHtml}</div>
 </body></html>`;
 }
@@ -7955,11 +7955,11 @@ function renderDayView(iso) {
     </div>`;
 
   if (data.isOff || data.isNoSchool) {
-    html += `<div class="day-view-off">🎉 No School${data.noSchoolLabel ? ` — ${data.noSchoolLabel}` : ''}</div>`;
+    html += `<div class="day-view-off">🎉 No School${data.noSchoolLabel ? ` — ${escapeHtml(data.noSchoolLabel)}` : ''}</div>`;
   }
   if (data.specialEntries.length) {
     html += `<div class="day-view-specials">` + data.specialEntries.map(e =>
-      `<span class="special-day-badge" style="background:${hexToRgba(e.color||'#e9d5ff',0.45)};border-color:${e.color||'#e9d5ff'};">${e.badgeText}: ${e.label}</span>`
+      `<span class="special-day-badge" style="background:${hexToRgba(e.color||'#e9d5ff',0.45)};border-color:${e.color||'#e9d5ff'};">${escapeHtml(e.badgeText)}: ${escapeHtml(e.label)}</span>`
     ).join("") + `</div>`;
   }
   const dayAnnouncements = getAnnouncementsForDate(iso);
@@ -7989,17 +7989,17 @@ function renderDayView(iso) {
       <div class="day-view-period-card" data-period="${p.periodNum}" style="border-left-color:${p.color};">
         <div class="dvp-header">
           <span class="dvp-time">${p.bellTime || ''}</span>
-          <span class="dvp-course" style="color:${p.color};">Period ${p.periodNum}: ${p.courseName}</span>
+          <span class="dvp-course" style="color:${p.color};">Period ${p.periodNum}: ${escapeHtml(p.courseName)}</span>
           <div class="dvp-badges">
             ${p.isTest ? `<span class="assessment-badge test">📝 Test</span>` : ''}
             ${p.isQuiz ? `<span class="assessment-badge quiz">✏️ Quiz</span>` : ''}
           </div>
         </div>
-        ${p.unitName ? `<div class="dvp-unit">${p.unitName}${p.topicName ? `: ${p.topicName}` : ''}${p.dayInUnit ? ` (Day ${p.dayInUnit}/${p.unitLength})` : ''}</div>` : ''}
+        ${p.unitName ? `<div class="dvp-unit">${escapeHtml(p.unitName)}${p.topicName ? `: ${escapeHtml(p.topicName)}` : ''}${p.dayInUnit ? ` (Day ${p.dayInUnit}/${p.unitLength})` : ''}</div>` : ''}
         ${p.lessonPlan ? `<div class="dvp-lessonplan"><strong>📝 Lesson Plan</strong><br>${noteToHtml(p.lessonPlan)}</div>` : ''}
         ${p.note ? `<div class="dvp-note">${noteToHtml(p.note)}</div>` : `<div class="dvp-note dvp-empty">No notes yet</div>`}
         ${p.homework ? `<div class="dvp-homework">📚 HW: ${noteToHtml(p.homework)}</div>` : ''}
-        ${p.projectsDue.map(pr => `<div class="dvp-project">🎯 Project due: ${pr.name}</div>`).join('')}
+        ${p.projectsDue.map(pr => `<div class="dvp-project">🎯 Project due: ${escapeHtml(pr.name)}</div>`).join('')}
       </div>`;
   });
   html += `</div>`;
@@ -8087,7 +8087,7 @@ function renderWeekView(anchorIso) {
       html += `<div class="wdc-general-note">📌 ${noteToHtml(data.generalNote)}</div>`;
     }
     if (data.isOff || data.isNoSchool) {
-      html += `<div class="wdc-off">Off${data.noSchoolLabel ? `<br><span class="wdc-off-sub">${data.noSchoolLabel}</span>` : ''}</div>`;
+      html += `<div class="wdc-off">Off${data.noSchoolLabel ? `<br><span class="wdc-off-sub">${escapeHtml(data.noSchoolLabel)}</span>` : ''}</div>`;
     } else if (!data.periods.length) {
       html += `<div class="wdc-empty">No classes</div>`;
     } else {
@@ -8097,14 +8097,14 @@ function renderWeekView(anchorIso) {
             <span class="wdc-period-num">P${p.periodNum}</span>
             ${p.isTest ? '<span>📝</span>' : ''}${p.isQuiz ? '<span>✏️</span>' : ''}
           </div>
-          <div class="wdc-course">${p.courseName}</div>
-          ${p.topicName ? `<div class="wdc-topic">${p.topicName}</div>` : ''}
+          <div class="wdc-course">${escapeHtml(p.courseName)}</div>
+          ${p.topicName ? `<div class="wdc-topic">${escapeHtml(p.topicName)}</div>` : ''}
         </div>`;
       });
     }
     if (data.specialEntries.length) {
       html += `<div class="wdc-specials">` + data.specialEntries.map(e =>
-        `<span class="wdc-special-pill" title="${e.label}">${e.badgeText}</span>`).join("") + `</div>`;
+        `<span class="wdc-special-pill" title="${escapeHtml(e.label)}">${escapeHtml(e.badgeText)}</span>`).join("") + `</div>`;
     }
     html += `</div>`;
   });
@@ -9088,7 +9088,7 @@ function openDayModal(day) {
         ${letterList
           .map(L => {
             const v = String(L).toUpperCase();
-            return `<option value="${v}">${v}</option>`;
+            return `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`;
           })
           .join("")}
         <option value="">(blank)</option>
@@ -10186,7 +10186,7 @@ function renderUnits() {
     div.innerHTML = `
       <div class="unit-heading" onclick="togglePeriod(${p})">
         <span>▶</span>
-        <span class="unit-heading-title">Period ${p} · ${courseName}</span>
+        <span class="unit-heading-title">Period ${p} · ${escapeHtml(courseName)}</span>
         <span class="unit-heading-badge">${periodUnits.length} unit${periodUnits.length === 1 ? "" : "s"}</span>
       </div>
       <div id="period-content-${p}" class="period-content" style="display: none; padding: 0.5rem 0;">
@@ -10231,7 +10231,7 @@ function renderUnits() {
         <div class="unit-summary-header" data-open-unit="${p}:${i}">
           <div class="unit-summary-daybadge" style="background:${hexToRgba(periodColor, 0.18)};color:${periodColor};">${normalized.length}d</div>
           <div class="unit-summary-text">
-            <div class="unit-summary-name">${normalized.name || `Unit ${i + 1}`}</div>
+            <div class="unit-summary-name">${escapeHtml(normalized.name || `Unit ${i + 1}`)}</div>
             <div class="unit-summary-dates">🗓️ ${dateRangeText}</div>
             ${normalized.shiftedUnit ? `<span class="shift-unit-tag">SHIFT UNIT</span>` : ""}
           </div>
@@ -10800,6 +10800,10 @@ function renderUnitDayCards(containerEl, days, dayDates = []) {
     const dateLabel = formatShortWeekdayDate(dayDates[dayIndex]);
     const card = document.createElement("div");
     card.className = "unit-day-card" + (isShiftRow ? " unit-day-shift" : "");
+    card._dayExtras = {
+      ...(dayPlan.lesson ? { lesson: dayPlan.lesson } : {}),
+      ...(dayPlan.checkpoint ? { checkpoint: dayPlan.checkpoint } : {})
+    };
     card.innerHTML = `
       <div class="udc-top-row">
         <div class="udc-num">Day ${dayIndex + 1}${dateLabel ? `<div class="udc-date">${dateLabel}</div>` : ""}</div>
@@ -10848,7 +10852,8 @@ function collectUnitDayCardsFromDOM(containerEl) {
       quiz: isShift ? false : !!quizInput?.checked,
       test: isShift ? false : !!testInput?.checked,
       lessonPlan: isShift ? "" : (lessonPlanDoc?.innerHTML || "").trim(),
-      shiftDay: isShift
+      shiftDay: isShift,
+      ...(isShift ? {} : (card._dayExtras || {}))
     };
   });
 }
@@ -11290,6 +11295,8 @@ function handleShiftAllUnitsForCurrentDay() {
 }
 
 function closeUnitDaysEditor() {
+  // Otherwise a later, unrelated save would offer to duplicate this unit.
+  delete window.pendingUnitDuplicate;
   document.getElementById("unitDaysBackdrop").style.display = "none";
   currentUnitEditor = null;
 }
@@ -13119,7 +13126,7 @@ function renderWelcomeHighlights(forceShowNameInput = false) {
     </div>`;
   if (h.weekSpecials.length) {
     html += `<div class="wh-specials">` +
-      h.weekSpecials.map(s => `<span class="wh-pill">${formatDateLabel(s.iso).split(",")[0]}: ${s.label}</span>`).join("") +
+      h.weekSpecials.map(s => `<span class="wh-pill">${formatDateLabel(s.iso).split(",")[0]}: ${escapeHtml(s.label || "")}</span>`).join("") +
       `</div>`;
   }
   html += `</div>`;
@@ -13486,7 +13493,7 @@ periodRows.push({
 <html>
 <head>
 <meta charset="UTF-8">
-<title>${exportTitle}</title>
+<title>${escapeHtml(exportTitle)}</title>
 <style>
 * { box-sizing: border-box; }
 body {
@@ -13651,7 +13658,7 @@ h1 { text-align: center; color: #1e3a8a; font-size: 1.9rem; margin-bottom: 4px; 
 </style>
 </head>
 <body>
-  <h1>${exportTitle}</h1>
+  <h1>${escapeHtml(exportTitle)}</h1>
   <p class="meta">Divisions: ${selectedDivisions.map(getDivisionDisplayName).join(", ")}</p>
   <p class="meta">Generated ${new Date().toLocaleDateString()}</p>
 `;
@@ -13718,15 +13725,15 @@ const dateSet = new Set();
             return;
           }
 
-          html += `<div class="day-col-title">${getDivisionDisplayName(divisionKey)} (${entry.letterLabel})</div>`;
+          html += `<div class="day-col-title">${getDivisionDisplayName(divisionKey)} (${escapeHtml(entry.letterLabel || "")})</div>`;
 
           (entry.specialLabels || []).forEach(label => {
-            html += `<span class="special">${label}</span>`;
+            html += `<span class="special">${escapeHtml(label)}</span>`;
           });
 
           (entry.announcements || []).forEach(a => {
             html += `<div class="announcement" style="border-left-color:${a.color}; background:${a.bg};">
-              <div class="announcement-title">📢 ${a.title}</div>
+              <div class="announcement-title">📢 ${escapeHtml(a.title || "")}</div>
               ${a.body ? `<div class="announcement-body">${typeof noteToHtml === "function" ? noteToHtml(a.body) : a.body}</div>` : ""}
             </div>`;
           });
@@ -13736,7 +13743,7 @@ const dateSet = new Set();
           }
 
           (entry.periodRows || []).forEach(row => {
-            html += `<div class="period">${row.line}`;
+            html += `<div class="period">${escapeHtml(row.line || "")}`;
             if (row.topicName) {
               html += `<span class="note">Topic: ${
                 typeof noteToHtml === "function" ? noteToHtml(row.topicName) : row.topicName
@@ -14272,9 +14279,9 @@ function groupAssessmentsByClass(events) {
 function buildAssessmentsHTML(byClass) {
   let html = '';
   Object.keys(byClass).sort().forEach(course => {
-    html += `<h3>${course}</h3><ul>`;
+    html += `<h3>${escapeHtml(course)}</h3><ul>`;
     byClass[course].forEach(item => {
-      html += `<li><strong>${item.type}</strong> - ${item.details}</li>`;
+      html += `<li><strong>${escapeHtml(item.type)}</strong> - ${escapeHtml(item.details)}</li>`;
     });
     html += `</ul>`;
   });
@@ -14725,7 +14732,7 @@ window.clearAllCustomDays = function() {
   renderSummary();
   alert("All day overrides cleared.");
 };
-window.resolveConflict = function(index, action) {
+window.resolveConflict = async function(index, action) {
   const warnings = getAssessmentWarnings();
   const conflict = warnings[index];
   if (!conflict) return;
@@ -14739,15 +14746,27 @@ window.resolveConflict = function(index, action) {
     return;
   }
 
-  const direction = action === 'forward' ? 1 : -1;
-  const success = shiftUnit(conflict.periodNum, conflict.unitInfo.unitIndex, direction, true);
+  // A test flagged by hand on the day itself is not part of a unit, so there is
+  // nothing to shift; open the day so it can be changed there.
+  if (conflict.unitInfo?.unitIndex == null) {
+    openDayModal({
+      date: conflict.date,
+      letter: getRotationDayByDate(conflict.date)?.letter || ""
+    });
+    return;
+  }
 
-  if (success) {
+  const direction = action === 'forward' ? 1 : -1;
+  const before = JSON.stringify(units[conflict.periodNum] || []);
+  await shiftUnit(conflict.periodNum, conflict.unitInfo.unitIndex, direction, true);
+  const moved = JSON.stringify(units[conflict.periodNum] || []) !== before;
+
+  if (moved) {
     alert(`Test moved ${action === 'forward' ? 'forward' : 'back'} 1 day.`);
     renderCalendar();
     renderSummary();
   } else {
-    alert("Could not move test — check for other conflicts.");
+    alert("The test was not moved.");
   }
 };
 
