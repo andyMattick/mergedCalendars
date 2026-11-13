@@ -1,6 +1,8 @@
 <!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>HS Faculty Planner</title>
   <style>
 .homework {
@@ -1854,7 +1856,6 @@ body.dark .modal-toggle-btn-hw { background:#2b1a0e !important; color:#fdba74 !i
       <select id="teacherTools" class="header-select" aria-label="Teacher tools">
         <option value="">🧰 Teacher Tools…</option>
         <option value="unit-builder">✨ Unit Builder — generate lessons</option>
-        <option value="grow-a-project">🌱 Grow a Project — design a PBL unit</option>
         <option value="content-studio">🎨 Content Studio — slides, worksheets, tests</option>
         <option value="tracker">📊 Tracker — student progress</option>
       </select>
@@ -2177,7 +2178,21 @@ body.dark .modal-toggle-btn-hw { background:#2b1a0e !important; color:#fdba74 !i
 </main>
 
     <script>
-let savedPacks = JSON.parse(localStorage.getItem("plannerSavedPacks") || "[]");
+// A damaged value in storage must never stop the whole planner from loading.
+function readStoredJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    return parsed == null ? fallback : parsed;
+  } catch (e) {
+    console.warn("Ignoring unreadable saved value for", key, e);
+    return fallback;
+  }
+}
+
+let savedPacks = readStoredJson("plannerSavedPacks", []);
+if (!Array.isArray(savedPacks)) savedPacks = [];
 // [{ id, name, start, end, letters, skipWeekends, days }, ...]
 
 let activePackId = localStorage.getItem("plannerActivePackId") || "builtin";
@@ -2351,12 +2366,14 @@ function deleteSelectedPack() {
   const pack = savedPacks.find(p => p.id === id);
   if (!pack || !confirm(`Delete pack "${pack.name}"?`)) return;
 
+  const wasActive = activePackId === id;
   savedPacks = savedPacks.filter(p => p.id !== id);
-  if (activePackId === id) activePackId = "builtin";
-  
+  if (wasActive) activePackId = "builtin";
+
   savePackLibrary();
   refreshPackSelect();
-  if (typeof usePack === "function") usePack("builtin");
+  // Only fall back to the built-in calendar if the deleted pack was in use.
+  if (wasActive && typeof usePack === "function") usePack("builtin");
   else renderCalendar();
   
 }
@@ -2686,7 +2703,7 @@ function getNextSchoolDate(iso) {
   const d = new Date(iso + "T12:00:00");
   for (let i = 0; i < 366; i++) {
     d.setDate(d.getDate() + 1);
-    const next = d.toISOString().slice(0, 10);
+    const next = toLocalISO(d);
     const dow = d.getDay();
     if (dow === 0 || dow === 6) continue; // skip weekends
     return next;
@@ -2714,7 +2731,7 @@ function reflowLettersFrom(fromDate, displacedLetter, mode) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
     if (d.getDay() === 0 || d.getDay() === 6) continue;
-    allDates.push(d.toISOString().slice(0, 10));
+    allDates.push(toLocalISO(d));
   }
 
   // Resolve current letter for each date (override or built-in)
@@ -2746,7 +2763,7 @@ function reflowLettersFrom(fromDate, displacedLetter, mode) {
   for (let i = 0; i < sequence.length; i++) {
     const date = sequence[i].date;
     const newLetter = lettersToPlace[i];
-    customDays[date] = { letter: newLetter, label: "" };
+    customDays[date] = { ...(customDays[date] || {}), letter: newLetter };
   }
 
   // Optional: place the final shifted letter on the next school day after sequence
@@ -2755,8 +2772,8 @@ function reflowLettersFrom(fromDate, displacedLetter, mode) {
     const extra = getNextSchoolDate(lastDate);
     if (extra) {
       customDays[extra] = {
-        letter: lettersToPlace[sequence.length],
-        label: ""
+        ...(customDays[extra] || {}),
+        letter: lettersToPlace[sequence.length]
       };
     }
   }
@@ -4174,7 +4191,40 @@ function loadProjects() {
 
 function saveProjects() {
   localStorage.setItem(getStorageKey(LS_PROJECTS_KEY), JSON.stringify(projects));
+  scheduleProfileSnapshot();
 }
+
+// The active profile holds a snapshot of the live data, and that snapshot is
+// what gets loaded on the next visit. Refresh it shortly after any change (and
+// when the tab is hidden or closed) so a reload never brings back old data.
+let profileApplyDepth = 0;      // > 0 while applyProfileData is replacing live data
+let plannerReady = false;       // set once init has loaded the active profile
+let profileSnapshotTimer = null;
+
+function scheduleProfileSnapshot() {
+  if (!plannerReady || profileApplyDepth > 0) return;
+  clearTimeout(profileSnapshotTimer);
+  profileSnapshotTimer = setTimeout(() => {
+    profileSnapshotTimer = null;
+    saveCurrentProfile(false);
+  }, 400);
+}
+
+function flushProfileSnapshot() {
+  if (!plannerReady || profileApplyDepth > 0) return;
+  clearTimeout(profileSnapshotTimer);
+  profileSnapshotTimer = null;
+  try {
+    saveCurrentProfile(false);
+  } catch (e) {
+    console.warn("Could not save profile", e);
+  }
+}
+
+window.addEventListener("pagehide", flushProfileSnapshot);
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) flushProfileSnapshot();
+});
 
 function getProjectsForPeriod(periodNum) {
   const key = String(periodNum);
@@ -4267,7 +4317,7 @@ units: JSON.parse(JSON.stringify(units || {})),
     currentDivision: currentDivision || "hs",
     currentSemester: currentSemester || "sem1",
     knownClasses: Array.isArray(known) ? known : [],
-    classColors: JSON.parse(localStorage.getItem("classColors") || "{}"),
+    classColors: readStoredJson("classColors", {}),
     cycleColors: typeof getCycleColors === "function" ? getCycleColors() : {},
     bellTimesByDivision: JSON.parse(JSON.stringify(bellTimesByDivision || BELL_DEFAULTS)),
     notes,
@@ -4279,13 +4329,20 @@ units: JSON.parse(JSON.stringify(units || {})),
 }
 
 function applyProfileData(data) {
+  profileApplyDepth++;
+  try {
+    applyProfileDataInner(data);
+  } finally {
+    profileApplyDepth--;
+  }
+}
+
+function applyProfileDataInner(data) {
   if (!data) data = {};
   projects =
   data.projects && typeof data.projects === "object"
     ? JSON.parse(JSON.stringify(data.projects))
     : {};
-
-if (typeof saveProjects === "function") saveProjects();
 
   announcements = Array.isArray(data.announcements)
     ? JSON.parse(JSON.stringify(data.announcements))
@@ -4357,6 +4414,9 @@ if (typeof saveProjects === "function") saveProjects();
   if (typeof saveScheduleToStorage === "function") saveScheduleToStorage();
   if (typeof saveBellTimes === "function") saveBellTimes();
   if (typeof saveUnits === "function") saveUnits();
+  // Saved here, after currentDivision/currentSemester are set, so projects go
+  // under this profile's key and not the previous profile's.
+  if (typeof saveProjects === "function") saveProjects();
   if (typeof saveCustomDays === "function") saveCustomDays();
   if (typeof saveSpecialDays === "function") saveSpecialDays();
 
@@ -4385,6 +4445,8 @@ if (typeof saveProjects === "function") saveProjects();
 }
 
 function saveCurrentProfile(showToast = false) {
+  // Mid-switch the live data is half old profile, half new; never snapshot that.
+  if (profileApplyDepth > 0) return;
   const id = getCurrentProfileId();
   if (!id) return;
 
@@ -4431,7 +4493,6 @@ function loadProfile(id) {
 
   setCurrentProfileId(id);
   applyProfileData(profile.data || {});
-  loadProjects();
 
   if (typeof savePackLibrary === "function") savePackLibrary();
   if (typeof refreshPackSelect === "function") {
@@ -4657,6 +4718,12 @@ function ensureDefaultProfile() {
   let currentId = getCurrentProfileId();
 
   if (!Object.keys(profiles).length) {
+    loadScheduleFromStorage();
+    loadBellTimes();
+    loadUnits();
+    loadProjects();
+    loadCustomDays();
+    loadSpecialDays();
     const id = generateProfileId();
     profiles[id] = {
       id,
@@ -5599,7 +5666,9 @@ function normalizeUnit(unit, index) {
       quiz: !!raw.quiz,
       test: !!raw.test,
       lessonPlan: (raw.lessonPlan || "").trim(),
-      shiftDay: !!raw.shiftDay
+      shiftDay: !!raw.shiftDay,
+      ...(raw.lesson ? { lesson: raw.lesson } : {}),
+      ...(raw.checkpoint ? { checkpoint: raw.checkpoint } : {})
     });
   }
 
@@ -5622,7 +5691,9 @@ function normalizeUnit(unit, index) {
     shiftedUnit: !!unit?.shiftedUnit,
     description: (unit?.description || "").trim(),
     objectives: (unit?.objectives || "").trim(),
-    materials: (unit?.materials || "").trim()
+    materials: (unit?.materials || "").trim(),
+    ...(unit?.unitId ? { unitId: unit.unitId } : {}),
+    ...(unit?.rubric ? { rubric: unit.rubric } : {})
   };
 }
 
@@ -6341,8 +6412,8 @@ function loadScheduleFromStorage() {
   const key = getCurrentScheduleKey();
   const fullKey = getStorageKey(key);
   const saved = localStorage.getItem(fullKey);
-  teacherSchedule = saved ? JSON.parse(saved) : {};
-  console.log("Loaded from key:", fullKey, "Data:", Object.keys(teacherSchedule)); // debug
+  const parsed = readStoredJson(fullKey, {});
+  teacherSchedule = parsed && typeof parsed === "object" ? parsed : {};
 }
 
 
@@ -6350,6 +6421,7 @@ function loadScheduleFromStorage() {
 function saveScheduleToStorage() {
   const key = getCurrentScheduleKey();
   localStorage.setItem(getStorageKey(key), JSON.stringify(teacherSchedule));
+  scheduleProfileSnapshot();
 }
 
 function loadBellTimes() {
@@ -6461,7 +6533,7 @@ function countClassDaysUntil(periodNum, dueDate, fromDate = getLocalTodayISO()) 
   const end = new Date(dueDate + "T12:00:00");
 
   while (d <= end) {
-    const iso = d.toISOString().slice(0, 10);
+    const iso = toLocalISO(d);
     const rot = getRotationDayByDate(iso);
     if (rot) {
       const periods = getPeriodsForDate(iso, rot.letter || "");
@@ -6501,17 +6573,13 @@ function saveSpecialDays() {
 
   specialDays = specialDays.map(normalizeSpecialDay);
 
-  // Prefer profile isolation
-  if (typeof saveCurrentProfile === "function") {
-    saveCurrentProfile(false);
-    return;
-  }
-
-  // Fallback: still write storage, but only user list
+  // Write the live key first: loadSpecialDays() reads it on every refresh, so
+  // skipping this wiped the teacher's own tags the next time data reloaded.
   localStorage.setItem(
     getStorageKey(LS_SPECIAL_DAYS_KEY),
     JSON.stringify(specialDays)
   );
+  if (typeof saveCurrentProfile === "function") saveCurrentProfile(false);
 }
 
 function ensureKnownClassesFromSchedule() {
@@ -6651,12 +6719,21 @@ function getAssessmentSchedule() {
   return deduped.sort((a, b) => a.date.localeCompare(b.date) || a.periodNum - b.periodNum);
 }
 
-function getAssessmentWarnings() {
+function getAssessmentWarnings(periodFilter) {
+  const all = collectAssessmentWarnings();
+  if (periodFilter == null) return all;
+  return all.filter(w => Number(w.periodNum) === Number(periodFilter));
+}
+
+function collectAssessmentWarnings() {
   const warnings = [];
 
   // Check unit-planned tests on No Test days
   const unitTests = getAssessmentSchedule();
   unitTests.forEach(event => {
+    // The schedule also lists quizzes and manually flagged tests; quizzes are
+    // allowed, and manual tests are reported by the second loop below.
+    if (!event.unitInfo?.hasTestToday || event.unitInfo.unitIndex == null) return;
     const notes = loadNotesForDate(event.date);
     if (notes.noTest || isAutoNoTestDay(event.date)) {
       warnings.push({
@@ -6951,7 +7028,7 @@ function renderPeriodSlots() {
     let optionsHTML = `<option value="">— Unassigned —</option>`;
     names.forEach(cls => {
       const selected = cls === currentClass ? "selected" : "";
-      optionsHTML += `<option value="${cls}" ${selected}>${cls}</option>`;
+      optionsHTML += `<option value="${escapeHtml(cls)}" ${selected}>${escapeHtml(cls)}</option>`;
     });
 
     const slot = document.createElement("div");
@@ -7125,7 +7202,7 @@ function renderCustomBellTimesEditor() {
     if (activePack) {
       activePack.periodCount = clamped;
       ensurePackRotationRules(activePack);
-      savePacks();
+      savePackLibrary();
       renderRotationLegend();
     }
 
@@ -8329,6 +8406,12 @@ function publishSnapshot() {
 
   try {
     snap = typeof buildBackupSnapshot === "function" ? buildBackupSnapshot() : null;
+    // This file is meant to be shared, so include only the profile being
+    // published, not every profile stored in this browser.
+    if (snap && snap.profiles && snap.currentProfileId) {
+      const own = snap.profiles[snap.currentProfileId];
+      snap.profiles = own ? { [snap.currentProfileId]: own } : {};
+    }
   } catch (e) {
     console.error("Building the backup snapshot failed", e);
     snap = null;
@@ -9026,7 +9109,7 @@ function openDayModal(day) {
       else sel.value = "DEFAULT";
     }
   } else {
-    const currentLetter = override ? override.letter : (day.letter || "");
+    const currentLetter = override?.letter || day.letter || "";
     const letters = Object.keys(getCurrentRotationRules());
 
     if (letterLabel) {
@@ -9041,7 +9124,7 @@ function openDayModal(day) {
     builtinLetterBlock.innerHTML = `
       <label for="modalDayLetter"><strong>Day letter / schedule</strong></label>
       <select id="modalDayLetter" style="display:block; margin-top:6px; min-width:12rem;">
-        <option value="DEFAULT" ${!override ? "selected" : ""}>Default (built-in calendar)</option>
+        <option value="DEFAULT" ${!override?.letter ? "selected" : ""}>Default (built-in calendar)</option>
         ${letters
           .map(
             L =>
@@ -9314,6 +9397,8 @@ body.appendChild(generalBlock);
     timeInput.className = "modal-bell-time";
     timeInput.dataset.slotIndex = String(slotIndex);
     timeInput.value = bellTimeForInput;
+    timeInput.dataset.initialValue = bellTimeForInput;
+    timeInput.dataset.hadOverride = savedBellTime ? "1" : "";
     timeInput.placeholder = hasSchedulablePeriodsForTimes ? "8:10-9:10" : "No scheduled periods";
     timeInput.style.maxWidth = "170px";
     if (!hasSchedulablePeriodsForTimes) {
@@ -9527,7 +9612,10 @@ function handleSaveNotes() {
   if (!currentModalDay) return;
 
   const body = document.getElementById("modalBody");
-  const notesObj = { general: "" };
+  // Start from what is already saved so notes, homework and flags for periods
+  // that are not shown today (e.g. after a special schedule) are kept.
+  const existingNotes = loadNotesForDate(currentModalDay.date) || {};
+  const notesObj = { ...existingNotes, general: "" };
 
   // Rich note editors
   body.querySelectorAll(".note-doc").forEach(doc => {
@@ -9661,7 +9749,10 @@ function handleSaveNotes() {
         if (!Number.isInteger(slotIndex) || slotIndex < 0) return;
         const value = String(input.value || "").trim();
         slotTimes[slotIndex] = value;
-        if (value) hasAnyValue = true;
+        // Inputs are pre-filled with the default times. Saving those as an
+        // override would freeze this date against later bell-schedule edits.
+        const edited = value !== String(input.dataset.initialValue || "");
+        if (value && (edited || input.dataset.hadOverride)) hasAnyValue = true;
       });
 
       if (hasAnyValue) {
@@ -9736,11 +9827,13 @@ function handleSaveNotes() {
   }
   body.querySelectorAll('input[type="checkbox"][id^="test-period-"]').forEach(cb => {
     const p = cb.id.slice("test-period-".length);
-    notesObj[`test-${p}`] = cb.checked;
+    // A locked box reflects a test planned in a unit; storing it as a manual
+    // flag would leave a phantom test here after the unit is shifted.
+    notesObj[`test-${p}`] = cb.disabled ? existingNotes[`test-${p}`] === true : cb.checked;
   });
   body.querySelectorAll('input[type="checkbox"][id^="quiz-period-"]').forEach(cb => {
     const p = cb.id.slice("quiz-period-".length);
-    notesObj[`quiz-${p}`] = cb.checked;
+    notesObj[`quiz-${p}`] = cb.disabled ? existingNotes[`quiz-${p}`] === true : cb.checked;
   });
 
   const noTestToggle = document.getElementById("modalNoTestToggle");
@@ -9864,7 +9957,7 @@ function handleClearNotes() {
 const LS_CUSTOM_DAYS_KEY = "-customDays";
 let customDays = {}; // { "YYYY-MM-DD": { letter: "A"|"OFF"|..., label?: "" } }
 
-let customDayLabels = JSON.parse(localStorage.getItem(getStorageKey("customDayLabels")) || "{}");
+let customDayLabels = readStoredJson(getStorageKey("customDayLabels"), {});
 
 function saveCustomDayLabels() {
   localStorage.setItem(getStorageKey("customDayLabels"), JSON.stringify(customDayLabels));
@@ -9941,6 +10034,7 @@ function hasSpecialSchedule(date) {
 
 function saveCustomDays() {
   localStorage.setItem(getCustomDaysStorageKey(), JSON.stringify(customDays));
+  scheduleProfileSnapshot();
 }
 
 function setCustomDay(date, letter, label) {
@@ -10037,6 +10131,7 @@ function saveUnits() {
     units[period] = (units[period] || []).map((unit, index) => normalizeUnit(unit, index));
   });
   localStorage.setItem(getStorageKey(LS_UNITS_KEY), JSON.stringify(units));
+  scheduleProfileSnapshot();
 }
 
 function getUnitsForPeriod(period) {
@@ -10488,6 +10583,13 @@ const UNIT_SCHEMA_VERSION = 1;
 function exportUnitToSchema(period, index) {
   const unit = getUnitsForPeriod(period)[index];
   if (!unit) return null;
+  // Give the unit a stable id the first time it is exported, so the file that
+  // comes back from the Unit Builder merges into this unit instead of
+  // being added as a duplicate.
+  if (!unit.unitId) {
+    unit.unitId = `u_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    saveUnits();
+  }
   const n = normalizeUnit(unit, index);
   const dates = computeUnitDayDates(period, index, n);
 
@@ -10560,17 +10662,28 @@ function unitFromSchema(payload) {
     )) throw new Error("cancelled");
   }
   const days = Array.isArray(payload.days) ? payload.days : [];
+  // Files from the Unit Builder carry only the teaching days; sourceDayNum says
+  // which day of the full unit each one belongs to.
+  const slotOf = (d, i) => Math.max(0, (parseInt(d.sourceDayNum, 10) || i + 1) - 1);
+  const length = Math.max(
+    1,
+    payload.totalUnitDays || 0,
+    days.length,
+    ...days.map((d, i) => slotOf(d, i) + 1)
+  );
+  const placed = Array.from({ length }, () => ({}));
+  days.forEach((d, i) => { placed[slotOf(d, i)] = d; });
   return {
     unitId: payload.unitId,
     name: payload.unitTitle || "Imported Unit",
-    length: Math.max(1, payload.totalUnitDays || days.length || 1),
+    length,
     startDate: "",
     description: payload.description || "",
     objectives: payload.objectives || "",
     materials: payload.materials || "",
     rubric: payload.rubric || null,
     _rawDays: days,
-    days: days.map(d => ({
+    days: placed.map(d => ({
       topic: d.topic || "",
       lessonPlan: d.lessonPlan || "",
       quiz: !!d.isQuiz,
@@ -10691,7 +10804,7 @@ function renderUnitDayCards(containerEl, days, dayDates = []) {
       <div class="udc-top-row">
         <div class="udc-num">Day ${dayIndex + 1}${dateLabel ? `<div class="udc-date">${dateLabel}</div>` : ""}</div>
         <input type="text" data-day-index="${dayIndex}" class="unit-day-topic udc-topic"
-          value="${dayPlan.topic || ""}"
+          value="${escapeHtml(dayPlan.topic || "")}"
           placeholder="${isShiftRow ? 'Shift day — no topic needed' : "What's the plan for this day?"}"
           ${isShiftRow ? "disabled" : ""}>
         <div class="udc-toggles">
@@ -10758,7 +10871,7 @@ window.openUnitDaysEditor = function(period, index) {
 
   infoWrap.innerHTML = `
     <label>Unit Name
-      <input type="text" id="unitEditorName" value="${normalized.name}">
+      <input type="text" id="unitEditorName" value="${escapeHtml(normalized.name)}">
     </label>
     <label>Length (days)
       <input type="number" id="unitEditorLength" min="1" value="${normalized.length}">
@@ -11257,6 +11370,7 @@ if (window.pendingUnitDuplicate) {
           : "";
 
         const copy = JSON.parse(JSON.stringify(sourceUnit));
+        delete copy.unitId; // a copy is a different unit
         copy.startDate = defaultStartDate2;
 
         const candidate2 = [...units[p], normalizeUnit(copy, units[p].length)];
@@ -11341,6 +11455,7 @@ window.duplicateUnit = function(period, index) {
         : "";
 
     const copy = JSON.parse(JSON.stringify(sourceUnit));
+    delete copy.unitId; // a copy is a different unit
     copy.startDate = defaultStartDate;
     // optional: mark copies in the same period
     if (p === period) {
@@ -11437,7 +11552,7 @@ function renderSummary() {
       .map(day => day.date)
   ).size;
 
-  const todayISO = new Date().toISOString().split("T")[0];
+  const todayISO = getLocalTodayISO();
 
   // Single list (deduped inside getAssessmentSchedule)
   const upcomingAssessments = getAssessmentSchedule()
@@ -12362,6 +12477,10 @@ document.getElementById("restoreBtn").addEventListener("click", () => {
     reader.onload = function (event) {
       try {
         const backup = JSON.parse(event.target.result);
+        if (!confirm(
+          "Restore will replace the planner data in this browser, including all profiles, " +
+          "with the contents of this file.\n\nContinue?"
+        )) return;
         applyBackupObject(backup, { showAlerts: true, reloadAfter: true });
       } catch (err) {
         alert("Restore failed: " + err.message);
@@ -13919,6 +14038,7 @@ if (projectsToggle) {
   const profiles = getProfiles();
   const id = getCurrentProfileId();
   if (profiles[id]) applyProfileData(profiles[id].data);
+  plannerReady = true;
   loadScheduleFromStorage();
     ensureKnownClassesFromSchedule();
     hydrateScheduleForm(); // → renderPeriodSlots
@@ -13986,7 +14106,7 @@ document.getElementById("saveProjectEditorBtn")
 document.getElementById("exportTestsByClassBtn").addEventListener("click", () => {
   const allEvents = getAssessmentSchedule();
   const modalTests = [];
-  const todayISO = new Date().toISOString().split("T")[0];
+  const todayISO = getLocalTodayISO();
 
 const noteDates = Array.from(new Set(getAllNoteStorageEntries().map(entry => entry.date)));
 noteDates.forEach(date => {
@@ -14090,7 +14210,7 @@ document.getElementById("packPeriodCount")?.addEventListener("input", () => {
   if (activePack) {
     activePack.periodCount = value;
     ensurePackRotationRules(activePack);
-    savePacks();
+    savePackLibrary();
     renderRotationLegend();
   }
   renderPackInputPreview();
@@ -14112,7 +14232,7 @@ function groupAssessmentsByClass(events) {
   events.forEach(event => {
     const period = event.period ?? event.periodNum ?? event.p;
     let courseName = event.courseName || `Period ${period}`;
-    if (courseName.toLowerCase().includes("off") || courseName.trim() === "") {
+    if (courseName.trim().toLowerCase() === "off" || courseName.trim() === "") {
       courseName = `Period ${period}`;
     }
 
@@ -14571,7 +14691,6 @@ function refreshAllData() {
   
   loadScheduleFromStorage();
   loadBellTimes();
-  console.log("Loaded schedule for", currentSemester, ":", Object.keys(teacherSchedule)); // debug
   loadUnits();
   loadProjects()
   loadHiddenSpecialEntries();
@@ -15158,6 +15277,5 @@ setInterval(() => {
 
 <div id="profileToast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 </body>
 </html>
