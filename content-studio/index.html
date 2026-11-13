@@ -279,7 +279,11 @@ footer{
   text-align:center; color:var(--pencil-soft); font-size:0.78rem; padding:20px; opacity:0.7;
 }
 @media print{
-  .app-header, .tabs, .toolbar, .add-more-row, .qa-item-actions, textarea, .btn { display:none !important; }
+  .app-header, .tabs, .toolbar, .add-more-row, .qa-item-actions, .btn,
+  #notes-input, #slides-input, #ak-input, #as-input, #ws-input,
+  .upload-row, .config-grid, .unit-loader { display:none !important; }
+  /* Generated questions and answers live in textareas, so they must print. */
+  textarea{ border:none; resize:none; overflow:hidden; background:transparent; }
   body{background:#fff;}
   .card{box-shadow:none; border:none;}
 }
@@ -523,7 +527,7 @@ function lessonToText(day){
       const items = d.practice[t];
       if (Array.isArray(items) && items.length){
         out.push('\n' + t.charAt(0).toUpperCase() + t.slice(1) + ' practice:');
-        items.forEach((p,i) => out.push('  ' + (i+1) + '. ' + (p.question || p.prompt || p)));
+        items.forEach((p,i) => out.push('  ' + (i+1) + '. ' + (typeof p === 'string' ? p : (p.problem || p.question || p.prompt || ''))));
       }
     });
   }
@@ -544,8 +548,9 @@ function handleUnitUpload(event){
       status.textContent = '⚠️ That does not look like a unit file.';
       return;
     }
-    if (p.schemaVersion !== UNIT_SCHEMA_VERSION &&
-        !confirm(`This file uses schema version ${p.schemaVersion ?? 'unknown'}, expected ${UNIT_SCHEMA_VERSION}. Load anyway?`)) return;
+    // Native confirm() is blocked in sandboxed previews, so load and say so instead.
+    const versionNote = p.schemaVersion !== UNIT_SCHEMA_VERSION
+      ? ` (file is schema version ${p.schemaVersion ?? 'unknown'}, expected ${UNIT_SCHEMA_VERSION} — some content may be missing)` : '';
 
     // Only days that actually have usable content
     const usable = p.days.filter(d => (d.lessonPlan && d.lessonPlan.trim()) || d.lesson || d.topic);
@@ -558,16 +563,17 @@ function handleUnitUpload(event){
     const sel = document.getElementById('unit-lesson-select');
     sel.innerHTML = usable.map((d, i) => {
       const label = d.topic || (d.lesson && d.lesson.title) || ('Day ' + (d.sourceDayNum || d.dayNum || i+1));
-      return `<option value="${i}">Day ${d.sourceDayNum || d.dayNum || i+1} — ${label.replace(/"/g,'&quot;')}</option>`;
+      return `<option value="${i}">Day ${d.sourceDayNum || d.dayNum || i+1} — ${escapeHtml(label)}</option>`;
     }).join('');
     sel.style.display = '';
-    status.textContent = `Loaded "${p.unitTitle}" — pick a lesson:`;
     fillFromSelectedLesson();
+    status.textContent = `Loaded "${p.unitTitle}"${versionNote} — pick a lesson:`;
   };
   reader.readAsText(file);
   event.target.value = ''; // allow re-selecting the same file
 }
 
+let lastUnitFill = null;
 function fillFromSelectedLesson(){
   if (!loadedUnit) return;
   const idx = Number(document.getElementById('unit-lesson-select').value) || 0;
@@ -577,13 +583,20 @@ function fillFromSelectedLesson(){
     document.getElementById('unit-loader-status').textContent = '⚠️ That day has no content yet.';
     return;
   }
+  // Fill a tab's box only if it is empty or still holds the lesson we put
+  // there, so notes the teacher pasted or uploaded are never overwritten.
+  let kept = 0;
   UNIT_TARGET_INPUTS.forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.value = text;
+    if (!el) return;
+    if (!el.value.trim() || el.value === lastUnitFill) el.value = text;
+    else kept++;
   });
+  lastUnitFill = text;
   const label = day.topic || (day.lesson && day.lesson.title) || 'lesson';
-  document.getElementById('unit-loader-status').textContent =
-    `✓ "${label}" loaded into every tab — pick a tab and Generate.`;
+  document.getElementById('unit-loader-status').textContent = kept
+    ? `✓ "${label}" loaded into the empty tabs — ${kept} tab${kept===1?'':'s'} already had your own text and ${kept===1?'was':'were'} left alone.`
+    : `✓ "${label}" loaded into every tab — pick a tab and Generate.`;
 }
 
 function switchTab(tab){
@@ -630,8 +643,8 @@ async function callClaude(systemPrompt, userPrompt){
       method: "POST",
       headers: headers,
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1000,
+        model: "claude-sonnet-5-5",
+        max_tokens: 4096,
         system: systemPrompt,
         messages: [{ role: "user", content: userPrompt }]
       })
@@ -649,8 +662,14 @@ async function callClaude(systemPrompt, userPrompt){
     throw new Error("The AI request failed (status " + response.status + "). Please try again.");
   }
   const data = await response.json();
+  if(data.stop_reason === 'max_tokens'){
+    throw new Error("The AI's answer was cut off because it was too long. Try shorter notes or fewer items.");
+  }
   const textBlocks = (data.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
   let cleaned = textBlocks.trim().replace(/^```json\s*/i,'').replace(/^```\s*/,'').replace(/```\s*$/,'').trim();
+  // Drop any prose the model put around the JSON object.
+  const firstBrace = cleaned.indexOf('{'), lastBrace = cleaned.lastIndexOf('}');
+  if(firstBrace !== -1 && lastBrace > firstBrace) cleaned = cleaned.slice(firstBrace, lastBrace + 1);
   try{
     return JSON.parse(cleaned);
   }catch(e){
@@ -658,10 +677,15 @@ async function callClaude(systemPrompt, userPrompt){
   }
 }
 
+window.addEventListener('beforeprint', () => {
+  document.querySelectorAll('textarea').forEach(t => { t.style.height = t.scrollHeight + 'px'; });
+});
+
 function escapeHtml(str){
   const d = document.createElement('div');
   d.textContent = str == null ? '' : String(str);
-  return d.innerHTML;
+  // Quotes too: this is also used inside value="..." attributes.
+  return d.innerHTML.replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 function checkmarkSvg(){
@@ -901,8 +925,9 @@ function downloadText(text, filename){
   const blob = new Blob([text], {type:'text/plain'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /* ============================================================
@@ -940,8 +965,9 @@ async function exportPptx(){
   const blob = await zip.generateAsync({type:"blob", mimeType:"application/vnd.openxmlformats-officedocument.presentationml.presentation"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'lesson-slides.pptx'; a.click();
-  URL.revokeObjectURL(url);
+  a.href = url; a.download = 'lesson-slides.pptx';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function pptxContentTypes(n){
@@ -1186,21 +1212,25 @@ async function requestQuestions(type, count, notesText, avoidList){
   // batch in groups of 5 to stay within token budget & keep dedup instructions manageable
   let all = [];
   let remaining = count;
+  let calls = 0;
+  const maxCalls = Math.ceil(count / 5) + 2;
   while(remaining > 0){
     const batch = Math.min(5, remaining);
     const system = "You write " + batch + " " + TYPE_LABELS[type] + " assessment question(s) strictly based on the lesson notes provided. Every question must test a DIFFERENT fact or concept — never repeat or closely resemble any question in the avoid-list. Respond ONLY with valid JSON, no markdown fences, under 900 tokens. For multiple_choice include 4 options with exactly one correct. For true_false include the statement and correct boolean. For short_answer, fill_blank, and essay include a model answer. JSON schema: {\"questions\":[{\"question\":\"string\",\"options\":[\"string\"] or null,\"answer\":\"string\",\"rationale\":\"short explanation\"}]}";
     const user = "Lesson notes:\n\n" + notesText + "\n\nQuestions to avoid duplicating (topics already covered):\n" + (avoidList.concat(all.map(q=>q.question)).join(' | ') || 'none yet');
-    const result = await callClaude(system, user);
-    const qs = (result.questions || []).map(q => ({
+    let result;
+    try{ result = await callClaude(system, user); }
+    catch(err){ if(all.length) break; throw err; } // keep earlier batches
+    const qs = (result.questions || []).slice(0, batch).map(q => ({
       id: nextId(), type: type,
       question: q.question || '',
       options: Array.isArray(q.options) ? q.options : null,
-      answer: q.answer || '',
+      answer: q.answer == null ? '' : String(q.answer),
       rationale: q.rationale || ''
     }));
     all = all.concat(qs);
-    remaining -= batch;
-    if(qs.length === 0) break; // avoid infinite loop if model returns nothing
+    remaining -= qs.length;
+    if(qs.length === 0 || ++calls >= maxCalls) break; // avoid looping if the model keeps coming up short
   }
   return all;
 }
@@ -1377,6 +1407,8 @@ state.worksheet = {
 async function requestWorksheetProblems(level, count, notes, grade, subject, avoidList){
   let all = [];
   let remaining = count;
+  let calls = 0;
+  const maxCalls = Math.ceil(count / 5) + 2;
   const levelDesc = level === 'difficult'
     ? 'challenging, multi-step problems that combine more than one concept from the notes and require deeper reasoning'
     : 'straightforward, single-concept problems suitable as an introduction to practicing this material';
@@ -1384,11 +1416,13 @@ async function requestWorksheetProblems(level, count, notes, grade, subject, avo
     const batch = Math.min(5, remaining);
     const system = "You write " + batch + " " + levelDesc + ", for " + (grade||'students') + " " + (subject||'') + " students, based strictly on the lesson notes provided. Every problem must be different from any problem in the avoid-list — no duplicates or near-duplicates. Respond ONLY with valid JSON, no markdown fences, under 900 tokens. JSON schema: {\"problems\":[{\"prompt\":\"string\",\"answer\":\"string\"}]}";
     const user = "Lesson notes:\n\n" + notes + "\n\nProblems to avoid duplicating:\n" + (avoidList.concat(all.map(p=>p.prompt)).join(' | ') || 'none yet');
-    const result = await callClaude(system, user);
-    const ps = (result.problems || []).map(p => ({ id: nextId(), level: level, prompt: p.prompt || '', answer: p.answer || '' }));
+    let result;
+    try{ result = await callClaude(system, user); }
+    catch(err){ if(all.length) break; throw err; } // keep earlier batches
+    const ps = (result.problems || []).slice(0, batch).map(p => ({ id: nextId(), level: level, prompt: p.prompt || '', answer: p.answer || '' }));
     all = all.concat(ps);
-    remaining -= batch;
-    if(ps.length === 0) break;
+    remaining -= ps.length;
+    if(ps.length === 0 || ++calls >= maxCalls) break;
   }
   return all;
 }

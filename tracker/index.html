@@ -943,12 +943,12 @@
       data.sections.forEach(sec=>{
         if(typeof sec.collapsed !== 'boolean') sec.collapsed = false;
         if(!Array.isArray(sec.assignments)) sec.assignments = [];
-        sec.assignments.forEach(a=>{ if(!a.quizzes) a.quizzes = 1; });
+        sec.assignments.forEach(a=>{ if(typeof a.quizzes !== 'number') a.quizzes = 1; });
       });
       return true;
     } else if(parsed && Array.isArray(parsed.assignments) && Array.isArray(parsed.students)){
       // legacy save from before sections existed — wrap everything into one section
-      parsed.assignments.forEach(a=>{ if(!a.quizzes) a.quizzes = 1; });
+      parsed.assignments.forEach(a=>{ if(typeof a.quizzes !== 'number') a.quizzes = 1; });
       data = {
         className: parsed.className || '',
         itemWord: parsed.itemWord || 'Karel',
@@ -988,55 +988,53 @@
   // or grades to leave the teacher's device.
   // ──────────────────────────────────────────────────────────────────────
 
-  // Storage adapter: writes to BOTH Claude artifact storage (when present) and
-  // localStorage, then reads whichever actually has data. This matters because
-  // the same file runs in three places — as a Claude artifact, as a GitHub Pages
-  // site, and opened directly from disk — and each has different storage rules.
-  // Mirroring means switching environments never silently loses a roster.
+  // Storage adapter: localStorage only, in keeping with the boundary above.
+  // Claude artifact storage (window.storage) lives on a server, so it is never
+  // written to. It is read once, only when localStorage is empty, so a roster
+  // created by an older version of this tool inside a Claude artifact is
+  // carried over instead of appearing lost.
   const store = {
     async get(key){
-      let artifactVal = null;
-      if (typeof window !== "undefined" && window.storage && window.storage.get) {
+      let value = null;
+      try { value = localStorage.getItem(key); } catch (e) { /* blocked */ }
+      if (!value && typeof window !== "undefined" && window.storage && window.storage.get) {
         try {
           const r = await window.storage.get(key, false);
-          if (r && r.value) artifactVal = r.value;
+          if (r && r.value) value = r.value;
         } catch (e) { /* not there */ }
       }
-      let localVal = null;
-      try { localVal = localStorage.getItem(key); } catch (e) { /* blocked */ }
-
-      const value = artifactVal || localVal;
-      if (!value) throw new Error("not found");
+      if (!value) return null;
       return { key, value };
     },
     async set(key, value){
-      let wroteSomewhere = false;
-      if (typeof window !== "undefined" && window.storage && window.storage.set) {
-        try {
-          await window.storage.set(key, value, false);
-          wroteSomewhere = true;
-        } catch (e) { /* fall through to localStorage */ }
-      }
-      try {
-        localStorage.setItem(key, value);
-        wroteSomewhere = true;
-      } catch (e) { /* quota or blocked */ }
-      if (!wroteSomewhere) throw new Error("no writable storage");
+      localStorage.setItem(key, value);
       return { key, value };
     }
   };
 
+  // Set when saved data exists but could not be read. While it is set nothing
+  // is written, so a damaged save is never replaced by an empty tracker.
+  let loadFailed = false;
+
   async function loadData(){
+    let raw = null;
     try{
       const result = await store.get(STORAGE_KEY);
-      if(result && result.value){
-        const parsed = JSON.parse(result.value);
-        normalizeIntoData(parsed);
-      }
+      raw = result && result.value;
+      if(raw && !normalizeIntoData(JSON.parse(raw))) throw new Error('unrecognised format');
     }catch(e){
-      // no saved data yet — use defaults
+      if(raw){
+        loadFailed = true;
+        try{ localStorage.setItem(STORAGE_KEY + '-unreadable', raw); }catch(e2){ /* quota */ }
+      }
     }
     render();
+    if(loadFailed){
+      await openConfirm(
+        'Your saved tracker data could not be read, so nothing is shown.\n\n' +
+        'It has been left untouched and changes will not be saved until you restore a backup ' +
+        '(Import, or Manage → Restore from backup).', 'OK');
+    }
   }
 
   function scheduleSave(){
@@ -1045,6 +1043,8 @@
   }
 
   async function saveData(){
+    saveTimer = null;
+    if(loadFailed) return;
     try{
       const result = await store.set(STORAGE_KEY, JSON.stringify(data));
       const ind = document.getElementById('saveIndicator');
@@ -1059,6 +1059,13 @@
       ind.classList.add('show');
     }
   }
+
+  // A save is debounced by 350 ms; flush it if the tab is closed first.
+  window.addEventListener('pagehide', ()=>{
+    if(saveTimer === null || loadFailed) return;
+    clearTimeout(saveTimer);
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }catch(e){ /* quota */ }
+  });
 
   function uid(prefix){
     return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
@@ -1217,6 +1224,8 @@
       const ok = await openConfirm('Remove "'+a.name+'" and its checkmarks for every student?', 'Remove');
       if(!ok) return;
       section.assignments = section.assignments.filter(x=>x.id !== a.id);
+      Object.keys(data.progress).forEach(k=>{ if(k.indexOf('|'+a.id+'|') !== -1) delete data.progress[k]; });
+      Object.keys(data.grades).forEach(k=>{ if(k.indexOf('|'+a.id+'|') !== -1) delete data.grades[k]; });
       scheduleSave();
       render();
     });
@@ -1344,7 +1353,7 @@
     let list = data.students.slice();
     const onlyIncomplete = document.getElementById('filterIncomplete').checked;
     const totalAssignments = allAssignments().length;
-    if(onlyIncomplete){
+    if(onlyIncomplete && totalAssignments > 0){
       list = list.filter(s => completedAssignments(s.id) < totalAssignments);
     }
     const sortMode = document.getElementById('sortSelect').value;
@@ -1626,7 +1635,10 @@
       const kdone = completedAssignments(s.id);
       const badgeRow = document.createElement('div');
       badgeRow.className = 'beeper-badge';
-      badgeRow.innerHTML = '<span class="dot"></span> ' + kdone + ' / ' + totalAssignments + ' ' + itemWordPlural() + ' complete';
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+      badgeRow.appendChild(dot);
+      badgeRow.appendChild(document.createTextNode(' ' + kdone + ' / ' + totalAssignments + ' ' + itemWordPlural() + ' complete'));
       progTd.appendChild(badgeRow);
 
       tr.appendChild(progTd);
@@ -1687,7 +1699,9 @@
         try{
           const parsed = JSON.parse(reader.result);
           incoming = parsed && parsed.data ? parsed.data : parsed;
-          if(!incoming || !Array.isArray(incoming.sections)){
+          const ok = incoming && Array.isArray(incoming.students) &&
+            (Array.isArray(incoming.sections) || Array.isArray(incoming.assignments));
+          if(!ok){
             throw new Error('This does not look like a tracker backup.');
           }
         }catch(err){
@@ -1699,7 +1713,11 @@
           'Your current roster, sections and grades will be overwritten.'
         );
         if(!ok) return;
-        normalizeIntoData(incoming);
+        if(!normalizeIntoData(incoming)){
+          await openConfirm('That file is not a valid tracker backup — nothing was changed.', 'OK');
+          return;
+        }
+        loadFailed = false;
         render();
         scheduleSave();
       };
@@ -1755,7 +1773,9 @@
     if(!file) return;
     try{
       const text = await file.text();
-      const parsed = JSON.parse(text);
+      const rawParsed = JSON.parse(text);
+      // The header Export wraps the data as { trackerVersion, exportedAt, data }.
+      const parsed = rawParsed && rawParsed.data && Array.isArray(rawParsed.data.students) ? rawParsed.data : rawParsed;
       const looksValid = parsed && Array.isArray(parsed.students) && (Array.isArray(parsed.sections) || Array.isArray(parsed.assignments));
       if(!looksValid){
         await openConfirm('That file doesn\'t look like a ' + itemWord() + ' Tracker backup — nothing was changed.', 'OK');
@@ -1768,6 +1788,7 @@
         await openConfirm('That file couldn\'t be read as a valid backup — nothing was changed.', 'OK');
         return;
       }
+      loadFailed = false;
       scheduleSave();
       render();
     }catch(err){
@@ -1881,7 +1902,7 @@
     const input = document.getElementById('newStudentName');
     const raw = input.value.trim();
     if(!raw) return;
-    const names = raw.split(/\n|,/).map(n=>n.trim()).filter(Boolean);
+    const names = raw.split(/\n|;/).map(n=>n.trim()).filter(Boolean);
     names.forEach(name=>{
       data.students.push({ id: uid('s'), name });
     });

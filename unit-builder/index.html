@@ -621,7 +621,7 @@
 // your own backend proxy, which holds the key server-side. Nothing else in the
 // file should need to change.
 // ---------------------------------------------------------------------------
-const AI_MODEL = "claude-sonnet-4-6";
+const AI_MODEL = "claude-sonnet-5-5";
 let USER_API_KEY = '';
 
 function toggleApiSettings(){
@@ -687,7 +687,7 @@ const store = {
     }
     let localVal = null;
     try { localVal = localStorage.getItem(key); } catch(e){ /* blocked */ }
-    const value = artifactVal || localVal;
+    const value = localVal || artifactVal;
     if (!value) throw new Error('not found');
     return { key, value };
   },
@@ -752,6 +752,14 @@ function distributeTopics(topics, numLessons){
       if (donor.length > 1) {
         groups[i].push(donor.pop());
       }
+    }
+  }
+  // More lessons than topics: a lesson with nothing assigned continues the
+  // nearest earlier topic instead of being generated from an empty prompt.
+  for (let i=0;i<groups.length;i++){
+    if (groups[i].length === 0){
+      const near = groups.slice(0,i).reverse().find(g => g.length) || groups.slice(i+1).find(g => g.length);
+      if (near) groups[i].push(near[near.length-1]);
     }
   }
   return groups;
@@ -873,7 +881,7 @@ async function renderSavedUnitsList(){
       const row = e.target.closest('.saved-unit-row');
       const id = row.getAttribute('data-unit-id');
       const title = row.querySelector('.saved-unit-title').textContent;
-      if (!(await showConfirm(`Delete "${title}"? This can't be undone.`, { title: 'Delete this unit?', confirmText: 'Delete', danger: true }))) return;
+      if (!(await showConfirm(`Delete "${escapeHtml(title)}"? This can't be undone.`, { title: 'Delete this unit?', confirmText: 'Delete', danger: true }))) return;
       await deleteUnit(id);
       renderSavedUnitsList();
     });
@@ -925,6 +933,11 @@ function showModal({ title, message, buttons }){
     });
     overlay.style.display = 'flex';
   });
+}
+
+// showModal renders its message as HTML; use this for plain-text messages.
+function plainMsg(text){
+  return escapeHtml(text).replace(/\n/g,'<br>');
 }
 
 function showConfirm(message, opts = {}){
@@ -996,7 +1009,7 @@ function lessonToPlainText(d){
       const items = d.practice[tier];
       if (Array.isArray(items) && items.length){
         out.push('\n' + tier.charAt(0).toUpperCase() + tier.slice(1) + ' practice:');
-        items.forEach((p,i) => out.push('  ' + (i+1) + '. ' + (p.question || p.prompt || p)));
+        items.forEach((p,i) => out.push('  ' + (i+1) + '. ' + (typeof p === 'string' ? p : (p.problem || p.question || p.prompt || ''))));
       }
     });
   }
@@ -1058,18 +1071,21 @@ function importUnitFromSchema(){
     const file = input.files && input.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       let p;
       try { p = JSON.parse(reader.result); }
-      catch(e){ alert('That file is not valid JSON.'); return; }
-      if (!p || !Array.isArray(p.days)) { alert('That does not look like a unit file.'); return; }
+      catch(e){ await showAlert('That file is not valid JSON.', { title: 'Import failed' }); return; }
+      if (!p || !Array.isArray(p.days)) { await showAlert('That does not look like a unit file.', { title: 'Import failed' }); return; }
       if (p.schemaVersion !== UNIT_SCHEMA_VERSION &&
-          !confirm(`This file uses schema version ${p.schemaVersion ?? 'unknown'}, expected ${UNIT_SCHEMA_VERSION}. Import anyway?`)) return;
+          !(await showConfirm(`This file uses schema version ${escapeHtml(String(p.schemaVersion ?? 'unknown'))}, expected ${UNIT_SCHEMA_VERSION}. Import anyway?`, { title: 'Different file version', confirmText: 'Import anyway' }))) return;
 
       document.getElementById('unitTitle').value = p.unitTitle || '';
       document.getElementById('subject').value = p.subject || '';
       document.getElementById('gradeLevel').value = p.gradeLevel || '';
-      const topics = p.days.map(d => d.topic).filter(Boolean);
+      // One line per teaching day, even when a day has no topic yet, so lesson N
+      // always maps back to the Planner day it came from.
+      const named = p.days.filter(d => d.topic).length;
+      const topics = p.days.map((d, i) => (d.topic || '').trim() || `Day ${d.sourceDayNum || (i + 1)}`);
       topicsEl.value = topics.join('\n');
       topicsEl.dispatchEvent(new Event('input'));
       document.getElementById('numLessons').value = p.days.length || '';
@@ -1082,12 +1098,16 @@ function importUnitFromSchema(){
       state.sourceDayNums = p.days.map((d, i) => d.sourceDayNum || (i + 1));
 
       const skipped = (p.totalUnitDays || p.days.length) - p.days.length;
-      alert(
-        `Loaded "${p.unitTitle}" — ${topics.length} topic${topics.length===1?'':'s'} across ${p.days.length} teaching day${p.days.length===1?'':'s'}.` +
+      await showAlert(
+        `Loaded "${escapeHtml(p.unitTitle || 'Untitled Unit')}" — ${named} topic${named===1?'':'s'} across ${p.days.length} teaching day${p.days.length===1?'':'s'}.` +
         (skipped > 0
-          ? `\n\n${skipped} day${skipped===1?'':'s'} skipped (quiz/test days don't need generated lessons).`
+          ? `<br><br>${skipped} day${skipped===1?'':'s'} skipped (quiz/test days don't need generated lessons).`
           : '') +
-        `\n\nReview below, then Generate unit.`
+        (named < p.days.length
+          ? `<br><br>${p.days.length - named} day${p.days.length - named===1?' has':'s have'} no topic yet — replace the "Day N" placeholder${p.days.length - named===1?'':'s'} below before generating.`
+          : '') +
+        `<br><br>Review below, then Generate unit.`,
+        { title: 'Unit imported' }
       );
     };
     reader.readAsText(file);
@@ -1118,6 +1138,24 @@ async function startGeneration(){
     );
     if (!proceed) return;
   }
+
+  // Re-importing a unit that already has generated lessons saved here would
+  // otherwise replace them all with empty ones.
+  if (state.unitId){
+    let existing = null;
+    try { existing = await loadUnit(state.unitId); } catch(e){ /* none saved */ }
+    const doneCount = existing && Array.isArray(existing.lessons)
+      ? existing.lessons.filter(l => l && l.status === 'done').length : 0;
+    if (doneCount > 0){
+      const startOver = await showConfirm(
+        `This unit already has ${doneCount} generated lesson${doneCount===1?'':'s'} saved here. Starting over will replace ${doneCount===1?'it':'them'}.`,
+        { title: 'Replace saved lessons?', cancelText: 'Open saved lessons', confirmText: 'Start over', danger: true }
+      );
+      if (!startOver){ openLoadedUnit(existing); return; }
+    }
+  }
+  // The imported day mapping only holds while there is one lesson per imported day.
+  if (state.sourceDayNums && state.sourceDayNums.length !== numLessons) state.sourceDayNums = null;
 
   // Keep the id if this unit came from the Planner, so exporting back updates
   // the same unit rather than creating a duplicate.
@@ -1212,11 +1250,15 @@ async function generateLesson(index){
     await generateLesson(index-1);
   }
 
-  state.lessons[index].status = 'loading';
+  // A response can arrive after the teacher has opened a different unit, so
+  // write to the lesson list captured here, never to whatever is open later.
+  const unitId = state.unitId;
+  const lessons = state.lessons;
+  lessons[index].status = 'loading';
   renderTabs();
   if (state.currentIndex === index) renderMain();
 
-  const lessonMeta = state.lessons[index];
+  const lessonMeta = lessons[index];
   const prevLesson = index > 0 ? state.lessons[index-1] : null;
   const prevSummary = prevLesson && prevLesson.data
     ? `Title: "${prevLesson.data.title}". Objective: "${prevLesson.data.objective}". Key vocabulary: ${(prevLesson.data.vocabulary||[]).map(v=>v.term).join(', ')}.`
@@ -1269,10 +1311,14 @@ Generate this one lesson now as JSON per the schema.`;
     const data = await callClaude({
       system: systemPrompt,
       user: userPrompt,
-      maxTokens: 4096
+      maxTokens: 8192
     });
+    if (data.stop_reason === 'max_tokens') throw new Error('The lesson was cut off before it finished. Click Retry.');
     const textBlocks = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
-    const cleaned = textBlocks.replace(/```json/g,'').replace(/```/g,'').trim();
+    let cleaned = textBlocks.replace(/```json/g,'').replace(/```/g,'').trim();
+    // Drop any prose the model put before the JSON object.
+    const firstBrace = cleaned.indexOf('{');
+    if (firstBrace > 0) cleaned = cleaned.slice(firstBrace);
     let parsed;
     try{
       parsed = JSON.parse(cleaned);
@@ -1280,15 +1326,16 @@ Generate this one lesson now as JSON per the schema.`;
       // The response likely got cut off mid-object (hit the token limit). Try to repair it.
       parsed = JSON.parse(tryRepairJson(cleaned));
     }
-    state.lessons[index].data = normalizeLesson(parsed);
-    state.lessons[index].status = 'done';
+    lessons[index].data = normalizeLesson(parsed);
+    lessons[index].status = 'done';
   } catch(err){
     console.error('Lesson generation failed', err);
-    state.lessons[index].status = 'error';
+    lessons[index].status = 'error';
     // Keep the reason so the UI can explain it (e.g. missing API key).
-    state.lessons[index].errorMsg = (err && err.message) || 'Generation failed.';
-    state.lastError = state.lessons[index].errorMsg;
+    lessons[index].errorMsg = (err && err.message) || 'Generation failed.';
+    if (state.unitId === unitId) state.lastError = lessons[index].errorMsg;
   }
+  if (state.unitId !== unitId || state.lessons !== lessons) return;
   renderTabs();
   if (state.currentIndex === index) renderMain();
   saveCurrentUnit();
@@ -1634,7 +1681,7 @@ async function runBatchGeneration(){
     .filter(x => x.l.status !== 'done');
 
   if (!pending.length){
-    alert('All lessons are already generated.');
+    await showAlert('All lessons are already generated.', { title: 'Nothing left to generate' });
     return;
   }
 
@@ -1658,12 +1705,12 @@ async function runBatchGeneration(){
       if (consecutiveFails >= BATCH_MAX_FAILS){
         setBatchButton('Generate all remaining', false);
         batchRunning = false;
-        alert(
+        await showAlert(plainMsg(
           `Stopped after ${consecutiveFails} failures in a row.\n\n` +
           (state.lastError ? `Reason: ${state.lastError}\n\n` : '') +
           `${completed} lesson${completed===1?'':'s'} generated so far — those are saved.\n\n` +
           `You can export what you have now, or click "Generate all remaining" again later to pick up where this left off.`
-        );
+        ), { title: 'Generation stopped' });
         return;
       }
       await sleep(BATCH_BACKOFF_MS); // give the API room before retrying
@@ -1675,30 +1722,30 @@ async function runBatchGeneration(){
 
   const remaining = state.lessons.filter(l => l.status !== 'done').length;
   if (batchCancel){
-    alert(`Stopped. ${completed} lesson${completed===1?'':'s'} generated this run.\n\n${remaining} still to go — your progress is saved.`);
+    await showAlert(plainMsg(`Stopped. ${completed} lesson${completed===1?'':'s'} generated this run.\n\n${remaining} still to go — your progress is saved.`), { title: 'Stopped' });
   } else if (remaining){
-    alert(`Finished with ${remaining} lesson${remaining===1?'':'s'} still incomplete.\n\nClick "Generate all remaining" again to retry just those.`);
+    await showAlert(plainMsg(`Finished with ${remaining} lesson${remaining===1?'':'s'} still incomplete.\n\nClick "Generate all remaining" again to retry just those.`), { title: 'Some lessons did not finish' });
   }
 }
 
 document.getElementById('generateAllBtn').addEventListener('click', runBatchGeneration);
 
-document.getElementById('exportUnitBtn').addEventListener('click', () => {
+document.getElementById('exportUnitBtn').addEventListener('click', async () => {
   const done = state.lessons.filter(l => l.status === 'done').length;
   const total = state.lessons.length;
 
   if (!done){
-    alert('No lessons have been generated yet — there is nothing to send back.');
+    await showAlert('No lessons have been generated yet — there is nothing to send back.', { title: 'Nothing to export' });
     return;
   }
 
   if (done < total){
-    const ok = confirm(
+    const ok = await showConfirm(plainMsg(
       `${done} of ${total} lessons are generated.\n\n` +
       `Exporting now sends those ${done} back to the Planner. The ungenerated days are left alone — ` +
       `nothing already on them gets erased.\n\n` +
-      `You can finish the rest later and export again; the Planner merges each time.\n\nExport now?`
-    );
+      `You can finish the rest later and export again; the Planner merges each time.`
+    ), { title: 'Export a partial unit?', confirmText: 'Export now' });
     if (!ok) return;
   }
 
@@ -1707,7 +1754,7 @@ document.getElementById('exportUnitBtn').addEventListener('click', () => {
 
 document.getElementById('copyLessonBtn').addEventListener('click', async () => {
   const lesson = state.lessons[state.currentIndex];
-  if (!lesson || !lesson.data) { alert('Generate this lesson first.'); return; }
+  if (!lesson || !lesson.data) { await showAlert('Generate this lesson first.', { title: 'Nothing to copy yet' }); return; }
   const text = lessonToPlainText(lesson.data);
   try{
     await navigator.clipboard.writeText(text);
@@ -1716,8 +1763,10 @@ document.getElementById('copyLessonBtn').addEventListener('click', async () => {
     btn.textContent = '✓ Copied — paste into Content Studio';
     setTimeout(()=>{ btn.textContent = original; }, 2200);
   } catch(e){
-    // Clipboard API can be blocked; fall back to a selectable prompt
-    window.prompt('Copy this lesson text:', text);
+    // Clipboard API can be blocked; fall back to a selectable text box.
+    await showAlert(
+      `<p>Select all of this text and copy it:</p><textarea readonly style="width:100%;height:220px;">${escapeHtml(text)}</textarea>`,
+      { title: 'Copy this lesson' });
   }
 });
 
